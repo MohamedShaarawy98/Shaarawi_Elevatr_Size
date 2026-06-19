@@ -131,9 +131,9 @@ int main() {
                       "</style></head><body>"
 
                       "<div class='yt-banner'>"
-                      "<a href='https://www.youtube.com/@YOUR_CHANNEL' target='_blank'>"
+                      "<a href='https://www.youtube.com/@DarbatShakoush' target='_blank'>"
                       "<img src='https://cdn-icons-png.flaticon.com/512/1384/1384060.png' alt='قناة اليوتيوب'>"
-                      "<div>🔴 تابعنا على اليوتيوب واشترك الآن</div></a>"
+                      "<div> تابعنا على اليوتيوب واشترك الآن</div></a>"
                       "</div>"
 
                       "<div class='card'><h2>🧮 حاسبة المقاسات والبضاعة الذكية</h2>"
@@ -144,7 +144,8 @@ int main() {
                       "<div class='f-group'><label>📐 عمق البئر الحُر (CM):</label><input type='number' name='depth' required min='80' max='250' placeholder='أدخل عمق البئر بالسم'></div>"
                       "<div class='f-group'><label>🏢 عدد أدوار المبنى (الوقفات):</label><input type='number' name='floors' required min='1' max='60' placeholder='أدخل إجمالي الأدوار'></div>"
                       "<button type='submit'>🚀 تحليل الأبعاد وتصفية المقايسة</button></form></div>"
-                      "<div class='footer'>تطوير مهندسي وفنيي المصاعد العرب © 2026</div>"
+                      "<div class='footer'>انشاء وتطوير: محمد الشعراوي © 2026</div>"
+                      "<div class='footer'>مراجعة كود :عبدالرحمن غنيمي</div>"
                       "</body></html>";
         res.set_content(html, "text/html; charset=utf-8");
     });
