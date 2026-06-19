@@ -144,8 +144,8 @@ int main() {
                       "<div class='f-group'><label>📐 عمق البئر الحُر (CM):</label><input type='number' name='depth' required min='80' max='250' placeholder='أدخل عمق البئر بالسم'></div>"
                       "<div class='f-group'><label>🏢 عدد أدوار المبنى (الوقفات):</label><input type='number' name='floors' required min='1' max='60' placeholder='أدخل إجمالي الأدوار'></div>"
                       "<button type='submit'>🚀 تحليل الأبعاد وتصفية المقايسة</button></form></div>"
-                      "<div class='footer'>انشاء وتطوير: محمد الشعراوي © 2026</div>"
-                      "<div class='footer'>مراجعة كود :عبدالرحمن غنيمي</div>"
+                      "<div class='footer'>انشاء وتطوير: محمد الشعراوي </div>"
+                      
                       "</body></html>";
         res.set_content(html, "text/html; charset=utf-8");
     });
@@ -189,7 +189,7 @@ int main() {
         os << "<html><head><meta charset='UTF-8'><meta name='viewport' content='width=device-width, initial-scale=1.0'>"
            << "<link href='https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap' rel='stylesheet'>"
            << "<style>"
-           << "body{background-color:#f4f7fc; font-family:'Cairo', sans-serif; padding:30px 10px; direction:rtl; text-align:right; color:#2d3748;}"
+           << "body{background-color:#1a5d3e; font-family:'Cairo', sans-serif; padding:30px 10px; direction:rtl; text-align:right; color:#2d3748;}"
            << ".box{max-width:650px; margin:auto; background:#ffffff; padding:35px; border-radius:20px; box-shadow:0 10px 30px rgba(160,174,192,0.15); border: 1px solid #e2e8f0;}"
            << "h2{color:#1a365d; text-align:center; margin-top:0; font-weight:700; font-size:22px; border-bottom:2px solid #e2e8f0; padding-bottom:15px;}"
            << "h3{color:#2b6cb0; font-size:15px; font-weight:700; margin-top:25px; margin-bottom:12px; display:flex; align-items:center;}"
