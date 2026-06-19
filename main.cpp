@@ -1,16 +1,47 @@
-#include "httplib.h" 
+#include "httplib.h"
 #include <iostream>
 #include <string>
 #include <sstream>
 #include <cstdlib>
+#include <algorithm>
 
 using namespace std;
+
+// ============================================================
+//  دوال تحويل آمنة: تمنع توقف السيرفر عند إدخال نص بدل رقم
+// ============================================================
+static int safe_stoi(const string& s, int default_val = 0) {
+    try {
+        if (s.empty()) return default_val;
+        return stoi(s);
+    } catch (...) {
+        return default_val;
+    }
+}
+
+static float safe_stof(const string& s, float default_val = 0.0f) {
+    try {
+        if (s.empty()) return default_val;
+        return stof(s);
+    } catch (...) {
+        return default_val;
+    }
+}
+
+// تقييد القيمة بين حد أدنى وحد أقصى منطقيين
+static int clamp_int(int v, int lo, int hi) {
+    return max(lo, min(hi, v));
+}
+
+static float clamp_float(float v, float lo, float hi) {
+    return max(lo, min(hi, v));
+}
 
 class Elevator {
 private:
     // يمكنك تعديل الأسعار الحقيقية للسوق هنا مباشرة
-    const float P_BRACKET = 150.0;  
-    const float P_BOLT = 25.0;      
+    const float P_BRACKET = 150.0;
+    const float P_BOLT = 25.0;
     const float P_ROPE = 80.0;
     const float P_FISH = 45.0;
 
@@ -34,7 +65,7 @@ public:
         if (v > 110 && v <= 120) return 82;
         if (v > 120 && v <= 125) return 92;
         if (v > 125 && v <= 210) return 102;
-        return 0; 
+        return 0;
     }
     int get_cabin_width(int cw) { return cw - 40; }
     int get_cabin_depth(int cd) { return cd - 60; }
@@ -69,21 +100,21 @@ int main() {
                       "button:hover{background:#cc0000;}"
                       ".footer{margin-top:20px;font-size:14px;color:#6c757d;text-align:center;}"
                       "</style></head><body>"
-                      
+
                       // هنا لوجو القناة والروابط بتاعتك يا فنان
                       "<div class='yt-banner'>"
                       "<a href='https://www.youtube.com/@YOUR_CHANNEL' target='_blank'>"
-                      "<img src='https://cdn-icons-png.flaticon.com/512/1384/1384060.png' alt='قناة اليوتيوب'>" // استبدل الرابط ده برابط صورتك الشخصية أو لوجو قناتك
+                      "<img src='https://cdn-icons-png.flaticon.com/512/1384/1384060.png' alt='قناة اليوتيوب'>"
                       "<div>🔴 تابعنا على اليوتيوب واشترك الآن</div></a>"
                       "</div>"
-                      
+
                       "<div class='card'><h2>🧮 حاسبة مقاسات وبضاعة المصاعد الحرة</h2>"
                       "<p style='text-align:center;color:#6c757d;margin-top:-15px;'>أدخل الأبعاد واحسب تكملة البضاعة فوراً</p>"
                       "<form action='/calculate' method='get'>"
                       "<div class='f-group'><label>نوع النظام:</label><select name='m_type'><option value='MR'>بغرفة محرك (MR)</option><option value='MRL'>بدون غرفة محرك (MRL)</option></select></div>"
-                      "<div class='f-group'><label>1. عرض البئر (CM):</label><input type='number' name='width' required placeholder='مثال: 160'></div>"
-                      "<div class='f-group'><label>2. عمق البئر (CM):</label><input type='number' name='depth' required placeholder='مثال: 160'></div>"
-                      "<div class='f-group'><label>3. عدد الأدوار:</label><input type='number' name='floors' required placeholder='مثال: 5'></div>"
+                      "<div class='f-group'><label>1. عرض البئر (CM):</label><input type='number' name='width' required min='80' max='250' placeholder='مثال: 160'></div>"
+                      "<div class='f-group'><label>2. عمق البئر (CM):</label><input type='number' name='depth' required min='80' max='250' placeholder='مثال: 160'></div>"
+                      "<div class='f-group'><label>3. عدد الأدوار:</label><input type='number' name='floors' required min='1' max='60' placeholder='مثال: 5'></div>"
                       "<button type='submit'>🚀 تصفية الحسابات وال بضاعة</button></form></div>"
                       "<div class='footer'>تم التطوير بكل ❤️ لخدمة فنيين ومصممي المصاعد</div>"
                       "</body></html>";
@@ -92,10 +123,21 @@ int main() {
 
     // صفحة الحساب الفورية (بدون Database)
     svr.Get("/calculate", [&elevator](const httplib::Request& req, httplib::Response& res) {
+
+        // -------- قراءة وتحقق آمن من المدخلات --------
         string m_type = req.get_param_value("m_type");
-        int w = req.get_param_value("width").empty() ? 0 : stoi(req.get_param_value("width"));
-        int d = req.get_param_value("depth").empty() ? 0 : stoi(req.get_param_value("depth"));
-        float f = req.get_param_value("floors").empty() ? 0.0 : stof(req.get_param_value("floors"));
+        if (m_type != "MR" && m_type != "MRL") {
+            m_type = "MR"; // قيمة افتراضية آمنة لو أُرسلت قيمة غير متوقعة
+        }
+
+        int w = safe_stoi(req.get_param_value("width"), 0);
+        int d = safe_stoi(req.get_param_value("depth"), 0);
+        float f = safe_stof(req.get_param_value("floors"), 0.0f);
+
+        // تقييد القيم بحدود منطقية لمنع نتائج غير منطقية أو سالبة
+        w = clamp_int(w, 80, 250);
+        d = clamp_int(d, 80, 250);
+        f = clamp_float(f, 1.0f, 60.0f);
 
         string door = elevator.get_door_type(w);
         int cabin_dbg = elevator.get_cabin_dbg(w);
@@ -130,7 +172,7 @@ int main() {
            << ".actions{display:flex; justify-content:space-between; margin-top:20px;}"
            << ".btn-print{background:#28a745; color:white; padding:10px 20px; border:none; border-radius:6px; font-weight:bold; cursor:pointer; font-size:16px;}"
            << ".btn-back{background:#007bff; color:white; padding:10px 20px; text-decoration:none; border-radius:6px; font-weight:bold; font-size:16px;}"
-           << "@media print{.btn-print, .btn-back {display:none;}}" // إخفاء الأزرار أثناء الطباعة
+           << "@media print{.btn-print, .btn-back {display:none;}}"
            << "</style></head><body><div class='box'><h2>📋 تقرير المقايسة التقديرية للبضاعة</h2>"
            << "<h3>📐 أولاً: الأبعاد الهندسية الناتجة</h3>"
            << "<div class='table-container'><table class='tbl'>"
@@ -157,7 +199,7 @@ int main() {
     });
 
     const char* port_env = getenv("PORT");
-    int port = port_env ? stoi(port_env) : 8080;
+    int port = port_env ? safe_stoi(port_env, 8080) : 8080;
     svr.listen("0.0.0.0", port);
     return 0;
 }
