@@ -168,7 +168,7 @@ int main() {
     });
 
     // 3️⃣ صفحة تقرير المقايسة (شغلك وحساباتك الأصلية بالملي)
-    svr.Get("/calculate", &elevator {
+    svr.Get("/calculate", [&elevator](const httplib::Request& req, httplib::Response& res) {
         string m_type = html_escape(req.get_param_value("m_type"));
         if (m_type != "MR" && m_type != "MRL") { m_type = "MR"; }
 
