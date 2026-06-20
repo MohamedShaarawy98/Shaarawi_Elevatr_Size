@@ -66,15 +66,15 @@ private:
 
 public:
     string get_door_type(int sa) {
-        if (sa >= 191 && sa <= 210) return "Auto 90 CO";
-        else if (sa > 168 && sa <= 190)  return "Auto 80 CO";
-        else if (sa >= 157 && sa <= 168) return "Auto 70 CO";
-        else if (sa >= 175 && sa <= 200) return "Auto 100 SI";
-        else if (sa >= 158 && sa <= 175) return "Auto 90 SI";
-        else if (sa >= 144 && sa <= 160) return "Auto 80 SI";
-        else if (sa >= 128 && sa < 144)  return "Auto 70 SI";
-        else if (sa >= 121 && sa <= 135) return "Semi Auto 80";
-        else if (sa >= 105 && sa <= 120) return "Semi Auto 70";
+              if (sa >= 191 && sa <= 210)return  "Auto 90 CO || Auto 80 CO";
+        else if (sa > 168 && sa <= 190)  return  "Auto 80 CO || Auto 100 SI";
+        else if (sa >= 157 && sa <= 168) return  "Auto 70 CO || Auto 80 SI";
+        else if (sa >175 && sa <= 200) return "Auto 100 SI || Auto 80 CO";
+        else if (sa >= 158 && sa <= 175) return  "Auto 90 SI || Auto 70 CO";
+        else if (sa >= 145 && sa <= 160) return  "Auto 80 SI ";
+        else if (sa >= 130 && sa < 145)  return  "Auto 70 SI ";
+        else if (sa >= 121 && sa <= 135) return"Semi Auto 80 ";
+        else if (sa >= 105 && sa <= 120) return"Semi Auto 70 ";
         return "No standard door";
     }
 
