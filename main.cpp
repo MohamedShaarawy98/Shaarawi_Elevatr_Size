@@ -108,7 +108,7 @@ int main() {
     httplib::Server svr;
     Elevator elevator;
 
-    // 1️⃣ الصفحة الرئيسية (بوابة المنصة بالأزرار وقسم الدعم المالي)
+    // 1️⃣ الصفحة الرئيسية الجديدة (بوابة المنصة بالأزرار الكبيرة)
     svr.Get("/", [](const httplib::Request&, httplib::Response& res) {
         string html = "<html><head><meta charset='UTF-8'><meta name='viewport' content='width=device-width, initial-scale=1.0'>"
                       "<link href='https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap' rel='stylesheet'>"
@@ -124,13 +124,6 @@ int main() {
                       ".nav-card p{color:#aaa; font-size:0.9rem; line-height:1.5;}"
                       ".disabled{opacity:0.5; cursor:not-allowed;}"
                       ".disabled:hover{transform:none; border-color:#333; box-shadow:none;}"
-                      "/* تنسيقات بنر الدعم والتبرع */"
-                      ".donate-section{background: linear-gradient(135deg, #1e1e1e, #252525); border: 1px dashed #ffcc00; padding:25px; border-radius:15px; text-align:center; margin-top:40px; width:100%; max-width:900px; box-sizing:border-box;}"
-                      ".donate-section h4{color:#ffcc00; margin-top:0; font-size:1.2rem; margin-bottom:10px;}"
-                      ".donate-section p{color:#ccc; font-size:0.9rem; margin-bottom:15px; line-height:1.6;}"
-                      ".donate-btn{display:inline-block; background:#ffcc00; color:#121212; padding:10px 20px; text-decoration:none; border-radius:8px; font-weight:700; font-size:0.9rem; margin:5px; transition:0.3s;}"
-                      ".donate-btn:hover{background:#fff; transform:translateY(-2px);}"
-                      ".donate-btn.paypal{background:#0070ba; color:#fff;}"
                       ".footer{margin-top:auto; padding:40px 0 20px 0; font-size:13px; color:#555; text-align:center; font-weight:600;}"
                       "</style></head><body>"
                       "<header><h1>ضربة شاكوش 🛠️</h1><p>المنصة الهندسية المعتمدة لتقنيات المصاعد والتحكم البرمجي</p></header>"
@@ -139,19 +132,12 @@ int main() {
                       "<a href='/blog' class='nav-card'><h3>📚 مقالات وشروحات عملي</h3><p>مخططات DWG، طرق صيانة الكروت الإلكترونية، وبرمجة الروبوتات بالـ C++.</p></a>"
                       "<div class='nav-card disabled'><h3>🤖 تحكم الروبوتات والـ CNC</h3><p>(قريباً) واجهة حساب معاملات الحركة ومحاور الـ CNC بالـ C++.</p></div>"
                       "</div>"
-                      ""
-                      "<div class='donate-section'>"
-                      "<h4>☕ دعم المنصة وقناة ضربة شاكوش</h4>"
-                      "<p>الموقع سيبقى مجانياً بالكامل لخدمة الجميع، إذا كنت ترغب في دعم استمرار وتطوير هذا المشروع الهندسي يمكنك المساهمة عبر الطرق التالية:</p>"
-                      "<a href='https://www.paypal.me/YOUR_USERNAME' target='_blank' class='donate-btn paypal'>دعم عبر PayPal 💳</a>"
-                      "<a href='https://www.buymeacoffee.com/YOUR_USERNAME' target='_blank' class='donate-btn'>Buy Me a Coffee ☕</a>"
-                      "</div>"
                       "<div class='footer'>تطوير وإشراف هندسي: محمد الشعراوي</div>"
                       "</body></html>";
         res.set_content(html, "text/html; charset=utf-8");
     });
 
-    // 2️⃣ صفحة واجهة إدخال بيانات الحاسبة
+    // 2️⃣ صفحة واجهة إدخال بيانات الحاسبة (تم نقلها للمسار /calculator لفتحها من البوابة)
     svr.Get("/calculator", [](const httplib::Request&, httplib::Response& res) {
         string html = "<html><head><meta charset='UTF-8'><meta name='viewport' content='width=device-width, initial-scale=1.0'>"
                       "<link href='https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap' rel='stylesheet'>"
@@ -181,7 +167,7 @@ int main() {
         res.set_content(html, "text/html; charset=utf-8");
     });
 
-    // 3️⃣ صفحة تقرير المقايسة (الحسابات الأصلية)
+    // 3️⃣ صفحة تقرير المقايسة (شغلك وحساباتك الأصلية بالملي)
     svr.Get("/calculate", &elevator {
         string m_type = html_escape(req.get_param_value("m_type"));
         if (m_type != "MR" && m_type != "MRL") { m_type = "MR"; }
@@ -264,7 +250,7 @@ int main() {
         res.set_content(os.str(), "text/html; charset=utf-8");
     });
 
-    // 4️⃣ مسار بوابة المقالات والشروحات الفنية
+    // 4️⃣ مسار المقالات المستقبلي الجديد
     svr.Get("/blog", [](const httplib::Request&, httplib::Response& res) {
         string blog_html = "<html><head><meta charset='UTF-8'><meta name='viewport' content='width=device-width, initial-scale=1.0'>"
                            "<link href='https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap' rel='stylesheet'>"
@@ -285,7 +271,7 @@ int main() {
         res.set_content(blog_html, "text/html; charset=utf-8");
     });
 
-    // تشغيل السيرفر على بورت ريندر تلقائياً
+    // تشغيل السيرفر على بورت ريندر
     const char* port_env = getenv("PORT");
     int port = port_env ? safe_stoi(port_env, 8080) : 8080;
     svr.listen("0.0.0.0", port);
