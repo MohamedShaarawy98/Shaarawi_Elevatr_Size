@@ -58,11 +58,11 @@ static string html_escape(const string& data) {
 // ============================================================
 class Elevator {
 private:
-    const float P_BRACKET = 150.0;
-    const float P_BOLT = 25.0;
-    const float P_ROPE = 80.0;
-    const float P_FISH = 45.0;
-    const float P_RAIL = 1200.0; // سعر قضيب الريل الواحد (طول 5 متر)
+    const float P_BRACKET = 0.0;
+    const float P_BOLT = 0.0;
+    const float P_ROPE = 0.0;
+    const float P_FISH = 0.0;
+    const float P_RAIL = 0.0; // سعر قضيب الريل الواحد (طول 5 متر)
 
 public:
     string get_door_type(int sa) {
