@@ -58,27 +58,25 @@ static string html_escape(const string& data) {
 // ============================================================
 class Elevator {
 private:
-    const float P_BRACKET = 2.0;
-    const float P_BOLT = 3.0;
-    const float P_ROPE = 0.0;
-    const float P_FISH = 8.0;
-    const float P_RAIL = 320.0; // سعر قضيب الريل الواحد (طول 5 متر)
+    const float P_BRACKET = 150.0;
+    const float P_BOLT = 25.0;
+    const float P_ROPE = 80.0;
+    const float P_FISH = 45.0;
+    const float P_RAIL = 1200.0; // سعر قضيب الريل الواحد (طول 5 متر)
 
 public:
-   string get_door_type(int sa) {
-    // الترتيب تنازلي من أكبر مقاس لأصغر مقاس، وكل شريحة مستقلة تماماً
-    // عن باقي الشرائح — مفيش أي تداخل في المديات دلوقتي.
-    if (sa >= 195 && sa <= 250)      return "Auto 80 CO || Auto 90 CO || Auto 100 SI";
-    else if (sa >= 190 && sa < 195)  return "Auto 80 CO";
-    else if (sa >= 175 && sa < 190)  return "Auto 80 CO || Auto 100 SI || Auto 90 SI";
-    else if (sa >= 167 && sa < 175)  return "Auto 90 SI || Auto 80 CO";
-    else if (sa >= 160 && sa < 167)  return "Auto 90 SI || Auto 70 CO";
-    else if (sa >= 155 && sa < 160)  return "Auto 80 SI || Auto 70 CO";
-    else if (sa >= 145 && sa < 155)  return "Auto 80 SI";
-    else if (sa >= 128 && sa < 145)  return "Auto 70 SI";
-    else if (sa >= 120 && sa < 128)  return "Semi Auto 80";
-    else if (sa >= 110 && sa < 120)  return "Semi Auto 70";
-    return "No standard door";
+    string get_door_type(int sa) {
+        if (sa >= 191 && sa <= 210) return "Auto 90 CO";
+        else if (sa > 168 && sa <= 190)  return "Auto 80 CO";
+        else if (sa >= 157 && sa <= 168) return "Auto 70 CO";
+        else if (sa >= 175 && sa <= 200) return "Auto 100 SI";
+        else if (sa >= 158 && sa <= 175) return "Auto 90 SI";
+        else if (sa >= 144 && sa <= 160) return "Auto 80 SI";
+        else if (sa >= 128 && sa < 144)  return "Auto 70 SI";
+        else if (sa >= 121 && sa <= 135) return "Semi Auto 80";
+        else if (sa >= 105 && sa <= 120) return "Semi Auto 70";
+        return "No standard door";
+    }
 
     int get_cabin_dbg(int w) { return w - 30; }
     int get_cwt_dbg(int v) {
@@ -128,15 +126,13 @@ int main() {
                       ".disabled:hover{transform:none; border-color:#333; box-shadow:none;}"
                       ".footer{margin-top:auto; padding:40px 0 20px 0; font-size:13px; color:#555; text-align:center; font-weight:600;}"
                       "</style></head><body>"
-                      "<header><h1>ضربة شاكوش 🛠️</h1><p>المنصة الهندسية  لتقنيات المصاعد والربوتات والتحكم البرمجي</p></header>"
+                      "<header><h1>ضربة شاكوش 🛠️</h1><p>المنصة الهندسية المعتمدة لتقنيات المصاعد والتحكم البرمجي</p></header>"
                       "<div class='grid-nav'>"
                       "<a href='/calculator' class='nav-card'><h3>🧮 حاسبة مقاسات البضاعة</h3><p>تصفية أبعاد بئر المصعد وحساب الكابينة والمواد هندسياً بأعلى دقة.</p></a>"
                       "<a href='/blog' class='nav-card'><h3>📚 مقالات وشروحات عملي</h3><p>مخططات DWG، طرق صيانة الكروت الإلكترونية، وبرمجة الروبوتات بالـ C++.</p></a>"
                       "<div class='nav-card disabled'><h3>🤖 تحكم الروبوتات والـ CNC</h3><p>(قريباً) واجهة حساب معاملات الحركة ومحاور الـ CNC بالـ C++.</p></div>"
-        
                       "</div>"
-                      
-                      "<div class='footer'>إنشاء وتطوير : محمد الشعراوي</div>"
+                      "<div class='footer'>تطوير وإشراف هندسي: محمد الشعراوي</div>"
                       "</body></html>";
         res.set_content(html, "text/html; charset=utf-8");
     });
@@ -145,9 +141,9 @@ int main() {
     svr.Get("/calculator", [](const httplib::Request&, httplib::Response& res) {
         string html = "<html><head><meta charset='UTF-8'><meta name='viewport' content='width=device-width, initial-scale=1.0'>"
                       "<link href='https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap' rel='stylesheet'>"
-                      "<style>"            //    
-                      "body{background-color:##3c85b5; font-family:'Cairo', sans-serif; display:flex; align-items:center; justify-content:center; min-height:100vh; margin:0; padding:20px; box-sizing:border-box; flex-direction:column; color:#2d3748;}"
-                      ".card{background: }; padding:40px; border-radius:20px; box-shadow: 0 10px 30px rgba(160, 174, 192, 0.2); width:95%; max-width:550px; direction:rtl; text-align:right; box-sizing:border-box; border: 1px solid rgba(226, 232, 240, 0.8);}"
+                      "<style>"
+                      "body{background-color:#f4f7fc; font-family:'Cairo', sans-serif; display:flex; align-items:center; justify-content:center; min-height:100vh; margin:0; padding:20px; box-sizing:border-box; flex-direction:column; color:#2d3748;}"
+                      ".card{background: #ffffff; padding:40px; border-radius:20px; box-shadow: 0 10px 30px rgba(160, 174, 192, 0.2); width:95%; max-width:550px; direction:rtl; text-align:right; box-sizing:border-box; border: 1px solid rgba(226, 232, 240, 0.8);}"
                       "h2{color:#1a365d; text-align:center; margin-top:0; margin-bottom:10px; font-weight:700; font-size:24px;}"
                       ".sub-title{text-align:center; color:#718096; margin-bottom:30px; font-size:14px; font-weight:400;}"
                       ".f-group{margin-bottom:20px;}"
@@ -158,12 +154,12 @@ int main() {
                       "button:hover{background: linear-gradient(135deg, #1a365d, #2b6cb0); transform: translateY(-1px); box-shadow:0 6px 20px rgba(26, 54, 93, 0.3);}"
                       ".btn-home{display:block; text-align:center; margin-top:20px; color:#3182ce; text-decoration:none; font-weight:700; font-size:14px;}"
                       "</style></head><body>"
-                      "<div class='card'><h1>🧮 حاسبة المقاسات والبضاعة الذكية</h1>"
+                      "<div class='card'><h2>🧮 حاسبة المقاسات والبضاعة الذكية</h2>"
                       "<div class='sub-title'>النظام الهندسي المطور لتصفية وحساب بضاعة المصاعد فوراً</div>"
                       "<form action='/calculate' method='get'>"
                       "<div class='f-group'><label>📦 نوع نظام الهندسة:</label><select name='m_type'><option value='MR'>غرفة محرك أعلى البئر (MR)</option><option value='MRL'>بدون غرفة محرك (MRL)</option></select></div>"
-                      "<div class='f-group'><label>📏 عرض البئر الحُر (CM):</label><input type='number' name='width' required min='80' max='250' placeholder='أدخل عرض البئر بالسنتيمتر'></div>"
-                      "<div class='f-group'><label>📐 عمق البئر الحُر (CM):</label><input type='number' name='depth' required min='80' max='250' placeholder='أدخل عمق البئر بالسنتيمتر'></div>"
+                      "<div class='f-group'><label>📏 عرض البئر الحُر (CM):</label><input type='number' name='width' required min='80' max='250' placeholder='أدخل عرض البئر بالسم'></div>"
+                      "<div class='f-group'><label>📐 عمق البئر الحُر (CM):</label><input type='number' name='depth' required min='80' max='250' placeholder='أدخل عمق البئر بالسم'></div>"
                       "<div class='f-group'><label>🏢 عدد أدوار المبنى (الوقفات):</label><input type='number' name='floors' required min='1' max='60' placeholder='أدخل إجمالي الأدوار'></div>"
                       "<button type='submit'>🚀 تحليل الأبعاد وتصفية المقايسة</button></form>"
                       "<a href='/' class='btn-home'>⬅️ العودة للبوابة الرئيسية</a></div>"
@@ -172,7 +168,7 @@ int main() {
     });
 
     // 3️⃣ صفحة تقرير المقايسة (شغلك وحساباتك الأصلية بالملي)
-    svr.Get("/calculate", [&elevator](const httplib::Request& req, httplib::Response& res) {
+    svr.Get("/calculate", &elevator {
         string m_type = html_escape(req.get_param_value("m_type"));
         if (m_type != "MR" && m_type != "MRL") { m_type = "MR"; }
 
@@ -269,7 +265,6 @@ int main() {
                            "</style></head><body><div class='container'>"
                            "<h1>📚 بوابة ضربة شاكوش للمقالات والشروحات الهندسية</h1>"
                            "<div class='card'><h2>قريباً: شرح مخططات DWG للمصاعد</h2><p>هنا سيتم رفع الشروحات الفنية المفصلة لتركيب السكك والمقاسات القياسية لكوابين المصاعد هيدروليك وجيرلس...</p></div>"
-                         /*اضافة*/"<div class='card'><h2>قريباً: شرح دوائر الكنترول</h2><p>هنا سيتم رفع الشروحات الفنية المفصلة لتركيب السكك والمقاسات القياسية لكوابين المصاعد هيدروليك وجيرلس...</p></div>"
                            "<div class='card'><h2>قريباً: التحكم البرمجي بالـ C++ وكروت الروبوتات</h2><p>شرح عملي لكيفية تحويل الأوامر الحسابية إلى إشارات ميكانيكية دقيقة للـ CNC ومحركات التوجيه...</p></div>"
                            "<a class='btn-back' href='/'>🧮 العودة للبوابة الرئيسية</a>"
                            "</div></body></html>";
