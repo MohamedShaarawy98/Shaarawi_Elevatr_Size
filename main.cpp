@@ -90,8 +90,12 @@ public:
         return 0;
     }
     int get_cabin_width(int cw) { return cw - 40; }
+
     int get_cabin_depth(int cd) { return cd - 60; }
-    float get_shaft_height(float f, string t) { return (t == "MRL") ? (f * 4) + 1.5 : (f * 4); }
+
+    float get_shaft_height(float f, string t) 
+    { 
+    return (t == "MRL") ? (f *3.5) + 1.5 : (f * 4); }
 
     int calc_brackets(float h) { return (h / 2.0) * 4; }
     int calc_bolts(int b) { return b * 4; }
