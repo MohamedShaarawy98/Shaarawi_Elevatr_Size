@@ -132,7 +132,7 @@ int main() {
                       "<a href='/blog' class='nav-card'><h3>📚 مقالات وشروحات عملي</h3><p>مخططات DWG، طرق صيانة الكروت الإلكترونية، وبرمجة الروبوتات بالـ C++.</p></a>"
                       "<div class='nav-card disabled'><h3>🤖 تحكم الروبوتات والـ CNC</h3><p>(قريباً) واجهة حساب معاملات الحركة ومحاور الـ CNC بالـ C++.</p></div>"
                       "</div>"
-                      "<div class='footer'><إنشاء وتطوير: <محمد الشعراوي# </div>"
+                      "<div class='footer'>إنشاء وتطوير: محمد الشعراوي</div>"
                       "</body></html>";
         res.set_content(html, "text/html; charset=utf-8");
     });
@@ -154,7 +154,7 @@ int main() {
                       "button:hover{background: linear-gradient(135deg, #1a365d, #2b6cb0); transform: translateY(-1px); box-shadow:0 6px 20px rgba(26, 54, 93, 0.3);}"
                       ".btn-home{display:block; text-align:center; margin-top:20px; color:#3182ce; text-decoration:none; font-weight:700; font-size:14px;}"
                       "</style></head><body>"
-                      "<div class='card'><h2>🧮 حاسبة المقاسات والبضاعة الذكية</h2>"
+                      "<div class='card'><h1>🧮 حاسبة المقاسات والبضاعة الذكية</h1>"
                       "<div class='sub-title'>النظام الهندسي المطور لتصفية وحساب بضاعة المصاعد فوراً</div>"
                       "<form action='/calculate' method='get'>"
                       "<div class='f-group'><label>📦 نوع نظام الهندسة:</label><select name='m_type'><option value='MR'>غرفة محرك أعلى البئر (MR)</option><option value='MRL'>بدون غرفة محرك (MRL)</option></select></div>"
