@@ -65,18 +65,20 @@ private:
     const float P_RAIL = 320.0; // سعر قضيب الريل الواحد (طول 5 متر)
 
 public:
-    string get_door_type(int sa) {
-              if (sa >= 191 && sa <= 210)return  "Auto 90 CO || Auto 80 CO";
-        else if (sa > 168 && sa <= 190)  return  "Auto 80 CO || Auto 100 SI";
-        else if (sa >= 157 && sa <= 168) return  "Auto 70 CO || Auto 80 SI";
-        else if (sa >175 && sa <= 200) return "Auto 100 SI || Auto 80 CO";
-        else if (sa >= 158 && sa <= 175) return  "Auto 90 SI || Auto 70 CO";
-        else if (sa >= 145 && sa <= 160) return  "Auto 80 SI ";
-        else if (sa >= 130 && sa < 145)  return  "Auto 70 SI ";
-        else if (sa >= 121 && sa <= 135) return"Semi Auto 80 ";
-        else if (sa >= 105 && sa <= 120) return"Semi Auto 70 ";
-        return "No standard door";
-    }
+   string get_door_type(int sa) {
+    // الترتيب تنازلي من أكبر مقاس لأصغر مقاس، وكل شريحة مستقلة تماماً
+    // عن باقي الشرائح — مفيش أي تداخل في المديات دلوقتي.
+    if (sa >= 195 && sa <= 250)      return "Auto 80 CO || Auto 90 CO || Auto 100 SI";
+    else if (sa >= 190 && sa < 195)  return "Auto 80 CO";
+    else if (sa >= 175 && sa < 190)  return "Auto 80 CO || Auto 100 SI || Auto 90 SI";
+    else if (sa >= 167 && sa < 175)  return "Auto 90 SI || Auto 80 CO";
+    else if (sa >= 160 && sa < 167)  return "Auto 90 SI || Auto 70 CO";
+    else if (sa >= 155 && sa < 160)  return "Auto 80 SI || Auto 70 CO";
+    else if (sa >= 145 && sa < 155)  return "Auto 80 SI";
+    else if (sa >= 128 && sa < 145)  return "Auto 70 SI";
+    else if (sa >= 120 && sa < 128)  return "Semi Auto 80";
+    else if (sa >= 110 && sa < 120)  return "Semi Auto 70";
+    return "No standard door";
 
     int get_cabin_dbg(int w) { return w - 30; }
     int get_cwt_dbg(int v) {
