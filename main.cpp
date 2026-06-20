@@ -135,7 +135,7 @@ int main() {
                       "<a href='/blog' class='nav-card'><h3>📚 مقالات وشروحات عملي</h3><p> مخططات طرق صيانة الكروت الإلكترونية، وبرمجة الروبوتات ب  C++.</p></a>"
                       "<div class='nav-card disabled'><h3>🦾  تحكم الروبوتات </h3><p>(قريباً) واجهة حساب معاملات الحركة ومحاور الـ CNC بالـ C++.</p></div>"
                       "</div>"
-                      "<div class='footer'>تطوير وإشراف هندسي: محمد الشعراوي</div>"
+                      "<div class='footer'>انشاء وتطوير: محمد الشعراوي</div>"
                       "</body></html>";
         res.set_content(html, "text/html; charset=utf-8");
     });
