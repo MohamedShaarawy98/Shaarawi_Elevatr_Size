@@ -138,7 +138,7 @@ static void send_rate_limit_error(httplib::Response& res) {
 }
 
 // ============================================================
-//  كلاس المصعد هندسياً (تم تعديل الأسعار إلى 0)
+//  كلاس المصعد هندسياً
 // ============================================================
 class Elevator {
 private:
@@ -235,14 +235,14 @@ int main() {
                       "<div class='grid-nav'>"
                       "<a href='/calculator' class='nav-card'><h3>🛗  حاسبة مقاسات البضاعة</h3><p>تصفية أبعاد بئر المصعد وحساب الكابينة والمواد هندسياً بأعلى دقة.</p></a>"
                       "<a href='/blog' class='nav-card'><h3>📚 مقالات وشروحات عملي</h3><p> مخططات طرق صيانة الكروت الإلكترونية، وبرمجة الروبوتات ب C.</p></a>"
-                      "<div class='nav-card disabled'><h3>🦾  تحكم الروبوتات </h3><p>(قريباً) واجهة حساب معاملات الحركة ومحاور الـ CNC بالـ C++.</p></div>"
+                      "<div class='nav-card disabled'><h3>🦾  تحكم الروبوتات </h3><p>(قريباً)واجهة حساب معاملات الحركة ومحاور الـ CNC بالـ C++.</p></div>"
                       "</div>"
                       "<div class='footer'>انشاء وتطوير: محمد الشعراوي</div>"
                       "</body></html>";
         res.set_content(html, "text/html; charset=utf-8");
     });
 
-    // 2️⃣ صفحة واجهة إدخال بيانات الحاسبة (تحديث قيم الحفرة والاوفر هيد الافتراضية)
+    // 2️⃣ صفحة واجهة إدخال بيانات الحاسبة
     svr.Get("/calculator", [](const httplib::Request& req, httplib::Response& res) {
         set_security_headers(res);
         string client_ip = get_client_ip(req);
@@ -270,15 +270,15 @@ int main() {
                       "<div class='f-group'><label>📏 عرض البئر الحُر (CM):</label><input type='number' name='width' required min='80' max='250' placeholder='أدخل عرض البئر بالسم'></div>"
                       "<div class='f-group'><label>📐 عمق البئر الحُر (CM):</label><input type='number' name='depth' required min='80' max='250' placeholder='أدخل عمق البئر بالسم'></div>"
                       "<div class='f-group'><label>🏢 عدد أدوار المبنى (الوقفات):</label><input type='number' name='floors' required min='1' max='60' placeholder='أدخل إجمالي الأدوار'></div>"
-                      "<div class='f-group'><label>🕳️ عمق الحفرة Pit (CM):</label><input type='number' name='depth_pit' required min='50' max='500' value='100' placeholder='أدخل عمق الحفرة بالسم'></div>" // تحديث القيمة إلى 100
-                      "<div class='f-group'><label>🏠 الارتفاع العلوي Overhead (CM):</label><input type='number' name='overhead' required min='200' max='800' value='400' placeholder='أدخل الارتفاع العلوي بالسم'></div>" // تحديث القيمة إلى 400
+                      "<div class='f-group'><label>🕳️ عمق الحفرة Pit (CM):</label><input type='number' name='depth_pit' required min='10' max='500' value='100' placeholder='أدخل عمق الحفرة بالسم'></div>"
+                      "<div class='f-group'><label>🏠 الارتفاع العلوي Overhead (CM):</label><input type='number' name='overhead' required min='100' max='800' value='400' placeholder='أدخل الارتفاع العلوي بالسم'></div>"
                       "<button type='submit'>🚀 تحليل الأبعاد وتصفية المقايسة</button></form>"
                       "<a href='/' class='btn-home'>⬅️ العودة للبوابة الرئيسية</a></div>"
                       "</body></html>";
         res.set_content(html, "text/html; charset=utf-8");
     });
 
-    // 3️⃣ صفحة تقرير المقايسة (تعديل العملة إلى SAR والأسعار التقديرية)
+    // 3️⃣ صفحة تقرير المقايسة
     svr.Post("/calculate", [&elevator](const httplib::Request& req, httplib::Response& res) {
         set_security_headers(res);
         string client_ip = get_client_ip(req);
@@ -290,8 +290,8 @@ int main() {
         int w = safe_stoi(req.get_param_value("width"), 0);
         int d = safe_stoi(req.get_param_value("depth"), 0);
         float f = safe_stof(req.get_param_value("floors"), 0.0f);
-        float pit = safe_stof(req.get_param_value("depth_pit"), 100.0f); // قيمة احتياطية 100
-        float overhead = safe_stof(req.get_param_value("overhead"), 400.0f); // قيمة احتياطية 400
+        int original_pit = safe_stoi(req.get_param_value("depth_pit"), 100);
+        int original_overhead = safe_stoi(req.get_param_value("overhead"), 400);
 
         if (w < 110 || d < 100) {
             ostringstream error_os;
@@ -314,14 +314,29 @@ int main() {
             return;
         }
 
+        // تطبيق الفحص وتجهيز نصوص الواجهة قبل الـ Clamp
+        string pit_display_text, overhead_display_text;
+        
+        if (original_pit < 60 || original_pit > 200) {
+            pit_display_text = "<span style='color: #e53e3e; background: #fff5f5; padding: 4px 8px; border-radius: 6px; border: 1px solid #fed7d7; font-size: 13px;'>⚠️ مقاس غير قياسي (" + to_string(original_pit) + " CM) - يرجى المراجعة</span>";
+        } else {
+            pit_display_text = to_string(original_pit) + " CM";
+        }
+
+        if (original_overhead < 350 || original_overhead > 600) {
+            overhead_display_text = "<span style='color: #e53e3e; background: #fff5f5; padding: 4px 8px; border-radius: 6px; border: 1px solid #fed7d7; font-size: 13px;'>⚠️ مقاس غير قياسي (" + to_string(original_overhead) + " CM) - يرجى المراجعة</span>";
+        } else {
+            overhead_display_text = to_string(original_overhead) + " CM";
+        }
+
         w = clamp_int(w, 80, 250);
         d = clamp_int(d, 80, 250);
         f = clamp_float(f, 1.0f, 60.0f);
-        pit = clamp_float(pit, 50.0f, 500.0f);
-        overhead = clamp_float(overhead, 200.0f, 800.0f);
+        float pit_clamped = clamp_float((float)original_pit, 10.0f, 500.0f);
+        float overhead_clamped = clamp_float((float)original_overhead, 100.0f, 800.0f);
 
-        float pit_m = pit / 100.0f;
-        float overhead_m = overhead / 100.0f;
+        float pit_m = pit_clamped / 100.0f;
+        float overhead_m = overhead_clamped / 100.0f;
 
         string door = elevator.get_door_type(w);
         int cabin_dbg = elevator.get_cabin_dbg(w);
@@ -383,6 +398,8 @@ int main() {
            << "<tr><th>مقاس DBG الثقل (CWT):</th><td>" << cwt_display_text << "</td></tr>"
            << "<tr><th>صافي عرض الكابينة الداخلي:</th><td>" << cab_w << " CM</td></tr>"
            << "<tr><th>صافي عمق الكابينة الداخلي:</th><td>" << cab_d << " CM</td></tr>"
+           << "<tr><th>مقاس عمق الحفرة المدخل:</th><td>" << pit_display_text << "</td></tr>" // إضافة فحص الحفرة
+           << "<tr><th>مقاس الارتفاع العلوي المدخل:</th><td>" << overhead_display_text << "</td></tr>" // إضافة فحص الأوفر هيد
            << "<tr><th>إجمالي مشوار البئر المحسوب:</th><td style='color:#dd6b20;'>" << h << " متر</td></tr>"
            << "</table></div>"
            << "<h3>📦 ثانياً: كمية البضاعة المحسوبة للمشوار</h3>"
@@ -428,7 +445,4 @@ int main() {
 
     // تشغيل السيرفر
     const char* port_env = getenv("PORT");
-    int port = port_env ? safe_stoi(port_env, 8080) : 8080;
-    svr.listen("0.0.0.0", port);
-    return 0;
-}
+    int port = port_env ? safe_stoi(
