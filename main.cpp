@@ -4,11 +4,25 @@
 #include <sstream>
 #include <cstdlib>
 #include <algorithm>
+#include <map>
+#include <chrono>
+#include <mutex>
 
 using namespace std;
 
+// هيكل بيانات لتتبع طلبات كل مستخدم (IP)
+struct RateLimitInfo {
+    int count = 0;
+    chrono::steady_clock::time_point reset_time;
+};
+
+// متغيرات التحكم في نظام تحديد الطلبات (Rate Limiting)
+static map<string, RateLimitInfo> ip_tracker;
+static mutex rate_limit_mtx;
+const int MAX_REQUESTS_PER_MINUTE = 12; // الحد الأقصى للطلبات في الدقيقة
+
 // ============================================================
-//  دوال تحويل وحماية آمنة: تمنع توقف السيرفر عند التلاعب بالمدخلات
+//  دوال تحويل وحماية آمنة
 // ============================================================
 static int safe_stoi(const string& s, int default_val = 0) {
     try {
@@ -36,7 +50,6 @@ static float clamp_float(float v, float lo, float hi) {
     return max(lo, min(hi, v));
 }
 
-// دالة الحماية من حقن النصوص الخبيثة (XSS)
 static string html_escape(const string& data) {
     string buffer;
     buffer.reserve(data.size());
@@ -53,16 +66,59 @@ static string html_escape(const string& data) {
     return buffer;
 }
 
-// دالة مساعدة لإضافة ترويسات الأمان الموحدة لجميع الاستجابات
+// دالة ترويسات الأمان المحدثة (مضاف إليها إخفاء هوية السيرفر الأصلي)
 static void set_security_headers(httplib::Response& res) {
     res.set_header("X-Frame-Options", "DENY");
     res.set_header("X-Content-Type-Options", "nosniff");
     res.set_header("X-XSS-Protection", "1; mode=block");
     res.set_header("Content-Security-Policy", "default-src 'self' https://fonts.googleapis.com https://fonts.gstatic.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com;");
+    res.set_header("Server", "Hammer-Engine/1.0"); // التمويه وإخفاء اسم المكتبة البرمجية القياسية
+}
+
+// دالة فحص وتطبيق نظام الـ Rate Limiting
+static bool is_rate_limited(const string& ip) {
+    lock_guard<mutex> lock(rate_limit_mtx);
+    auto now = chrono::steady_clock::now();
+    
+    // إذا كان الـ IP جديداً تماماً أو انتهت دقيقة التتبع السابقة، أعد تعيين العداد
+    if (ip_tracker.find(ip) == ip_tracker.end() || now >= ip_tracker[ip].reset_time) {
+        ip_tracker[ip].count = 1;
+        ip_tracker[ip].reset_time = now + chrono::minutes(1);
+        return false;
+    }
+    
+    // زيادة عدد الطلبات
+    ip_tracker[ip].count++;
+    
+    // إذا تخطى الـ 12 طلب في نفس الدقيقة، يتم حظره
+    if (ip_tracker[ip].count > MAX_REQUESTS_PER_MINUTE) {
+        return true;
+    }
+    
+    return false;
+}
+
+// واجهة مخصصة تظهر عند تخطي حد الطلبات المسموح
+static void send_rate_limit_error(httplib::Response& res) {
+    ostringstream os;
+    os << "<html><head><meta charset='UTF-8'><meta name='viewport' content='width=device-width, initial-scale=1.0'>"
+       << "<link href='https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap' rel='stylesheet'>"
+       << "<style>"
+       << "body{background-color:#121212; font-family:'Cairo', sans-serif; display:flex; align-items:center; justify-content:center; min-height:100vh; margin:0; direction:rtl;}"
+       << ".limit-card{background:#1e1e1e; border:2px solid #ecc94b; padding:40px; border-radius:15px; text-align:center; max-width:500px; width:90%; box-shadow:0 10px 25px rgba(236,201,75,0.15);}"
+       << ".limit-card h2{color:#ecc94b; font-size:22px; margin-top:0;}"
+       << ".limit-card p{color:#ccc; font-size:15px; line-height:1.6; margin-bottom:25px;}"
+       << "</style></head><body>"
+       << "<div class='limit-card'>"
+       << "<h2>⚠️ تم تجاوز حد الطلبات المسموح به</h2>"
+       << "<p>لقد قمت بإرسال عدد كبير من الطلبات في وقت قصير (الحد الأقصى هو 12 طلباً في الدقيقة).<br>يرجى الانتظار دقيقة واحدة ثم إعادة المحاولة بشكل طبيعي.</p>"
+       << "</div></body></html>";
+    res.status = 429; // كود الحالة القياسي لتخطي حد الطلبات (Too Many Requests)
+    res.set_content(os.str(), "text/html; charset=utf-8");
 }
 
 // ============================================================
-//  كلاس المصعد: مضاف إليه الحفرة والأوفرهيد هندسياً
+//  كلاس المصعد هندسياً
 // ============================================================
 class Elevator {
 private:
@@ -70,7 +126,7 @@ private:
     const float P_BOLT = 25.0;
     const float P_ROPE = 80.0;
     const float P_FISH = 45.0;
-    const float P_RAIL = 1200.0; // سعر قضيب الريل الواحد (طول 5 متر)
+    const float P_RAIL = 1200.0;
 
 public:
     string get_door_type(int sa) {
@@ -94,7 +150,7 @@ public:
         if (v > 110 && v <= 120) return 82;
         if (v > 120 && v <= 125) return 92;
         if (v > 125 && v <= 210) return 102;
-        return 0; // القيمة 0 تعني مقاس غير قياسي يتطلب مراجعة
+        return 0;
     }
     int get_cabin_width(int cw) { return cw - 40; }
     int get_cabin_depth(int cd) { return cd - 60; }
@@ -117,15 +173,17 @@ public:
 };
 
 // ============================================================
-//  الدالة الرئيسية وتشغيل السيرفر
+//  الدالة الرئيسية
 // ============================================================
 int main() {
     httplib::Server svr;
     Elevator elevator;
 
     // 1️⃣ الصفحة الرئيسية
-    svr.Get("/", [](const httplib::Request&, httplib::Response& res) {
+    svr.Get("/", [](const httplib::Request& req, httplib::Response& res) {
         set_security_headers(res);
+        if (is_rate_limited(req.remote_addr)) { send_rate_limit_error(res); return; }
+
         string html = "<html><head><meta charset='UTF-8'><meta name='viewport' content='width=device-width, initial-scale=1.0'>"
                       "<link href='https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap' rel='stylesheet'>"
                       "<style>"
@@ -163,9 +221,11 @@ int main() {
         res.set_content(html, "text/html; charset=utf-8");
     });
 
-    // 2️⃣ صفحة واجهة إدخال بيانات الحاسبة (تعديل الـ Form ليستخدم POST للحماية)
-    svr.Get("/calculator", [](const httplib::Request&, httplib::Response& res) {
+    // 2️⃣ صفحة واجهة إدخال بيانات الحاسبة
+    svr.Get("/calculator", [](const httplib::Request& req, httplib::Response& res) {
         set_security_headers(res);
+        if (is_rate_limited(req.remote_addr)) { send_rate_limit_error(res); return; }
+
         string html = "<html><head><meta charset='UTF-8'><meta name='viewport' content='width=device-width, initial-scale=1.0'>"
                       "<link href='https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap' rel='stylesheet'>"
                       "<style>"
@@ -183,7 +243,7 @@ int main() {
                       "</style></head><body>"
                       "<div class='card'><h2>🧮 حاسبة المقاسات والبضاعة الذكية</h2>"
                       "<div class='sub-title'>النظام الهندسي المطور لتصفية وحساب بضاعة المصاعد فوراً</div>"
-                      "<form action='/calculate' method='post'>" // تم تحويلها إلى POST لتعزيز الأمان حركياً
+                      "<form action='/calculate' method='post'>"
                       "<div class='f-group'><label>📦 نوع نظام الهندسة:</label><select name='m_type'><option value='MR'>غرفة محرك أعلى البئر (MR)</option><option value='MRL'>بدون غرفة محرك (MRL)</option></select></div>"
                       "<div class='f-group'><label>📏 عرض البئر الحُر (CM):</label><input type='number' name='width' required min='80' max='250' placeholder='أدخل عرض البئر بالسم'></div>"
                       "<div class='f-group'><label>📐 عمق البئر الحُر (CM):</label><input type='number' name='depth' required min='80' max='250' placeholder='أدخل عمق البئر بالسم'></div>"
@@ -196,9 +256,10 @@ int main() {
         res.set_content(html, "text/html; charset=utf-8");
     });
 
-   // 3️⃣ صفحة تقرير المقايسة (مضاف إليها شرط منع الحساب للمقاسات الصغيرة)
+    // 3️⃣ صفحة تقرير المقايسة
     svr.Post("/calculate", [&elevator](const httplib::Request& req, httplib::Response& res) {
         set_security_headers(res);
+        if (is_rate_limited(req.remote_addr)) { send_rate_limit_error(res); return; }
         
         string m_type = html_escape(req.get_param_value("m_type"));
         if (m_type != "MR" && m_type != "MRL") { m_type = "MR"; }
@@ -209,7 +270,6 @@ int main() {
         float pit = safe_stof(req.get_param_value("pit"), 150.0f);
         float overhead = safe_stof(req.get_param_value("overhead"), 450.0f);
 
-        // 🛑 [الشرط الجديد]: منع الحساب إذا كان العرض < 110 أو العمق < 100 (متر)
         if (w < 110 || d < 100) {
             ostringstream error_os;
             error_os << "<html><head><meta charset='UTF-8'><meta name='viewport' content='width=device-width, initial-scale=1.0'>"
@@ -227,12 +287,10 @@ int main() {
                      << "<p>أبعاد بئر المصعد المدخلة (العرض: " << w << " سم، العمق: " << d << " سم) أقل من الحد الأدنى الفني المسموح به للحساب الآلي بالمنصة.<br><b>الحد الأدنى المطلوب:</b> عرض لا يقل عن 110 سم، وعمق لا يقل عن 100 سم.</p>"
                      << "<a href='/calculator' class='btn-retry'>🔄 العودة وتعديل المقاسات</a>"
                      << "</div></body></html>";
-            
             res.set_content(error_os.str(), "text/html; charset=utf-8");
-            return; // إنهاء الدالة فوراً ومنع إكمال الحسابات أو عرض التقرير
+            return;
         }
 
-        // إذا تخطى الشرط، يكمل بقية الحسابات بشكل طبيعي كالمعتاد...
         w = clamp_int(w, 80, 250);
         d = clamp_int(d, 80, 250);
         f = clamp_float(f, 1.0f, 60.0f);
@@ -317,12 +375,14 @@ int main() {
            << "<button class='btn-print' onclick='window.print()'>🖨️ طباعة التقرير / حفظ PDF</button>"
            << "<a class='btn-back' href='/calculator'>🔄 حساب مقايسة جديدة</a>"
            << "</div></div></body></html>";
-           res.set_content(os.str(), "text/html; charset=utf-8");
+        res.set_content(os.str(), "text/html; charset=utf-8");
     });
 
     // 4️⃣ مسار المقالات
-    svr.Get("/blog", [](const httplib::Request&, httplib::Response& res) {
+    svr.Get("/blog", [](const httplib::Request& req, httplib::Response& res) {
         set_security_headers(res);
+        if (is_rate_limited(req.remote_addr)) { send_rate_limit_error(res); return; }
+
         string blog_html = "<html><head><meta charset='UTF-8'><meta name='viewport' content='width=device-width, initial-scale=1.0'>"
                            "<link href='https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap' rel='stylesheet'>"
                            "<style>"
@@ -342,7 +402,7 @@ int main() {
         res.set_content(blog_html, "text/html; charset=utf-8");
     });
 
-    // تشغيل السيرفر على بورت ريندر بشكل آمن
+    // تشغيل السيرفر
     const char* port_env = getenv("PORT");
     int port = port_env ? safe_stoi(port_env, 8080) : 8080;
     svr.listen("0.0.0.0", port);
