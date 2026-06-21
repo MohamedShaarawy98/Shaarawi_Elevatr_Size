@@ -58,11 +58,11 @@ static string html_escape(const string& data) {
 // ============================================================
 class Elevator {
 private:
-    const float P_BRACKET = 150.0;
-    const float P_BOLT = 25.0;
-    const float P_ROPE = 80.0;
-    const float P_FISH = 45.0;
-    const float P_RAIL = 1200.0; // سعر قضيب الريل الواحد (طول 5 متر)
+    const float P_BRACKET = 0.0;
+    const float P_BOLT =0.0;
+    const float P_ROPE = 0.0;
+    const float P_FISH = 0.0;
+    const float P_RAIL = 0.0; // سعر قضيب الريل الواحد (طول 5 متر)
 
 public:
     string get_door_type(int sa) {
@@ -243,13 +243,13 @@ int main() {
            << "</table></div>"
            << "<h3>📦 ثانياً: كمية البضاعة المحسوبة للمشوار</h3>"
            << "<div class='table-container'><table class='btbl'><thead><tr><th>اسم الصنف ومواصفاته</th><th>الكمية</th><th>التكلفة التقديرية</th></tr></thead><tbody>"
-           << "<tr><td>كوابيل السكك الحديدية</td><td>" << brackets << " قطعة 🛑</td><td>" << c_brackets << " EGP</td></tr>"
-           << "<tr><td>مسامير وجوايط التثبيت</td><td>" << bolts << " مسمار 🔩</td><td>" << c_bolts << " EGP</td></tr>"
-           << "<tr><td>حبال واير الفولاذ</td><td>" << ropes << " متر 🧵</td><td>" << c_ropes << " EGP</td></tr>"
-           << "<tr><td>لقم ربط السكك (التقفيل)</td><td>" << fishplates << " لقمة 🗜️</td><td>" << c_fishplates << " EGP</td></tr>"
-           << "<tr><td>قضبان السكك الحديدية (الريل)</td><td>" << rail_qty << " قضيب (5م) 🛤️</td><td>" << c_rail << " EGP</td></tr>"
+           << "<tr><td>كوابيل السكك الحديدية</td><td>" << brackets << " قطعة </td><td>" << c_brackets << " SAR</td></tr>"
+           << "<tr><td>مسامير وجوايط التثبيت</td><td>" << bolts << " مسمار 🔩</td><td>" << c_bolts << " SAR</td></tr>"
+           << "<tr><td>حبال واير الفولاذ</td><td>" << ropes << " متر </td><td>" << c_ropes << " SAR</td></tr>"
+           << "<tr><td>لقم ربط السكك (التقفيل)</td><td>" << fishplates << " لقمة 🗜️</td><td>" << c_fishplates << " SAR</td></tr>"
+           << "<tr><td>قضبان السكك الحديدية (الريل)</td><td>" << rail_qty << " قضيب (5م) </td><td>" << c_rail << " SAR</td></tr>"
            << "</tbody></table></div>"
-           << "<div class='inv'>💰 إجمالي القيمة المالية التقديرية: " << total << " EGP</div>"
+           << "<div class='inv'> إجمالي القيمة المالية التقديرية: " << total << " SAR</div>"
            << "<div class='actions'>"
            << "<button class='btn-print' onclick='window.print()'>🖨️ طباعة التقرير / حفظ PDF</button>"
            << "<a class='btn-back' href='/calculator'>🔄 حساب مقايسة جديدة</a>"
