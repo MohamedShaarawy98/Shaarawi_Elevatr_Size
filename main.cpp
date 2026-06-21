@@ -10,13 +10,12 @@
 
 using namespace std;
 
-// هيكل بيانات لتتبع طلبات كل مستخدم (IP)
+// هيكل بيانات لتتبع طلبات كل مستخدم
 struct RateLimitInfo {
     int count = 0;
     chrono::steady_clock::time_point reset_time;
 };
 
-// متغيرات التحكم في نظام تحديد الطلبات (Rate Limiting)
 static map<string, RateLimitInfo> ip_tracker;
 static mutex rate_limit_mtx;
 const int MAX_REQUESTS_PER_MINUTE = 12; // الحد الأقصى للطلبات في الدقيقة
@@ -66,13 +65,29 @@ static string html_escape(const string& data) {
     return buffer;
 }
 
-// دالة ترويسات الأمان المحدثة (مضاف إليها إخفاء هوية السيرفر الأصلي)
+// دالة ترويسات الأمان
 static void set_security_headers(httplib::Response& res) {
     res.set_header("X-Frame-Options", "DENY");
     res.set_header("X-Content-Type-Options", "nosniff");
     res.set_header("X-XSS-Protection", "1; mode=block");
     res.set_header("Content-Security-Policy", "default-src 'self' https://fonts.googleapis.com https://fonts.gstatic.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com;");
-    res.set_header("Server", "Hammer-Engine/1.0"); // التمويه وإخفاء اسم المكتبة البرمجية القياسية
+    res.set_header("Server", "Hammer-Engine/1.0"); 
+}
+
+// دالة استخراج الـ IP الحقيقي للزائر خلف كلوفلير
+static string get_client_ip(const httplib::Request& req) {
+    if (req.has_header("CF-Connecting-IP")) {
+        return req.get_header_value("CF-Connecting-IP");
+    }
+    if (req.has_header("X-Forwarded-For")) {
+        string xff = req.get_header_value("X-Forwarded-For");
+        size_t comma = xff.find(',');
+        if (comma != string::npos) {
+            return xff.substr(0, comma);
+        }
+        return xff;
+    }
+    return req.remote_addr;
 }
 
 // دالة فحص وتطبيق نظام الـ Rate Limiting
@@ -80,17 +95,23 @@ static bool is_rate_limited(const string& ip) {
     lock_guard<mutex> lock(rate_limit_mtx);
     auto now = chrono::steady_clock::now();
     
-    // إذا كان الـ IP جديداً تماماً أو انتهت دقيقة التتبع السابقة، أعد تعيين العداد
+    if (ip_tracker.size() > 500) {
+        for (auto it = ip_tracker.begin(); it != ip_tracker.end(); ) {
+            if (now >= it->second.reset_time) {
+                it = ip_tracker.erase(it);
+            } else {
+                ++it;
+            }
+        }
+    }
+
     if (ip_tracker.find(ip) == ip_tracker.end() || now >= ip_tracker[ip].reset_time) {
         ip_tracker[ip].count = 1;
         ip_tracker[ip].reset_time = now + chrono::minutes(1);
         return false;
     }
     
-    // زيادة عدد الطلبات
     ip_tracker[ip].count++;
-    
-    // إذا تخطى الـ 12 طلب في نفس الدقيقة، يتم حظره
     if (ip_tracker[ip].count > MAX_REQUESTS_PER_MINUTE) {
         return true;
     }
@@ -98,7 +119,6 @@ static bool is_rate_limited(const string& ip) {
     return false;
 }
 
-// واجهة مخصصة تظهر عند تخطي حد الطلبات المسموح
 static void send_rate_limit_error(httplib::Response& res) {
     ostringstream os;
     os << "<html><head><meta charset='UTF-8'><meta name='viewport' content='width=device-width, initial-scale=1.0'>"
@@ -113,20 +133,20 @@ static void send_rate_limit_error(httplib::Response& res) {
        << "<h2>⚠️ تم تجاوز حد الطلبات المسموح به</h2>"
        << "<p>لقد قمت بإرسال عدد كبير من الطلبات في وقت قصير (الحد الأقصى هو 12 طلباً في الدقيقة).<br>يرجى الانتظار دقيقة واحدة ثم إعادة المحاولة بشكل طبيعي.</p>"
        << "</div></body></html>";
-    res.status = 429; // كود الحالة القياسي لتخطي حد الطلبات (Too Many Requests)
+    res.status = 429; 
     res.set_content(os.str(), "text/html; charset=utf-8");
 }
 
 // ============================================================
-//  كلاس المصعد هندسياً
+//  كلاس المصعد هندسياً (تم تعديل الأسعار إلى 0)
 // ============================================================
 class Elevator {
 private:
-    const float P_BRACKET = 150.0;
-    const float P_BOLT = 25.0;
-    const float P_ROPE = 80.0;
-    const float P_FISH = 45.0;
-    const float P_RAIL = 1200.0;
+    const float P_BRACKET = 0.0f;
+    const float P_BOLT = 0.0f;
+    const float P_ROPE = 0.0f;
+    const float P_FISH = 0.0f;
+    const float P_RAIL = 0.0f;
 
 public:
     string get_door_type(int sa) {
@@ -182,7 +202,8 @@ int main() {
     // 1️⃣ الصفحة الرئيسية
     svr.Get("/", [](const httplib::Request& req, httplib::Response& res) {
         set_security_headers(res);
-        if (is_rate_limited(req.remote_addr)) { send_rate_limit_error(res); return; }
+        string client_ip = get_client_ip(req);
+        if (is_rate_limited(client_ip)) { send_rate_limit_error(res); return; }
 
         string html = "<html><head><meta charset='UTF-8'><meta name='viewport' content='width=device-width, initial-scale=1.0'>"
                       "<link href='https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap' rel='stylesheet'>"
@@ -221,10 +242,11 @@ int main() {
         res.set_content(html, "text/html; charset=utf-8");
     });
 
-    // 2️⃣ صفحة واجهة إدخال بيانات الحاسبة
+    // 2️⃣ صفحة واجهة إدخال بيانات الحاسبة (تحديث قيم الحفرة والاوفر هيد الافتراضية)
     svr.Get("/calculator", [](const httplib::Request& req, httplib::Response& res) {
         set_security_headers(res);
-        if (is_rate_limited(req.remote_addr)) { send_rate_limit_error(res); return; }
+        string client_ip = get_client_ip(req);
+        if (is_rate_limited(client_ip)) { send_rate_limit_error(res); return; }
 
         string html = "<html><head><meta charset='UTF-8'><meta name='viewport' content='width=device-width, initial-scale=1.0'>"
                       "<link href='https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap' rel='stylesheet'>"
@@ -248,18 +270,19 @@ int main() {
                       "<div class='f-group'><label>📏 عرض البئر الحُر (CM):</label><input type='number' name='width' required min='80' max='250' placeholder='أدخل عرض البئر بالسم'></div>"
                       "<div class='f-group'><label>📐 عمق البئر الحُر (CM):</label><input type='number' name='depth' required min='80' max='250' placeholder='أدخل عمق البئر بالسم'></div>"
                       "<div class='f-group'><label>🏢 عدد أدوار المبنى (الوقفات):</label><input type='number' name='floors' required min='1' max='60' placeholder='أدخل إجمالي الأدوار'></div>"
-                      "<div class='f-group'><label>🕳️ عمق الحفرة Pit (CM):</label><input type='number' name='pit' required min='50' max='500' value='150' placeholder='أدخل عمق الحفرة بالسم'></div>"
-                      "<div class='f-group'><label>🏠 الارتفاع العلوي Overhead (CM):</label><input type='number' name='overhead' required min='200' max='800' value='450' placeholder='أدخل الارتفاع العلوي بالسم'></div>"
+                      "<div class='f-group'><label>🕳️ عمق الحفرة Pit (CM):</label><input type='number' name='depth_pit' required min='50' max='500' value='100' placeholder='أدخل عمق الحفرة بالسم'></div>" // تحديث القيمة إلى 100
+                      "<div class='f-group'><label>🏠 الارتفاع العلوي Overhead (CM):</label><input type='number' name='overhead' required min='200' max='800' value='400' placeholder='أدخل الارتفاع العلوي بالسم'></div>" // تحديث القيمة إلى 400
                       "<button type='submit'>🚀 تحليل الأبعاد وتصفية المقايسة</button></form>"
                       "<a href='/' class='btn-home'>⬅️ العودة للبوابة الرئيسية</a></div>"
                       "</body></html>";
         res.set_content(html, "text/html; charset=utf-8");
     });
 
-    // 3️⃣ صفحة تقرير المقايسة
+    // 3️⃣ صفحة تقرير المقايسة (تعديل العملة إلى SAR والأسعار التقديرية)
     svr.Post("/calculate", [&elevator](const httplib::Request& req, httplib::Response& res) {
         set_security_headers(res);
-        if (is_rate_limited(req.remote_addr)) { send_rate_limit_error(res); return; }
+        string client_ip = get_client_ip(req);
+        if (is_rate_limited(client_ip)) { send_rate_limit_error(res); return; }
         
         string m_type = html_escape(req.get_param_value("m_type"));
         if (m_type != "MR" && m_type != "MRL") { m_type = "MR"; }
@@ -267,8 +290,8 @@ int main() {
         int w = safe_stoi(req.get_param_value("width"), 0);
         int d = safe_stoi(req.get_param_value("depth"), 0);
         float f = safe_stof(req.get_param_value("floors"), 0.0f);
-        float pit = safe_stof(req.get_param_value("pit"), 150.0f);
-        float overhead = safe_stof(req.get_param_value("overhead"), 450.0f);
+        float pit = safe_stof(req.get_param_value("depth_pit"), 100.0f); // قيمة احتياطية 100
+        float overhead = safe_stof(req.get_param_value("overhead"), 400.0f); // قيمة احتياطية 400
 
         if (w < 110 || d < 100) {
             ostringstream error_os;
@@ -364,13 +387,13 @@ int main() {
            << "</table></div>"
            << "<h3>📦 ثانياً: كمية البضاعة المحسوبة للمشوار</h3>"
            << "<div class='table-container'><table class='btbl'><thead><tr><th>اسم الصنف ومواصفاته</th><th>الكمية</th><th>التكلفة التقديرية</th></tr></thead><tbody>"
-           << "<tr><td>كوابيل السكك الحديدية</td><td>" << brackets << " قطعة 🛑</td><td>" << c_brackets << " EGP</td></tr>"
-           << "<tr><td>مسامير وجوايط التثبيت</td><td>" << bolts << " مسمار 🔩</td><td>" << c_bolts << " EGP</td></tr>"
-           << "<tr><td>حبال واير الفولاذ</td><td>" << ropes << " متر 🧵</td><td>" << c_ropes << " EGP</td></tr>"
-           << "<tr><td>لقم ربط السكك (التقفيل)</td><td>" << fishplates << " لقمة 🗜️</td><td>" << c_fishplates << " EGP</td></tr>"
-           << "<tr><td>قضبان السكك الحديدية (الريل)</td><td>" << rail_qty << " قضيب (5م) 🛤️</td><td>" << c_rail << " EGP</td></tr>"
+           << "<tr><td>كوابيل السكك الحديدية</td><td>" << brackets << " قطعة 🛑</td><td>" << c_brackets << " SAR</td></tr>"
+           << "<tr><td>مسامير وجوايط التثبيت</td><td>" << bolts << " مسمار 🔩</td><td>" << c_bolts << " SAR</td></tr>"
+           << "<tr><td>حبال واير الفولاذ</td><td>" << ropes << " متر 🧵</td><td>" << c_ropes << " SAR</td></tr>"
+           << "<tr><td>لقم ربط السكك (التقفيل)</td><td>" << fishplates << " لقمة 🗜️</td><td>" << c_fishplates << " SAR</td></tr>"
+           << "<tr><td>قضبان السكك الحديدية (الريل)</td><td>" << rail_qty << " قضيب (5م) 🛤️</td><td>" << c_rail << " SAR</td></tr>"
            << "</tbody></table></div>"
-           << "<div class='inv'>💰 إجمالي القيمة المالية التقديرية: " << total << " EGP</div>"
+           << "<div class='inv'>💰 إجمالي القيمة المالية التقديرية: " << total << " SAR</div>"
            << "<div class='actions'>"
            << "<button class='btn-print' onclick='window.print()'>🖨️ طباعة التقرير / حفظ PDF</button>"
            << "<a class='btn-back' href='/calculator'>🔄 حساب مقايسة جديدة</a>"
@@ -381,7 +404,8 @@ int main() {
     // 4️⃣ مسار المقالات
     svr.Get("/blog", [](const httplib::Request& req, httplib::Response& res) {
         set_security_headers(res);
-        if (is_rate_limited(req.remote_addr)) { send_rate_limit_error(res); return; }
+        string client_ip = get_client_ip(req);
+        if (is_rate_limited(client_ip)) { send_rate_limit_error(res); return; }
 
         string blog_html = "<html><head><meta charset='UTF-8'><meta name='viewport' content='width=device-width, initial-scale=1.0'>"
                            "<link href='https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap' rel='stylesheet'>"
