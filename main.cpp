@@ -28,6 +28,8 @@ const int MAX_REQUESTS_PER_MINUTE = 12; // الحد الأقصى للطلبات 
 //  متغيرات البيئة الأمنية
 // ============================================================
 static string CF_VERIFY_SECRET = getenv("CF_VERIFY_SECRET") ? getenv("CF_VERIFY_SECRET") : "";
+// تم تغيير اسم الهيدر ليتطابق مع كلاودفلير وتفادي حظر الكلمات التي تبدأ بـ "cf-"
+static string SECURE_HEADER_NAME = "X-Verify-Secret"; 
 
 // ============================================================
 //  دوال تحويل وحماية آمنة
@@ -101,8 +103,6 @@ static void set_security_headers(httplib::Response& res) {
 }
 
 // CSP منفصلة لأنها تتغير حسب الصفحة (محتاجة nonce للسكريبت أو لا)
-// ملحوظة: نمسح القيمة القديمة أولاً لتفادي تكرار الهيدر (المتصفح بيطبّق تقاطع كل السياسات
-// لو تكررت، وده ممكن يكسر الصفحة لو حصل تكرار بالغلط)
 static void set_csp(httplib::Response& res, const string& script_nonce = "") {
     string script_src = script_nonce.empty()
         ? "script-src 'none'; "
@@ -122,7 +122,6 @@ static void set_csp(httplib::Response& res, const string& script_nonce = "") {
 }
 
 // دالة استخراج الـ IP الحقيقي للزائر خلف كلوفلير
-// تُستخدم فقط بعد التحقق من صحة مصدر الطلب في pre_routing_handler
 static string get_client_ip(const httplib::Request& req) {
     if (req.has_header("CF-Connecting-IP")) {
         return req.get_header_value("CF-Connecting-IP");
@@ -257,13 +256,13 @@ int main() {
     // ------------------------------------------------------------
     svr.set_pre_routing_handler([](const httplib::Request& req, httplib::Response& res) {
         set_security_headers(res);
-        set_csp(res); // افتراضي: بلا سكريبت إطلاقًا، كل صفحة تحتاج JS تستدعي set_csp بنفسها بـ nonce
+        set_csp(res); // افتراضي: بلا سكريبت إطلاقًا
 
-        // 1) فرض التحقق من أن الطلب فعلاً عبر كلاودفلير (لو السر مفعّل)
+        // 1) فرض التحقق من أن الطلب ممرر عبر كلاودفلير بالهيدر المخصص الجديد
         if (!CF_VERIFY_SECRET.empty()) {
-            if (!req.has_header("X-CF-Verify") || req.get_header_value("X-CF-Verify") != CF_VERIFY_SECRET) {
+            if (!req.has_header(SECURE_HEADER_NAME.c_str()) || req.get_header_value(SECURE_HEADER_NAME.c_str()) != CF_VERIFY_SECRET) {
                 res.status = 403;
-                res.set_content("Access Denied.", "text/plain; charset=utf-8");
+                res.set_content("Access Denied. Direct access to origin server is forbidden.", "text/plain; charset=utf-8");
                 return httplib::Server::HandlerResponse::Handled;
             }
         }
@@ -381,7 +380,6 @@ int main() {
             return;
         }
 
-        // تطبيق الفحص وتجهيز نصوص الواجهة قبل الـ Clamp
         string pit_display_text, overhead_display_text;
 
         if (original_pit < 60 || original_pit > 200) {
@@ -434,7 +432,6 @@ int main() {
             cwt_display_text = to_string(cwt_dbg) + " CM";
         }
 
-        // زر الطباعة بدون onclick (يحتاج script nonce بسبب CSP)
         string nonce = generate_nonce();
         set_csp(res, nonce);
 
