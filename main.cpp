@@ -1,9 +1,12 @@
-// ============================================================
-//  ضربة شاكوش — منصة هندسية لتقنيات المصاعد
-// ============================================================
-// ============================================================
-//  ضربة شاكوش — منصة هندسية لتقنيات المصاعد
-// ============================================================
+/*                      <  وَأَن لَّيْسَ لِلإِنسَانِ إِلاَّ مَا سَعَى * وَأَنَّ سَعْيَهُ سوفَ يُرَى * ثُمَّ يُجْزَاهُ الْجَزَاء الأَوْفَى  >
+
+                                       ============================================================
+                                       =                                                          =
+                                       =                  منصة ضربة شاكوش الرقمية                 =
+                                       =                                                          =
+                                       ============================================================
+ */          
+
 #include "httplib.h"
 #include <iostream>
 #include <string>
@@ -11,18 +14,14 @@
 #include <cstdlib>
 #include <algorithm>
 #include <map>
+#include <vector>
 #include <chrono>
 #include <mutex>
 #include <random>
 
-// احذف هذا السطر تماماً: #include <postgresql/libpq-fe.h> أو <libpq-fe.h>
-
-using namespace std;
 using namespace std;
 
-using namespace std;
-
-// هيكل بيانات لتتبع طلبات كل مستخدم
+// بنية بيانات لتحديد معدل الطلبات لحماية السيرفر من هجمات الحرمان من الخدمة
 struct RateLimitInfo {
     int count = 0;
     chrono::steady_clock::time_point reset_time;
@@ -30,47 +29,21 @@ struct RateLimitInfo {
 
 static map<string, RateLimitInfo> ip_tracker;
 static mutex rate_limit_mtx;
-const int MAX_REQUESTS_PER_MINUTE = 12; // الحد الأقصى للطلبات العامة في الدقيقة
+const int MAX_REQUESTS_PER_MINUTE = 20; // رفع الحد الأقصى قليلاً لضمان سلاسة التصفح للأدوات
 
-// ============================================================
-//  متغيرات البيئة الأمنية
-// ============================================================
 static string CF_VERIFY_SECRET = getenv("CF_VERIFY_SECRET") ? getenv("CF_VERIFY_SECRET") : "";
-// تم تغيير اسم الهيدر ليتطابق مع كلاودفلير وتفادي حظر الكلمات التي تبدأ بـ "cf-"
 static string SECURE_HEADER_NAME = "X-Verify-Secret"; 
 
-// ============================================================
-//  دوال تحويل وحماية آمنة
-// ============================================================
 static int safe_stoi(const string& s, int default_val = 0) {
-    try {
-        if (s.empty()) return default_val;
-        return stoi(s);
-    } catch (...) {
-        return default_val;
-    }
+    try { if (s.empty()) return default_val; return stoi(s); } catch (...) { return default_val; }
 }
 
 static float safe_stof(const string& s, float default_val = 0.0f) {
-    try {
-        if (s.empty()) return default_val;
-        return stof(s);
-    } catch (...) {
-        return default_val;
-    }
-}
-
-static int clamp_int(int v, int lo, int hi) {
-    return max(lo, min(hi, v));
-}
-
-static float clamp_float(float v, float lo, float hi) {
-    return max(lo, min(hi, v));
+    try { if (s.empty()) return default_val; return stof(s); } catch (...) { return default_val; }
 }
 
 static string html_escape(const string& data) {
-    string buffer;
-    buffer.reserve(data.size());
+    string buffer; buffer.reserve(data.size());
     for (size_t pos = 0; pos != data.size(); ++pos) {
         switch (data[pos]) {
             case '&':  buffer.append("&amp;");       break;
@@ -84,142 +57,71 @@ static string html_escape(const string& data) {
     return buffer;
 }
 
-// توليد nonce عشوائي لاستخدامه في CSP (يسمح بسكريبت محدد فقط بدون unsafe-inline)
 static string generate_nonce() {
-    random_device rd;
-    mt19937_64 gen(rd());
-    uint64_t a = gen();
-    uint64_t b = gen();
-    ostringstream oss;
-    oss << hex << a << b;
+    random_device rd; mt19937_64 gen(rd());
+    uint64_t a = gen(), b = gen();
+    ostringstream oss; oss << hex << a << b;
     return oss.str();
 }
 
-// ============================================================
-//  ترويسات الأمان
-// ============================================================
-
-// هيدرز ثابتة لا تتغير حسب الصفحة
 static void set_security_headers(httplib::Response& res) {
     res.set_header("X-Frame-Options", "DENY");
     res.set_header("X-Content-Type-Options", "nosniff");
     res.set_header("X-XSS-Protection", "1; mode=block");
     res.set_header("Strict-Transport-Security", "max-age=31536000; includeSubDomains");
     res.set_header("Referrer-Policy", "strict-origin-when-cross-origin");
-    res.set_header("Permissions-Policy", "geolocation=(), microphone=(), camera=()");
-    res.set_header("Server", "Hammer-Engine/1.0");
+    res.set_header("Server", "Hammer-Engine/1.1");
 }
 
-// CSP منفصلة لأنها تتغير حسب الصفحة (محتاجة nonce للسكريبت أو لا)
 static void set_csp(httplib::Response& res, const string& script_nonce = "") {
-    string script_src = script_nonce.empty()
-        ? "script-src 'none'; "
-        : ("script-src 'self' 'nonce-" + script_nonce + "'; ");
-
+    string script_src = script_nonce.empty() ? "script-src 'none'; " : ("script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com 'nonce-" + script_nonce + "'; ");
     string csp = "default-src 'self'; "
+                 "img-src 'self' data: https://media.darbat-shakosh.com https://flagcdn.com; " // السماح بنطاق الصور والأعلام
                  "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
                  "font-src https://fonts.gstatic.com; "
                  + script_src +
                  "connect-src 'self'; "
+                 "frame-src https://www.youtube.com; "
                  "frame-ancestors 'none'; "
                  "base-uri 'self'; "
                  "form-action 'self';";
-
     res.headers.erase("Content-Security-Policy");
     res.set_header("Content-Security-Policy", csp);
 }
 
-// دالة استخراج الـ IP الحقيقي للزائر خلف كلوفلير
 static string get_client_ip(const httplib::Request& req) {
-    if (req.has_header("CF-Connecting-IP")) {
-        return req.get_header_value("CF-Connecting-IP");
-    }
-    if (req.has_header("X-Forwarded-For")) {
-        string xff = req.get_header_value("X-Forwarded-For");
-        size_t comma = xff.find(',');
-        if (comma != string::npos) {
-            return xff.substr(0, comma);
-        }
-        return xff;
-    }
+    if (req.has_header("CF-Connecting-IP")) return req.get_header_value("CF-Connecting-IP");
     return req.remote_addr;
 }
 
-// دالة فحص وتطبيق نظام الـ Rate Limiting (عام)
 static bool is_rate_limited(const string& ip) {
     lock_guard<mutex> lock(rate_limit_mtx);
     auto now = chrono::steady_clock::now();
-
-    if (ip_tracker.size() > 500) {
-        for (auto it = ip_tracker.begin(); it != ip_tracker.end(); ) {
-            if (now >= it->second.reset_time) {
-                it = ip_tracker.erase(it);
-            } else {
-                ++it;
-            }
-        }
-    }
-
     if (ip_tracker.find(ip) == ip_tracker.end() || now >= ip_tracker[ip].reset_time) {
-        ip_tracker[ip].count = 1;
-        ip_tracker[ip].reset_time = now + chrono::minutes(1);
-        return false;
+        ip_tracker[ip].count = 1; ip_tracker[ip].reset_time = now + chrono::minutes(1); return false;
     }
-
     ip_tracker[ip].count++;
-    if (ip_tracker[ip].count > MAX_REQUESTS_PER_MINUTE) {
-        return true;
-    }
-
-    return false;
+    return ip_tracker[ip].count > MAX_REQUESTS_PER_MINUTE;
 }
 
-static void send_rate_limit_error(httplib::Response& res) {
-    ostringstream os;
-    os << "<html><head><meta charset='UTF-8'><meta name='viewport' content='width=device-width, initial-scale=1.0'>"
-       << "<link href='https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap' rel='stylesheet'>"
-       << "<style>"
-       << "body{background-color:#121212; font-family:'Cairo', sans-serif; display:flex; align-items:center; justify-content:center; min-height:100vh; margin:0; direction:rtl;}"
-       << ".limit-card{background:#1e1e1e; border:2px solid #ecc94b; padding:40px; border-radius:15px; text-align:center; max-width:500px; width:90%; box-shadow:0 10px 25px rgba(236,201,75,0.15);}"
-       << ".limit-card h2{color:#ecc94b; font-size:22px; margin-top:0;}"
-       << ".limit-card p{color:#ccc; font-size:15px; line-height:1.6; margin-bottom:25px;}"
-       << "</style></head><body>"
-       << "<div class='limit-card'>"
-       << "<h2>⚠️ تم تجاوز حد الطلبات المسموح به</h2>"
-       << "<p>لقد قمت بإرسال عدد كبير من الطلبات في وقت قصير (الحد الأقصى هو 12 طلباً في الدقيقة).<br>يرجى الانتظار دقيقة واحدة ثم إعادة المحاولة بشكل طبيعي.</p>"
-       << "</div></body></html>";
-    res.status = 429;
-    res.set_content(os.str(), "text/html; charset=utf-8");
-}
-
-// ============================================================
-//  كلاس المصعد هندسياً (بدون أي تعديل على المنطق أو الأسعار)
-// ============================================================
 class Elevator {
-private:
-    const float P_BRACKET = 0.0f;
-    const float P_BOLT = 0.0f;
-    const float P_ROPE = 0.0f;
-    const float P_FISH = 0.0f;
-    const float P_RAIL = 0.0f;
-
 public:
     string get_door_type(int sa) {
         if (sa >= 210 && sa <= 250)      return "Auto 80 CO || Auto 90 CO || Auto 100 CO";
         else if (sa >= 190 && sa < 210)  return "Auto 80 CO || Auto 90 CO || Auto 100 SI";
-        else if (sa >= 190 && sa < 195)  return "Auto 80 CO || Auto 90 CO || Auto 100 SI";
         else if (sa >= 175 && sa < 190)  return "Auto 80 CO || Auto 100 SI || Auto 90 SI";
         else if (sa >= 167 && sa < 175)  return "Auto 90 SI || Auto 80 CO";
         else if (sa >= 160 && sa < 167)  return "Auto 90 SI || Auto 70 CO";
         else if (sa >= 155 && sa < 160)  return "Auto 80 SI || Auto 70 CO";
-        else if (sa >= 145 && sa < 155)  return "Auto 80 SI";
+        else if (sa >= 145 && sa < 155)  return "Auto 80 SI || S";
         else if (sa >= 128 && sa < 145)  return "Auto 70 SI";
         else if (sa >= 120 && sa < 128)  return "Semi Auto 80";
         else if (sa >= 110 && sa < 120)  return "Semi Auto 70";
-        return "No standard door";
+        return "تصفية خاصة - مراجعة يدوية";
     }
 
     int get_cabin_dbg(int w) { return w - 30; }
+
     int get_cwt_dbg(int v) {
         if (v >= 100 && v <= 110) return 72;
         if (v > 110 && v <= 120) return 82;
@@ -231,298 +133,616 @@ public:
     int get_cabin_depth(int cd) { return cd - 60; }
 
     float get_shaft_height(float f, float pit_m, float overhead_m, string t) {
-        float typical_floors_height = (f - 1) * 3.2f;
-        float total_h = typical_floors_height + pit_m + overhead_m;
-        return (t == "MRL") ? total_h + 1.5f : total_h;
+        float h = (f - 1) * 3.2f + pit_m + overhead_m;
+        return (t == "MRL") ? h + 1.5f : h;
     }
-
-    int calc_brackets(float h) { return (h / 2.0) * 4; }
-    int calc_bolts(int b) { return b * 4; }
-    float calc_ropes(float h) { return ((h * 2) + 5) * 4; }
-
-    float get_p_bracket() { return P_BRACKET; }
-    float get_p_bolt() { return P_BOLT; }
-    float get_p_rope() { return P_ROPE; }
-    float get_p_fish() { return P_FISH; }
-    float get_p_rail() { return P_RAIL; }
 };
 
+struct Lesson {
+    string slug;          
+    string track_slug;    
+    string type;          
+    string title;
+    string summary;       
+    string content_html;  
+    string video_embed_url; 
+    int order;             
+};
+
+struct Track {
+    string slug;        
+    string emoji;
+    string title;
+    string description;
+};
+
+static vector<Track> get_tracks() {
+    return {
+        { "basics", "🧱", "مسار الأساسات الهندسية", "المفاهيم الأولى لتصفية أبعاد بئر المصعد ومكوناته الرئيسية وقراءة المخططات الفنية." },
+        { "doors",  "🚪", "مسار أبواب المصاعد", "أنواع الأبواب وأكواد الفتح المختلفة وإزاي تختار النوع المناسب للمساحة المتوفرة لبئر المصعد." },
+        { "darbat" , "🔨" , "كورس كهرباء المصاعد الشامل"  , "كورس تطبيقي متخصص في تعليم كل شيء يخص كهرباء الدوائر، الكنترولات، وتوصيل كوابل الأمان."}
+    }; 
+}
+
+static vector<Lesson> get_lessons() {
+    return {
+        { "intro-shaft-dimensions", "basics", "video",
+          "مقدمة هندسية: فهم أبعاد بئر المصعد الصافية",
+          "شرح فني يوضح الفرق بين البئر الحر والـ Pit والـ Overhead وأهميتهم الكبرى في التصفية الميكانيكية.",
+          "<p>بئر المصعد بيتكون من 3 قياسات أساسية لازم تكون دقيقة جداً قبل البدء في أي تصفية هندسية: "
+          "العرض والعمق الحُرّين للبئر، عمق حفرة الـ Pit أسفل المحطة الأخيرة، وارتفاع الـ Overhead فوق آخر وقفة للمصعد.</p>"
+          "<p>أي خطأ بسيط في أي قياس من القياسات الثلاثة بيأثر مباشرة على نوع الباب المتاح ومقاس الكابينة الصافي، "
+          "وده اللي بتحسبه الحاسبة الذكية أوتوماتيك من غير الحاجه لجدول ورقي معقد.</p>",
+          "https://www.youtube.com/embed/ZluG-pfc2HY", 1},
+
+        { "door-types-explained", "doors", "video",
+          "شرح أنواع أبواب المصاعد الأوتوماتيكية والنص أوتوماتيك Auto / Semi",
+          "فيديو تفصيلي يوضح الفرق بين أبواب السنتر CO وأبواب التلسكوب الجانبية SI وإزاي تختار المقاس والنوع المناسب لبئرك وعرض فتحة الصاعدة.",
+          "",
+          "https://www.youtube.com/embed/ZluG-pfc2HY", 1},
+
+          {"darbat-shakosh-one" ,"darbat" , "video", 
+            "توصيل الكنترول وقفل دوائر الأمان - الدرس 2",
+            "أهمية ترتيب خطوات تأسيس خطوط الكهرباء وربط دوائر السلسلة للامان وضمان الشغل النضيف والمطابق للمواصفات.",
+          "<p> أولاً: يتم التأكد من كهرباء المبنى وتغذية المصدر سواء كانت الفازة 220 فولت أو 380 فولت لعمل وتأسيس لوحة الكنترول على هذا الأساس السليم.</p>"
+          "<p> ثانياً: تركيب الكنترول وتوصيل المحرك (الماكينة) وقفل دوائر السيفتي الرئيسية {الشوكة - الكالون - الاستوب} ثم اختبار حركة المصعد السريعة والبطيئة لضمان الاستجابة.</p>",
+          "https://www.youtube.com/embed/ZluG-pfc2HY", 2},
+
+           {"darbat-shakosh-tow" ,"darbat" , "article", 
+            "المبادئ الأولى لكهرباء وكروت المصاعد - الدرس 1",
+            "نظرة عامة على لوحة التحكم والروابط الكهربائية وتغذية الفرامل ومغناطيس التهدئة والتوقف الفني.",
+          "<p> أولاً: يتم التأكد من كهرباء المبنى وتغذية المصدر سواء كانت الفازة 220 فولت أو 380 فولت لعمل وتأسيس لوحة الكنترول على هذا الأساس السليم.</p>"
+          "<img src='https://media.darbat-shakosh.com/IMG_20260618_101939_-٤٢٠١٠.jpg' style='width:100%; max-width:600px; display:block; border-radius:8px; margin:20px auto; border:1px solid var(--border);' alt='خريطة ومخطط المصعد الفني'>"
+          "<p> ثانياً: تركيب الكنترول وتوصيل المحرك (الماكينة) وقفل دوائر السيفتي الرئيسية {الشوكة - الكالون - الاستوب} ثم اختبار حركة المصعد السريعة والبطيئة لضمان الاستجابة.</p>",
+          "https://www.youtube.com/embed/ZluG-pfc2HY", 1}
+    };
+}
+static vector<Lesson> get_lessons_by_track(const string& track_slug) {
+    vector<Lesson> all = get_lessons();
+    vector<Lesson> filtered;
+    for (auto& l : all) if (l.track_slug == track_slug) filtered.push_back(l);
+    sort(filtered.begin(), filtered.end(), [](const Lesson& a, const Lesson& b) { return a.order < b.order; });
+    return filtered;
+}
+
+static string get_modern_blue_css() {
+    return "<style>"
+           "*{box-sizing:border-box;}"
+           ":root{"
+           "--bg:#0a0e16; --surface:#121826; --surface-2:#1a2233; --border:#232c3f;"
+           "--accent:#38bdf8; --accent-dim:rgba(56,189,248,0.14); --accent-2:#f5a524;"
+           "--text:#f3f4f6; --text-muted:#8b96ab;"
+           "--font-display:'Cairo', sans-serif; --font-mono:'JetBrains Mono', 'Cairo', monospace;"
+           "}"
+           "@media (prefers-reduced-motion: reduce){*{animation-duration:0.01ms !important; transition-duration:0.01ms !important;}}"
+           "body{font-family:var(--font-display); background-color:var(--bg); color:var(--text); direction:rtl; text-align:right; margin:0; padding:0; min-height:100vh; display:flex; flex-direction:column;"
+           "background-image:linear-gradient(rgba(56,189,248,0.045) 1px, transparent 1px), linear-gradient(90deg, rgba(56,189,248,0.045) 1px, transparent 1px);"
+           "background-size:30px 30px;}"
+           "a{outline-offset:3px; text-decoration:none; color:inherit;}"
+           ":focus-visible{outline:2px solid var(--accent); outline-offset:2px; border-radius:4px;}"
+
+           // ===== الهيدر المحترف =====
+           ".navbar{background-color:var(--surface); border-bottom:1px solid var(--border); padding:14px 28px; display:flex; justify-content:space-between; align-items:center; position:relative; z-index:50; box-shadow:0 4px 6px -1px rgba(0,0,0,0.15);}"
+           ".nav-right{display:flex; align-items:center; gap:20px; flex-wrap:wrap;}"
+           ".navbar-brand{display:flex; align-items:center; gap:10px; color:#ffffff; font-size:1.25rem; font-weight:800; text-decoration:none; padding-inline-end:22px; border-inline-end:1px solid var(--border);}"
+           ".brand-mark{width:34px; height:34px; flex-shrink:0; border-radius:8px; display:flex; align-items:center; justify-content:center; overflow:hidden; border: 1px solid var(--border); background-color: var(--bg);}"
+           ".brand-mark img{width:100%; height:100%; object-fit:cover;}"
+           ".nav-center{display:flex; align-items:center; gap:18px; flex-wrap:wrap;}"
+           ".nav-link{color:#cbd5e1; font-size:1rem; font-weight:600; text-decoration:none; transition:color 0.15s;}"
+           ".nav-link:hover{color:var(--accent);}"
+           ".nav-dropdown{position:relative;}"
+           ".nav-dropdown summary{cursor:pointer; list-style:none; display:flex; align-items:center; gap:6px; color:#cbd5e1; font-weight:600; font-size:1rem; user-select:none;}"
+           ".nav-dropdown summary::-webkit-details-marker{display:none;}"
+           ".nav-dropdown summary:hover{color:var(--accent);}"
+           ".nav-dropdown .chevron{width:13px; height:13px; fill:currentColor; transition:transform 0.2s;}"
+           ".nav-dropdown[open] .chevron{transform:rotate(180deg);}"
+           ".dropdown-panel{position:absolute; inset-inline-start:0; top:calc(100% + 16px); display:flex; gap:30px; background:var(--surface-2); border:1px solid var(--border); border-radius:12px; padding:18px 22px; min-width:190px; box-shadow:0 20px 25px -5px rgba(0,0,0,0.45); z-index:60; animation:dropdownIn 0.18s ease;}"
+           "@keyframes dropdownIn{from{opacity:0; transform:translateY(-6px);} to{opacity:1; transform:translateY(0);}}"
+           ".dropdown-col{display:flex; flex-direction:column; gap:11px; min-width:150px;}"
+           ".dropdown-panel a, .mobile-panel a{color:#e2e8f0; font-size:0.95rem; font-weight:600; text-decoration:none; transition:color 0.15s;}"
+           ".dropdown-panel a:hover{color:var(--accent);}"
+           ".desktop-only{display:flex;}"
+           ".mobile-only{display:none;}"
+           "@media (max-width:860px){.desktop-only{display:none;} .mobile-only{display:flex;} .navbar-brand span:last-child{font-size:1.05rem;}}"
+
+           // ===== شريط الأعلام الفاخر والمظلل تحت الهيدر مباشرة في جهة اليسار (Responsive) =====
+           ".flags-strip{background:rgba(18,24,38,0.4); backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px); border-bottom:1px solid var(--border); padding:6px 28px; display:flex; justify-content:flex-end; align-items:center; position:relative; z-index:40;}"
+           ".flags-badge-box{display:flex; align-items:center; gap:12px; background:rgba(35,44,63,0.5); border:1px solid rgba(56,189,248,0.2); padding:5px 14px; border-radius:30px; box-shadow:inset 0 1px 2px rgba(255,255,255,0.05), 0 4px 10px rgba(0,0,0,0.3); margin-left:auto;}" // جعل الـ margin-left تلقائياً لنقلها لليسار
+           ".flag-img-unit{width:22px; height:15px; border-radius:2px; box-shadow:0 2px 4px rgba(0,0,0,0.4); object-fit:cover; display:block;}"
+           ".flag-img-sep{color:rgba(139,150,171,0.4); font-size:0.8rem; font-weight:300; user-select:none;}"
+
+           // ===== قائمة الموبايل والتابلت الجانبية =====
+           ".nav-left{display:flex; align-items:center; gap:18px;}"
+           ".nav-icon{color:#94a3b8; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:0.2s; text-decoration:none; list-style:none;}"
+           ".nav-icon::-webkit-details-marker{display:none;}"
+           ".nav-icon:hover{color:var(--accent);}"
+           ".nav-icon svg{width:22px; height:22px; fill:currentColor;}"
+           ".mobile-menu{position:relative;}"
+           ".mobile-panel{position:absolute; inset-inline-end:0; top:calc(100% + 14px); background:var(--surface-2); border:1px solid var(--border); border-radius:12px; padding:18px 20px; display:flex; flex-direction:column; gap:4px; min-width:230px; box-shadow:0 20px 25px -5px rgba(0,0,0,0.45); z-index:60; animation:dropdownIn 0.18s ease;}"
+           ".mobile-panel a{padding:9px 6px; border-radius:6px; display:block;}"
+           ".mobile-panel a:hover{background:rgba(56,189,248,0.1); color:var(--accent);}"
+           ".mobile-divider{height:1px; background:var(--border); margin:8px 2px;}"
+
+           // ===== الحاويات والبطاقات الهندسية =====
+           ".container{max-width:900px; margin:0 auto; padding:50px 20px; flex:1; width:100%;}"
+           ".card{position:relative; background:var(--surface); border:1px solid var(--border); padding:40px; border-radius:12px; box-shadow:0 20px 25px -5px rgba(0,0,0,0.3); text-align:right;}"
+           ".card::before, .nav-card::before{content:''; position:absolute; top:-1px; right:-1px; width:18px; height:18px; border-top:2px solid var(--accent); border-right:2px solid var(--accent); border-top-right-radius:6px; opacity:0.6;}"
+           ".card::after, .nav-card::after{content:''; position:absolute; bottom:-1px; left:-1px; width:18px; height:18px; border-bottom:2px solid var(--accent); border-left:2px solid var(--accent); border-bottom-left-radius:6px; opacity:0.6;}"
+           ".card h2{color:#ffffff; font-size:1.6rem; margin-top:0; margin-bottom:15px; font-weight:700; border-bottom:1px solid var(--border); padding-bottom:15px;}"
+           ".sub-title{color:var(--text-muted); margin-bottom:35px; font-size:0.95rem; line-height:1.6;}"
+           ".f-group{margin-bottom:24px; text-align:right;}"
+           ".f-group label{font-weight:600; color:#e2e8f0; display:block; margin-bottom:12px; font-size:0.95rem;}"
+           "input,select{width:100%; padding:14px; border:1px solid var(--border); border-radius:8px; text-align:right; font-size:1rem; font-family:var(--font-display); background-color:var(--bg); color:var(--text); transition:0.3s; font-weight:600; padding-right:15px; direction:rtl;}"
+           "input:focus, select:focus{outline:none; border-color:var(--accent); box-shadow:0 0 0 3px rgba(56,189,248,0.2);}"
+           "button, .btn-action{background:linear-gradient(135deg, #0284c7, #0369a1); color:#ffffff; border:none; padding:16px; border-radius:8px; width:100%; font-size:1.1rem; font-weight:700; cursor:pointer; transition:0.3s; text-decoration:none; display:inline-block; text-align:center; box-shadow: 0 4px 6px rgba(0,0,0,0.1);}"
+           "button:hover, .btn-action:hover{background:linear-gradient(135deg, #0369a1, #075985); transform:translateY(-1px);}"
+
+           // ===== الجداول وجداول تقرير المعاينة =====
+           ".table-container{position:relative; width:100%; overflow-x:auto; background:var(--bg); border-radius:8px; border:1px solid var(--border); margin-top:20px;}"
+           ".tbl{width:100%; border-collapse:collapse; text-align:right;}"
+           ".tbl th{background:var(--surface); padding:15px; color:var(--accent); font-weight:600; border-bottom:1px solid var(--border); font-size:1rem; text-align:right; width:45%;}"
+           ".tbl td{padding:15px; border-bottom:1px solid var(--border); color:var(--text); font-size:1rem; font-weight:600; text-align:right; font-family:var(--font-mono);}"
+           ".actions{display:flex; justify-content:space-between; margin-top:35px; gap:20px;}"
+           ".btn-print{background:linear-gradient(135deg, #16a34a, #15803d); color:white; border:none; padding:15px 25px; border-radius:8px; font-weight:700; cursor:pointer; flex:1; transition:0.3s; text-align:center; font-family:var(--font-display); box-shadow: 0 4px 6px rgba(0,0,0,0.1);}"
+           ".btn-print:hover{background:linear-gradient(135deg, #15803d, #166534);}"
+           ".btn-secondary{background:linear-gradient(135deg, #4f46e5, #4338ca); color:white; padding:15px 25px; border-radius:8px; font-weight:700; text-align:center; flex:1; transition:0.3s; display:inline-block; text-decoration:none; font-family:var(--font-display); box-shadow: 0 4px 6px rgba(0,0,0,0.1);}"
+           ".btn-secondary:hover{background:linear-gradient(135deg, #4338ca, #3730a3);}"
+           ".grid-nav{display:grid; grid-template-columns:repeat(auto-fit, minmax(280px, 1fr)); gap:25px; width:100%;}"
+           ".nav-card{position:relative; background:var(--surface); border:1px solid var(--border); padding:30px; border-radius:12px; text-decoration:none; color:var(--text); transition:0.3s; display:flex; flex-direction:column; text-align:right;}"
+           ".nav-card:hover{border-color:var(--accent); transform:translateY(-3px); box-shadow:0 10px 20px rgba(0,0,0,0.2);}"
+           ".nav-card h3{color:var(--accent); font-size:1.3rem; margin:0 0 12px 0;}"
+           ".nav-card p{color:var(--text-muted); font-size:0.95rem; line-height:1.6; margin:0;}"
+
+           // ===== مشغلات الفيديوهات الذكية السلسة =====
+           ".section-intro{margin-bottom:30px; text-align:right;}"
+           ".section-intro h1{color:#ffffff; font-size:1.7rem; font-weight:800; margin:0 0 8px 0;}"
+           ".section-intro p{color:var(--text-muted); font-size:1rem; line-height:1.7; margin:0;}"
+           ".lesson-tag{display:inline-flex; align-items:center; gap:5px; font-size:0.78rem; font-weight:700; padding:4px 10px; border-radius:20px; margin-bottom:12px; width:fit-content;}"
+           ".tag-article{background:rgba(56,189,248,0.14); color:var(--accent);}"
+           ".tag-video{background:rgba(245,165,36,0.16); color:var(--accent-2);}"
+           ".video-embed{position:relative; width:100%; aspect-ratio:16/9; border-radius:10px; overflow:hidden; background:#000; margin:20px 0; border:1px solid var(--border); box-shadow: 0 4px 12px rgba(0,0,0,0.3);}"
+           ".video-embed iframe{position:absolute; inset:0; width:100%; height:100%; border:0;}"
+           ".lesson-body{color:#e2e8f0; font-size:1.02rem; line-height:1.9; background: var(--bg); padding: 20px; border-radius: 8px; border: 1px solid var(--border); margin-top: 15px;}"
+           ".lesson-body p{margin:0 0 16px 0;}"
+           ".track-list{display:flex; flex-direction:column; gap:14px; margin-top:10px;}"
+           ".track-item{display:flex; align-items:flex-start; gap:16px; background:var(--bg); border:1px solid var(--border); border-radius:10px; padding:18px 20px; text-decoration:none; transition:0.2s;}"
+           ".track-item:hover{border-color:var(--accent); transform:translateX(-3px);}"
+           ".track-order{flex-shrink:0; width:34px; height:34px; border-radius:8px; background:var(--surface-2); color:var(--accent); font-family:var(--font-mono); font-weight:700; display:flex; align-items:center; justify-content:center; font-size:0.95rem;}"
+           ".track-item-title{color:#f3f4f6; font-weight:700; font-size:1.02rem; margin-bottom:4px;}"
+
+           // ===== التذييل =====
+           ".footer{margin-top:auto; padding:25px 0; font-size:15px; color:var(--text-muted); text-align:center; border-top:1px solid var(--border); background-color:var(--surface); font-weight:600;}"
+           "@media print{.btn-print, .btn-secondary, h2, h3, .navbar, .flags-strip, .footer {display:none;} .card{box-shadow:none; padding:0; border:none; background:none; color:#000;} .card::before, .card::after{display:none;} .tbl th{background:#eee; color:#000;} .tbl td{color:#000; font-family:inherit;}}"
+           "</style>";
+}
+
+// التايتل المطلوب "موقع ضربة شاكوش" وربط أيقونة التبويب برابط الـ R2 المباشر
+static string get_seo_meta(const string& title, const string& desc) {
+    return "<title>موقع ضربة شاكوش</title>"
+           "<link rel='icon' type='image/jpeg' href='https://media.darbat-shakosh.com/channels4_profile%20(1).jpg'>"
+           "<meta name='description' content='" + desc + "'>"
+           "<meta name='keywords' content='حاسبة مقاسات المصاعد, كورس كهرباء المصاعد, تصفية أبعاد بئر المصعد, صيانة المصاعد, ميكانيكا المصاعد, ضربة شاكوش, هندسة المصاعد'>"
+           "<meta name='robots' content='index, follow'>";
+}
+
+// تعديل نص الهيدر واللوجو، وإضافة كبسولة الأعلام الفاخرة بدون نصوص في جهة اليسار بالترتيب المكتوب
+static string get_navbar_html() {
+    const string logo_url = "https://media.darbat-shakosh.com/channels4_profile%20(1).jpg"; 
+    const string chevron_svg = "<svg class='chevron' viewBox='0 0 24 24'><path d='M7 10l5 5 5-5z'/></svg>";
+
+    return "<nav class='navbar'>"
+           "  <div class='nav-right'>"
+           "    <a href='/' class='navbar-brand'><span class='brand-mark'><img src='" + logo_url + "' alt='لوجو ضربة شاكوش'></span><span>ضربة شاكوش </span></a>"
+           "    <div class='nav-center desktop-only'>"
+           "      <a href='/' class='nav-link'>الرئيسية</a>"
+           "      <a href='/paths' class='nav-link'>مسارات التعلّم</a>"
+           "      <a href='/blog' class='nav-link'>الشروحات والمقالات</a>"
+           "      <a href='/calculator' class='nav-link'>الحاسبة الهندسية</a>"
+           "      <details class='nav-dropdown'>"
+           "        <summary>المزيد " + chevron_svg + "</summary>"
+           "        <div class='dropdown-panel'>"
+           "          <div class='dropdown-col'>"
+           "            <a href='/contact'>اتصل بنا</a>"
+           "            <a href='/support'>مركز الدعم</a>"
+           "            <a href='/donate'>دعم المنصة</a>"
+           "          </div>"
+           "        </div>"
+           "      </details>"
+           "    </div>"
+           "  </div>"
+           "  <div class='nav-left'>"
+           "    <a class='nav-icon' title='بحث الفيديوهات'><svg viewBox='0 0 24 24'><path d='M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z'/></svg></a>"
+           "    <a class='nav-icon' title='بوابة المشتركين'><svg viewBox='0 0 24 24'><path d='M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z'/></svg></a>"
+           "    <details class='nav-dropdown mobile-menu mobile-only'>"
+           "      <summary class='nav-icon' title='القائمة'><svg viewBox='0 0 24 24'><path d='M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z'/></svg></summary>"
+           "      <div class='mobile-panel'>"
+           "        <a href='/'>الرئيسية</a>"
+           "        <a href='/paths'>مسارات التعلّم</a>"
+           "        <a href='/blog'>الشروحات والمقالات</a>"
+           "        <a href='/calculator'>الحاسبة الهندسية</a>"
+           "        <div class='mobile-divider'></div>"
+           "        <a href='/contact'>اتصل بنا</a>"
+           "        <a href='/support'>مركز الدعم</a>"
+           "        <a href='/donate'>دعم المنصة</a>"
+           "      </div>"
+           "    </details>"
+           "  </div>"
+           "</nav>"
+           // شريط الأعلام الفاخر الموجه أوتوماتيكياً لجهة اليسار (Left Side) وبدون أي كلمات وبترتيب (فلسطين -> مصر -> السعودية)
+           "<div class='flags-strip'>"
+           "  <div class='flags-badge-box'>"
+           "    <img src='https://flagcdn.com/w40/ps.png' class='flag-img-unit' alt='Gaza Palestine'>"
+           "    <span class='flag-img-sep'>|</span>"
+           "    <img src='https://flagcdn.com/w40/eg.png' class='flag-img-unit' alt='Egypt'>"
+           "    <span class='flag-img-sep'>|</span>"
+           "    <img src='https://flagcdn.com/w40/sa.png' class='flag-img-unit' alt='Saudi Arabia'>"
+           "  </div>"
+           "</div>";
+}
+
 // ============================================================
-//  الدالة الرئيسية
+//  الدالة الرئيسية وتشغيل المنصة
 // ============================================================
 int main() {
     httplib::Server svr;
     Elevator elevator;
 
-    if (CF_VERIFY_SECRET.empty()) {
-        cerr << "[تحذير أمان] CF_VERIFY_SECRET غير مفعّل. الموقع غير محمي من الوصول المباشر متجاوزاً كلاودفلير. "
-             << "يرجى ضبط متغير البيئة وإضافة Transform Rule في كلاودفلير (راجع ملف README)." << endl;
-    }
-
-    // ------------------------------------------------------------
-    // نقطة الحماية المركزية: تُنفَّذ قبل أي مسار (route) في الموقع
-    // ------------------------------------------------------------
     svr.set_pre_routing_handler([](const httplib::Request& req, httplib::Response& res) {
         set_security_headers(res);
-        set_csp(res); // افتراضي: بلا سكريبت إطلاقًا
+        set_csp(res);
 
-        // 1) فرض التحقق من أن الطلب ممرر عبر كلاودفلير بالهيدر المخصص الجديد
         if (!CF_VERIFY_SECRET.empty()) {
             if (!req.has_header(SECURE_HEADER_NAME.c_str()) || req.get_header_value(SECURE_HEADER_NAME.c_str()) != CF_VERIFY_SECRET) {
-                res.status = 403;
-                res.set_content("Access Denied. Direct access to origin server is forbidden.", "text/plain; charset=utf-8");
+                res.status = 403; res.set_content("Forbidden Access.", "text/plain");
                 return httplib::Server::HandlerResponse::Handled;
             }
         }
-
-        // 2) تطبيق الحد العام للطلبات بالدقيقة
-        string client_ip = get_client_ip(req);
-        if (is_rate_limited(client_ip)) {
-            send_rate_limit_error(res);
+        if (is_rate_limited(get_client_ip(req))) {
+            res.status = 429; res.set_content("Too Many Requests. Please wait a moment.", "text/plain");
             return httplib::Server::HandlerResponse::Handled;
         }
-
         return httplib::Server::HandlerResponse::Unhandled;
     });
 
     // 1️⃣ الصفحة الرئيسية
     svr.Get("/", [](const httplib::Request&, httplib::Response& res) {
+        string meta = get_seo_meta("المنصة التعليمية والهندسية الأولى للمصاعد", "شروحات فنية متخصصة في ميكانيكا وكهرباء المصاعد وحساب أبعاد الصاعدة هندسياً.");
         string html = "<html><head><meta charset='UTF-8'><meta name='viewport' content='width=device-width, initial-scale=1.0'>"
-                      "<link href='https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap' rel='stylesheet'>"
-                      "<style>"
-                      "body{background-color:#121212; font-family:'Cairo', sans-serif; color:#fff; direction:rtl; padding:20px; display:flex; flex-direction:column; align-items:center; min-height:100vh; margin:0;}"
-                      "header{text-align:center; margin:30px 0 20px 0;}"
-                      "header h1{color:#ffcc00; font-size:2.5rem; margin-bottom:5px;}"
-                      "header p{color:#aaa; font-size:1rem; margin-top:5px;}"
-                      ".alert-box{background: rgba(229, 62, 62, 0.1); border: 2px dashed #e53e3e; padding: 20px; border-radius: 12px; max-width: 600px; text-align: center; margin-bottom: 25px; box-shadow: 0 4px 15px rgba(229,62,62,0.15);}"
-                      ".alert-box h4{color:#fc8181; margin:0 0 8px 0; font-size:1.1rem; font-weight:700; display:flex; align-items:center; justify-content:center; gap:8px;}"
-                      ".alert-box p{color:#fecdd3; margin:0; font-size:0.95rem; line-height:1.6; font-weight:600;}"
-                      ".grid-nav{display:grid; grid-template-columns:repeat(auto-fit, minmax(280px, 1fr)); gap:25px; width:100%; max-width:900px; margin-top:10px;}"
-                      ".nav-card{background:#1e1e1e; border:1px solid #333; padding:30px; border-radius:15px; text-align:center; text-decoration:none; color:#fff; transition:0.3s; display:flex; flex-direction:column; align-items:center; justify-content:center;}"
-                      ".nav-card:hover{border-color:#ffcc00; transform:translateY(-5px); box-shadow:0 10px 20px rgba(255,204,0,0.15);}"
-                      ".nav-card h3{color:#ffcc00; font-size:1.4rem; margin-bottom:12px;}"
-                      ".nav-card p{color:#aaa; font-size:0.9rem; line-height:1.5;}"
-                      ".disabled{opacity:0.5; cursor:not-allowed;}"
-                      ".disabled:hover{transform:none; border-color:#333; box-shadow:none;}"
-                      ".footer{margin-top:auto; padding:40px 0 20px 0; font-size:13px; color:#555; text-align:center; font-weight:600;}"
-                      "</style></head><body>"
-                      "<header>"
-                      "<h1>ضربة شاكوش 🛠️</h1>"
-                      "<p>المنصة الهندسية لتقنيات المصاعد والتحكم البرمجي</p>"
-                      "</header>"
-                      "<div class='alert-box'>"
-                      "<h4>⚠️ تنبيه هام جداً للمستخدمين</h4>"
-                      "<p>المنصة حالياً تحت التجربة والتطوير المستمر. يمكنك استخدام الحاسبة ومراجعة النتائج، ولكن يرجى عدم الاعتماد التام والنهائي على المقاسات الناتجة في المواقع الحقيقية دون مراجعتها يدوياً من قِبلك فنيّاً وهندسيّاً.</p>"
+                      "<link href='https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&family=JetBrains+Mono:wght@500;600&display=swap' rel='stylesheet'>"
+                      + meta + get_modern_blue_css() +
+                      "</head><body>"
+                      + get_navbar_html() +
+                      "<div class='container'>"
+                      "<div class='section-intro' style='text-align: center; margin-bottom: 40px;'>"
+                      "  <h1 style='color: #ffffff; font-size: 2.2rem;'>مرحباً بك في منصة ضربة شاكوش الرقمية</h1>"
+                      "  <p style='color: var(--text-muted); font-size: 1.1rem;'>الأدوات الهندسية الذكية والكورسات التطبيقية المتخصصة في مجال تركيب وصيانة المصاعد.</p>"
                       "</div>"
                       "<div class='grid-nav'>"
-                      "<a href='/calculator' class='nav-card'><h3>🛗  حاسبة مقاسات البضاعة</h3><p>تصفية أبعاد بئر المصعد وحساب الكابينة والمواد هندسياً بأعلى دقة.</p></a>"
-                      "<a href='/blog' class='nav-card'><h3>📚 مقالات وشروحات عملي</h3><p> مخططات طرق صيانة الكروت الإلكترونية، وبرمجة الروبوتات ب C.</p></a>"
-                      "<div class='nav-card disabled'><h3>🦾  تحكم الروبوتات </h3><p>(قريباً)واجهة حساب معاملات الحركة ومحاور الـ CNC بالـ C++.</p></div>"
+                      "  <a href='/calculator' class='nav-card'><h3>🛗 حاسبة المقاسات الهندسية</h3><p>ابدأ تصفية أبعاد البئر فوراً وحساب المقاسات الصافية للكابينة وثقل الموازنة بضغطة واحدة وبشكل معتمد.</p></a>"
+                      "  <a href='/paths' class='nav-card'><h3>🧭 مسارات الكورسات والتعلم</h3><p>اكتشف مسار التأسيس ميكانيكياً، وكورس كهرباء المصاعد الشامل لتوصيل اللوحات والكنترولات خطوة بخطوة.</p></a>"
                       "</div>"
-                      "<div class='footer'>انشاء وتطوير: محمد الشعراوي</div>"
+                      "</div>"
+                      "<div class='footer'>منصة ضربة شاكوش الفنية © 2026 - إنشاء محمد الشعراوي</div>"
                       "</body></html>";
         res.set_content(html, "text/html; charset=utf-8");
     });
 
-    // 2️⃣ صفحة واجهة إدخال بيانات الحاسبة
+    // 2️⃣ واجهة الحاسبة
     svr.Get("/calculator", [](const httplib::Request&, httplib::Response& res) {
+        string meta = get_seo_meta("حاسبة مقاسات بئر ومقصورة المصاعد", "أداة هندسية لحساب وتصفية مقاسات كابينة المصعد وأبعاد الثقل ونوع الأبواب المتاحة أوتوماتيكياً.");
         string html = "<html><head><meta charset='UTF-8'><meta name='viewport' content='width=device-width, initial-scale=1.0'>"
-                      "<link href='https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap' rel='stylesheet'>"
-                      "<style>"
-                      "body{background-color:#f4f7fc; font-family:'Cairo', sans-serif; display:flex; align-items:center; justify-content:center; min-height:100vh; margin:0; padding:20px; box-sizing:border-box; flex-direction:column; color:#2d3748;}"
-                      ".card{background: #ffffff; padding:40px; border-radius:20px; box-shadow: 0 10px 30px rgba(160, 174, 192, 0.2); width:95%; max-width:550px; direction:rtl; text-align:right; box-sizing:border-box; border: 1px solid rgba(226, 232, 240, 0.8);}"
-                      "h2{color:#1a365d; text-align:center; margin-top:0; margin-bottom:10px; font-weight:700; font-size:24px;}"
-                      ".sub-title{text-align:center; color:#718096; margin-bottom:30px; font-size:14px; font-weight:400;}"
-                      ".f-group{margin-bottom:20px;}"
-                      "label{font-weight:600; color:#4a5568; display:block; margin-bottom:8px; font-size:14px;}"
-                      "input,select{width:100%; padding:14px; border:1px solid #cbd5e0; border-radius:12px; box-sizing:border-box; text-align:center; font-size:16px; font-family:'Cairo', sans-serif; background-color:#f8fafc; color:#2d3748; transition: all 0.3s ease; font-weight:600;}"
-                      "input:focus, select:focus{outline:none; border-color:#3182ce; background-color:#fff; box-shadow: 0 0 0 3px rgba(66, 153, 225, 0.15);}"
-                      "button{background: linear-gradient(135deg, #2b6cb0, #1a365d); color:white; border:none; padding:16px; border-radius:12px; width:100%; font-size:16px; font-weight:700; font-family:'Cairo', sans-serif; cursor:pointer; margin-top:15px; box-shadow:0 4px 12px rgba(26, 54, 93, 0.2); transition: all 0.3s ease;}"
-                      "button:hover{background: linear-gradient(135deg, #1a365d, #2b6cb0); transform: translateY(-1px); box-shadow:0 6px 20px rgba(26, 54, 93, 0.3);}"
-                      ".btn-home{display:block; text-align:center; margin-top:20px; color:#3182ce; text-decoration:none; font-weight:700; font-size:14px;}"
-                      "</style></head><body>"
-                      "<div class='card'><h2>🧮 حاسبة المقاسات والبضاعة الذكية</h2>"
-                      "<div class='sub-title'>النظام الهندسي المطور لتصفية وحساب بضاعة المصاعد فوراً</div>"
+                      "<link href='https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&family=JetBrains+Mono:wght@500;600&display=swap' rel='stylesheet'>"
+                      + meta + get_modern_blue_css() +
+                      "</head><body>"
+                      + get_navbar_html() +
+                      "<div class='container' style='max-width:650px;'>"
+                      "<div class='card'><h2>🧮 حاسبة مقاسات بئر المصعد الفنية</h2>"
+                      "<div class='sub-title'>الرجاء إدخال القياسات الحُرّة الصافية المأخوذة من الموقع للبء في الحساب والتصفية التلقائية للمقايسة المعمارية:</div>"
                       "<form action='/calculate' method='post'>"
-                      "<div class='f-group'><label>📦 نوع نظام الهندسة:</label><select name='m_type'><option value='MR'>غرفة محرك أعلى البئر (MR)</option><option value='MRL'>بدون غرفة محرك (MRL)</option></select></div>"
-                      "<div class='f-group'><label>📏 عرض البئر الحُر (CM):</label><input type='number' name='width' required min='80' max='250' placeholder='أدخل عرض البئر بالسم'></div>"
-                      "<div class='f-group'><label>📐 عمق البئر الحُر (CM):</label><input type='number' name='depth' required min='80' max='250' placeholder='أدخل عمق البئر بالسم'></div>"
-                      "<div class='f-group'><label>🏢 عدد أدوار المبنى (الوقفات):</label><input type='number' name='floors' required min='1' max='60' placeholder='أدخل إجمالي الأدوار'></div>"
-                      "<div class='f-group'><label>🕳️ عمق الحفرة Pit (CM):</label><input type='number' name='depth_pit' required min='10' max='500' value='100' placeholder='أدخل عمق الحفرة بالسم'></div>"
-                      "<div class='f-group'><label>🏠 الارتفاع العلوي Overhead (CM):</label><input type='number' name='overhead' required min='100' max='800' value='400' placeholder='أدخل الارتفاع العلوي بالسم'></div>"
-                      "<button type='submit'>🚀 تحليل الأبعاد وتصفية المقايسة</button></form>"
-                      "<a href='/' class='btn-home'>⬅️ العودة للبوابة الرئيسية</a></div>"
+                      "<div class='f-group'><label>👑 نوع نظام تشغيل المصعد:</label><select name='m_type'><option value='MR'>غرفة محرك أعلى البئر القياسي (MR)</option><option value='MRL'>نظام بدون غرفة محرك علوية (MRL)</option></select></div>"
+                      "<div class='f-group'><label>📐 عرض بئر المصعد الحُر الصافي (CM):</label><input type='number' name='width' required min='80' max='250' placeholder='مثال لعرض البئر الحُر: 160'></div>"
+                      "<div class='f-group'><label>📏 عمق بئر المصعد الحُر الصافي (CM):</label><input type='number' name='depth' required min='80' max='250' placeholder='مثال لعمق البئر الحُر: 160'></div>"
+                      "<div class='f-group'><label>🏢 إجمالي عدد الوقفات (الأدوار الإنشائية):</label><input type='number' name='floors' required min='1' max='60' placeholder='أدخل عدد طوابق المبنى'></div>"
+                      "<div class='f-group'><label>🕳️ عمق حفرة المصعد السفلية Pit (CM):</label><input type='number' name='depth_pit' required min='10' max='500' value='100'></div>"
+                      "<div class='f-group'><label>🏠 ارتفاع الدور الأخير من بلاطة الوقف للجريد Overhead (CM):</label><input type='number' name='overhead' required min='100' max='800' value='400'></div>"
+                      "<button type='submit'>🏛️ استخراج مقاسات الصاعدة الهندسية وتوليد المقايسة</button></form>"
+                      "</div></div>"
+                      "<div class='footer'>منصة ضربة شاكوش الفنية © 2026 - إنشاء محمد الشعراوي</div>"
                       "</body></html>";
         res.set_content(html, "text/html; charset=utf-8");
     });
 
-    // 3️⃣ صفحة تقرير المقايسة
+    // 3️⃣ نظام معالجة وتصدير تقرير المقايسة الفنية لـ PDF
     svr.Post("/calculate", [&elevator](const httplib::Request& req, httplib::Response& res) {
         string m_type = html_escape(req.get_param_value("m_type"));
-        if (m_type != "MR" && m_type != "MRL") { m_type = "MR"; }
+        if (m_type != "MR" && m_type != "MRL") m_type = "MR";
 
         int w = safe_stoi(req.get_param_value("width"), 0);
         int d = safe_stoi(req.get_param_value("depth"), 0);
         float f = safe_stof(req.get_param_value("floors"), 0.0f);
-        int original_pit = safe_stoi(req.get_param_value("depth_pit"), 100);
-        int original_overhead = safe_stoi(req.get_param_value("overhead"), 400);
+        int p = safe_stoi(req.get_param_value("depth_pit"), 100);
+        int oh = safe_stoi(req.get_param_value("overhead"), 400);
 
         if (w < 110 || d < 100) {
-            ostringstream error_os;
-            error_os << "<html><head><meta charset='UTF-8'><meta name='viewport' content='width=device-width, initial-scale=1.0'>"
-                     << "<link href='https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap' rel='stylesheet'>"
-                     << "<style>"
-                     << "body{background-color:#121212; font-family:'Cairo', sans-serif; display:flex; align-items:center; justify-content:center; min-height:100vh; margin:0; direction:rtl;}"
-                     << ".error-card{background:#1e1e1e; border:2px solid #dd6b20; padding:40px; border-radius:15px; text-align:center; max-width:500px; width:90%; box-shadow:0 10px 25px rgba(221,107,32,0.2);}"
-                     << ".error-card h2{color:#dd6b20; font-size:22px; margin-top:0;}"
-                     << ".error-card p{color:#ccc; font-size:15px; line-height:1.6; margin-bottom:25px;}"
-                     << ".btn-retry{display:inline-block; background:#dd6b20; color:white; padding:12px 30px; text-decoration:none; border-radius:10px; font-weight:700; transition:0.3s;}"
-                     << ".btn-retry:hover{background:#c05621; transform:translateY(-2px);}"
-                     << "</style></head><body>"
-                     << "<div class='error-card'>"
-                     << "<h2>⚠️ عذراً، أبعاد البئر غير مطابقة للمواصفات</h2>"
-                     << "<p>أبعاد بئر المصعد المدخلة (العرض: " << w << " سم، العمق: " << d << " سم) أقل من الحد الأدنى الفني المسموح به للحساب الآلي بالمنصة.<br><b>الحد الأدنى المطلوب:</b> عرض لا يقل عن 110 سم، وعمق لا يقل عن 100 سم.</p>"
-                     << "<a href='/calculator' class='btn-retry'>🔄 العودة وتعديل المقاسات</a>"
-                     << "</div></body></html>";
-            res.set_content(error_os.str(), "text/html; charset=utf-8");
-            return;
+            string err = "<html><head><meta charset='UTF-8'><meta name='viewport' content='width=device-width, initial-scale=1.0'>"
+                         "<link href='https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&family=JetBrains+Mono:wght@500;600&display=swap' rel='stylesheet'>"
+                         + get_modern_blue_css() + "</head><body>"
+                         "<div style='display:flex; align-items:center; justify-content:center; min-height:100vh;'>"
+                         "<div class='card' style='border-color:#ef4444; max-width:500px; text-align:center;'>"
+                         "<h2 style='color:#ef4444;'>⚠️ الأبعاد المدخلة غير مطابقة للمواصفات</h2>"
+                         "<p style='color:#94a3b8;'>المقاسات الحالية المكتوبة أقل من الحد الأدنى الهندسي لتركيب المصاعد القياسية (العرض المطلوب الأدنى 110سم، والعمق 100سم).</p>"
+                         "<a href='/calculator' class='btn-action' style='background:#ef4444;'>🔄 العودة وتعديل أبعاد البئر</a>"
+                         "</div></div>"
+                         "</body></html>";
+            res.set_content(err, "text/html; charset=utf-8"); return;
         }
-
-        string pit_display_text, overhead_display_text;
-
-        if (original_pit < 60 || original_pit > 200) {
-            pit_display_text = "<span style='color: #e53e3e; background: #fff5f5; padding: 4px 8px; border-radius: 6px; border: 1px solid #fed7d7; font-size: 13px;'>⚠️ مقاس غير قياسي (" + to_string(original_pit) + " CM) - يرجى المراجعة</span>";
-        } else {
-            pit_display_text = to_string(original_pit) + " CM";
-        }
-
-        if (original_overhead < 350 || original_overhead > 600) {
-            overhead_display_text = "<span style='color: #e53e3e; background: #fff5f5; padding: 4px 8px; border-radius: 6px; border: 1px solid #fed7d7; font-size: 13px;'>⚠️ مقاس غير قياسي (" + to_string(original_overhead) + " CM) - يرجى المراجعة</span>";
-        } else {
-            overhead_display_text = to_string(original_overhead) + " CM";
-        }
-
-        w = clamp_int(w, 80, 250);
-        d = clamp_int(d, 80, 250);
-        f = clamp_float(f, 1.0f, 60.0f);
-        float pit_clamped = clamp_float((float)original_pit, 10.0f, 500.0f);
-        float overhead_clamped = clamp_float((float)original_overhead, 100.0f, 800.0f);
-
-        float pit_m = pit_clamped / 100.0f;
-        float overhead_m = overhead_clamped / 100.0f;
 
         string door = elevator.get_door_type(w);
         int cabin_dbg = elevator.get_cabin_dbg(w);
         int cwt_dbg = elevator.get_cwt_dbg(w);
         int cab_w = elevator.get_cabin_width(w);
         int cab_d = elevator.get_cabin_depth(d);
+        float h = elevator.get_shaft_height(f, p/100.0f, oh/100.0f, m_type);
 
-        float h = elevator.get_shaft_height(f, pit_m, overhead_m, m_type);
-
-        int brackets = elevator.calc_brackets(h);
-        int bolts = elevator.calc_bolts(brackets);
-        float ropes = elevator.calc_ropes(h);
-        int fishplates = ((int)f) * 4;
-        float rail_qty = (h * 4) / 5.0f;
-
-        float c_brackets = brackets * elevator.get_p_bracket();
-        float c_bolts = bolts * elevator.get_p_bolt();
-        float c_ropes = ropes * elevator.get_p_rope();
-        float c_fishplates = fishplates * elevator.get_p_fish();
-        float c_rail = rail_qty * elevator.get_p_rail();
-
-        float total = c_brackets + c_bolts + c_ropes + c_fishplates + c_rail;
-
-        string cwt_display_text;
-        if (cwt_dbg == 0) {
-            cwt_display_text = "<span style='color: #e53e3e; background: #fff5f5; padding: 4px 8px; border-radius: 6px; border: 1px solid #fed7d7; font-size: 13px;'>⚠️ مقاس غير قياسي - يرجى المراجعة يدوياً</span>";
-        } else {
-            cwt_display_text = to_string(cwt_dbg) + " CM";
-        }
-
-        string nonce = generate_nonce();
-        set_csp(res, nonce);
-
+        string nonce = generate_nonce(); set_csp(res, nonce);
         ostringstream os;
         os << "<html><head><meta charset='UTF-8'><meta name='viewport' content='width=device-width, initial-scale=1.0'>"
-           << "<link href='https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap' rel='stylesheet'>"
-           << "<style>"
-           << "body{background-color:#1a5d3e; font-family:'Cairo', sans-serif; padding:30px 10px; direction:rtl; text-align:right; color:#2d3748;}"
-           << ".box{max-width:650px; margin:auto; background:#ffffff; padding:35px; border-radius:20px; box-shadow:0 10px 30px rgba(160,174,192,0.15); border: 1px solid #e2e8f0;}"
-           << "h2{color:#1a365d; text-align:center; margin-top:0; font-weight:700; font-size:22px; border-bottom:2px solid #e2e8f0; padding-bottom:15px;}"
-           << "h3{color:#2b6cb0; font-size:15px; font-weight:700; margin-top:25px; margin-bottom:12px; display:flex; align-items:center;}"
-           << ".table-container{width:100%; overflow-x:auto; background:#fff; border-radius:12px; border:1px solid #edf2f7; margin-top:8px;}"
-           << ".tbl{width:100%; border-collapse:collapse; text-align:right;}"
-           << ".tbl th{background:#f7fafc; padding:12px 15px; color:#4a5568; font-weight:600; border-bottom:1px solid #edf2f7; font-size:14px; width:45%;}"
-           << ".tbl td{padding:12px 15px; border-bottom:1px solid #edf2f7; color:#1a202c; font-size:14px; font-weight:600;}"
-           << ".btbl{width:100%; border-collapse:collapse; text-align:center;}"
-           << ".btbl th{background:#2d3748; color:white; padding:12px; font-weight:600; font-size:13px;}"
-           << ".btbl td{padding:12px; border-bottom:1px solid #edf2f7; color:#2d3748; font-size:14px; font-weight:600;}"
-           << ".btbl tr:nth-child(even){background-color: #f8fafc;}"
-           << ".inv{background:linear-gradient(135deg, #f0fff4, #c6f6d5); padding:18px; border-radius:12px; border:1px dashed #38a169; margin-top:25px; text-align:center; font-size:18px; font-weight:700; color:#22543d; box-shadow: 0 4px 6px rgba(56,161,105,0.05);}"
-           << ".actions{display:flex; justify-content:space-between; margin-top:30px; gap:15px;}"
-           << ".btn-print{background:#2f855a; color:white; padding:12px 25px; border:none; border-radius:10px; font-weight:700; font-family:'Cairo', sans-serif; cursor:pointer; font-size:14px; flex:1; box-shadow:0 4px 10px rgba(47,133,90,0.2); transition:all 0.3s;}"
-           << ".btn-print:hover{background:#22543d; transform:translateY(-1px);}"
-           << ".btn-back{background:#3182ce; color:white; padding:12px 25px; text-decoration:none; border-radius:10px; font-weight:700; font-size:14px; text-align:center; flex:1; box-shadow:0 4px 10px rgba(49,130,206,0.2); transition:all 0.3s;}"
-           << ".btn-back:hover{background:#2b6cb0; transform:translateY(-1px);}"
-           << "@media print{.btn-print, .btn-back, h2, h3 {display:none;} .box{box-shadow:none; padding:0; border:none;}}"
-           << "</style></head><body><div class='box'><h2>📋 تقرير تصفية الأبعاد الفنية والمقايسة</h2>"
-           << "<h3>📐 أولاً: البيانات الهندسية الناتجة</h3>"
+           "<link href='https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&family=JetBrains+Mono:wght@500;600&display=swap' rel='stylesheet'>"
+           "<script src='https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js'></script>"
+           + get_modern_blue_css() + "</head><body>"
+           << get_navbar_html()
+           << "<div class='container' style='max-width:750px;'>"
+           << "<div class='card' id='pdf-area'><h2>📋 تقرير تصفية المقاسات النهائي المعتمد</h2>"
+           << "<div class='sub-title' style='margin-bottom:20px;'>منصة ضربة شاكوش لحساب أبعاد الكابينة ومقايسات بئر المصاعد الإنشائية:</div>"
            << "<div class='table-container'><table class='tbl'>"
-           << "<tr><th>نوع الباب الافتراضي:</th><td style='color:#3182ce;'>" << door << "</td></tr>"
-           << "<tr><th>مقاس DBG الكابينة:</th><td>" << cabin_dbg << " CM</td></tr>"
-           << "<tr><th>مقاس DBG الثقل (CWT):</th><td>" << cwt_display_text << "</td></tr>"
-           << "<tr><th>صافي عرض الكابينة الداخلي:</th><td>" << cab_w << " CM</td></tr>"
-           << "<tr><th>صافي عمق الكابينة الداخلي:</th><td>" << cab_d << " CM</td></tr>"
-           << "<tr><th>مقاس عمق الحفرة المدخل:</th><td>" << pit_display_text << "</td></tr>"
-           << "<tr><th>مقاس الارتفاع العلوي المدخل:</th><td>" << overhead_display_text << "</td></tr>"
-           << "<tr><th>إجمالي مشوار البئر المحسوب:</th><td style='color:#dd6b20;'>" << h << " متر</td></tr>"
+           << "<tr><th>نوع ونظام التشغيل:</th><td>" << (m_type == "MR" ? "غرفة محرك علوية" : "بدون غرفة محرك MRL") << "</td></tr>"
+           << "<tr><th>أبعاد البئر المدخلة:</th><td>العرض: " << w << " سم || العمق: " << d << " سم</td></tr>"
+           << "<tr><th>نوع وعرض باب المصعد المتاح هندسياً:</th><td style='color:#38bdf8; font-weight:700;'>" << door << "</td></tr>"
+           << "<tr><th>مقاس شاسيه DBG الكابينة الصافي:</th><td>" << cabin_dbg << " CM</td></tr>"
+           << "<tr><th>مقاس شاسيه DBG ثقل الموازنة (CWT):</th><td>" << (cwt_dbg ? to_string(cwt_dbg) + " CM" : "مراجعة فنية يدوية") << "</td></tr>"
+           << "<tr><th>صافي العرض الداخلي لكابينة المصعد:</th><td style='color:#f5a524;'>" << cab_w << " CM</td></tr>"
+           << "<tr><th>صافي العمق الداخلي لكابينة المصعد:</th><td style='color:#f5a524;'>" << cab_d << " CM</td></tr>"
+           << "<tr><th>إجمالي مشوار البئر والارتفاع الرأسي المحسوب:</th><td style='color:#38bdf8;'>" << h << " متر طولي</td></tr>"
            << "</table></div>"
-           << "<h3>📦 ثانياً: كمية البضاعة المحسوبة للمشوار</h3>"
-           << "<div class='table-container'><table class='btbl'><thead><tr><th>اسم الصنف ومواصفاته</th><th>الكمية</th><th>التكلفة التقديرية</th></tr></thead><tbody>"
-           << "<tr><td>كوابيل السكك الحديدية</td><td>" << brackets << " قطعة 🛑</td><td>" << c_brackets << " SAR</td></tr>"
-           << "<tr><td>مسامير وجوايط التثبيت</td><td>" << bolts << " مسمار 🔩</td><td>" << c_bolts << " SAR</td></tr>"
-           << "<tr><td>حبال واير الفولاذ</td><td>" << ropes << " متر 🧵</td><td>" << c_ropes << " SAR</td></tr>"
-           << "<tr><td>لقم ربط السكك (التقفيل)</td><td>" << fishplates << " لقمة 🗜️</td><td>" << c_fishplates << " SAR</td></tr>"
-           << "<tr><td>قضبان السكك الحديدية (الريل)</td><td>" << rail_qty << " قضيب (5م) 🛤️</td><td>" << c_rail << " SAR</td></tr>"
-           << "</tbody></table></div>"
-           << "<div class='inv'>💰 إجمالي القيمة المالية التقديرية: " << total << " SAR</div>"
-           << "<div class='actions'>"
-           << "<button class='btn-print' id='printBtn'>🖨️ طباعة التقرير / حفظ PDF</button>"
-           << "<a class='btn-back' href='/calculator'>🔄 حساب مقايسة جديدة</a>"
+           << "<p style='margin-top:25px; font-size:0.85rem; color:var(--text-muted); text-align:center;'>تمت التصفية والمطابقة آلياً بالاعتماد على خوارزميات التصفية القياسية للمصاعد.</p>"
+           << "</div>" 
+           << "<div class='actions' style='max-width:750px; margin: 20px auto 0 auto; padding:0 40px;'>"
+           << "  <button class='btn-print' id='pBtn'>📥 تحميل التقرير كملف PDF مخصص</button>"
+           << "  <a class='btn-secondary' href='/calculator'>🔄 تصفية مقاسات بئر جديد</a>"
            << "</div></div>"
+           <<"<div class='footer'>منصة ضربة شاكوش الفنية © 2026 - إنشاء محمد الشعراوي</div>"
            << "<script nonce='" << nonce << "'>"
-           << "document.getElementById('printBtn').addEventListener('click', function(){ window.print(); });"
+           << "  document.getElementById('pBtn').addEventListener('click', function(){"
+           << "    var element = document.getElementById('pdf-area');"
+           << "    var opt = {"
+           << "      margin:       0.5,"
+           << "      filename:     'Shakosh_Elevator_Report.pdf',"
+           << "      image:        { type: 'jpeg', quality: 0.98 },"
+           << "      html2canvas:  { scale: 2, backgroundColor: '#121826' },"
+           << "      jsPDF:        { unit: 'in', format: 'letter', orientation: 'portrait' }"
+           << "    };"
+           << "    html2pdf().set(opt).from(element).save();"
+           << "  });"
            << "</script>"
            << "</body></html>";
         res.set_content(os.str(), "text/html; charset=utf-8");
     });
 
-    // 4️⃣ مسار المقالات
+    // 4️⃣ صفحة المقالات والفيديوهات 
     svr.Get("/blog", [](const httplib::Request&, httplib::Response& res) {
-        string blog_html = "<html><head><meta charset='UTF-8'><meta name='viewport' content='width=device-width, initial-scale=1.0'>"
-                           "<link href='https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap' rel='stylesheet'>"
-                           "<style>"
-                           "body{background-color:#121212; font-family:'Cairo', sans-serif; color:#fff; direction:rtl; padding:40px 20px;}"
-                           ".container{max-width:800px; margin:auto;}"
-                           "h1{color:#ffcc00; border-bottom:2px solid #ffcc00; padding-bottom:10px;}"
-                           ".card{background:#1e1e1e; padding:20px; border-radius:10px; margin-top:20px; border:1px solid #333;}"
-                           "h2{color:#ffcc00; font-size:20px;}"
-                           "p{color:#aaa; line-height:1.6;}"
-                           ".btn-back{display:inline-block; margin-top:20px; background:#3182ce; color:white; padding:10px 20px; text-decoration:none; border-radius:50px; font-weight:700;}"
-                           "</style></head><body><div class='container'>"
-                           "<h1>📚 بوابة ضربة شاكوش للمقالات والشروحات الهندسية</h1>"
-                           "<div class='card'><h2>قريباً: شرح مخططات DWG للمصاعد</h2><p>هنا سيتم رفع الشروحات الفنية المفصلة لتركيب السكك والمقاسات القياسية لكوابين المصاعد هيدروليك وجيرلس...</p></div>"
-                           "<div class='card'><h2>قريباً: التحكم البرمجي بالـ C++ وكروت الروبوتات</h2><p>شرح عملي لكيفية تحويل الأوامر الحسابية إلى إشارات ميكانيكية دقيقة للـ CNC ومحركات التوجيه...</p></div>"
-                           "<a class='btn-back' href='/'>🧮 العودة للبوابة الرئيسية</a>"
-                           "</div></body></html>";
-        res.set_content(blog_html, "text/html; charset=utf-8");
+        auto lessons = get_lessons();
+        ostringstream cards;
+        for (auto& l : lessons) {
+            string tag_class = (l.type == "video") ? "tag-video" : "tag-article";
+            string tag_label = (l.type == "video") ? "🎥 درس فيديو" : "📖 مقال فني";
+            cards << "<a href='/lesson/" << l.slug << "' class='nav-card'>"
+                  << "<span class='lesson-tag " << tag_class << "'>" << tag_label << "</span>"
+                  << "<h3>" << html_escape(l.title) << "</h3>"
+                  << "<p>" << html_escape(l.summary) << "</p>"
+                  << "</a>";
+        }
+        string meta = get_seo_meta("مكتبة الشروحات الهندسية ودروس الصيانة", "سلسلة المقالات المكتوبة والفيديوهات التطبيقية لتعليم ميكانيكا وتركيبات دوائر أمان المصاعد.");
+        string html = "<html><head><meta charset='UTF-8'><meta name='viewport' content='width=device-width, initial-scale=1.0'>"
+                      "<link href='https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&family=JetBrains+Mono:wght@500;600&display=swap' rel='stylesheet'>"
+                      + meta + get_modern_blue_css() + "</head><body>"
+                      + get_navbar_html() +
+                      "<div class='container'>"
+                      "<div class='section-intro'><h1>📚 مكتبة الدروس الفنية والشروحات</h1>"
+                      "<p>مقالات هندسية وفيديوهات متخصصة تشرح التصفية الكهربائية والميكانيكية للمصاعد خطوة بخطوة للشغل النظيف والأمان.</p></div>"
+                      "<div class='grid-nav'>" + cards.str() + "</div>"
+                      "</div>"
+                      "<div class='footer'>منصة ضربة شاكوش الفنية © 2026 - إنشاء محمد الشعراوي</div>"
+                      "</body></html>";
+        res.set_content(html, "text/html; charset=utf-8");
     });
 
-    // تشغيل السيرفر
+    // 4.1️⃣ عرض مقال أو فيديو واحد بالتفصيل
+    svr.Get(R"(/lesson/([a-zA-Z0-9\-]+))", [](const httplib::Request& req, httplib::Response& res) {
+        string slug = req.matches[1].str();
+        auto lessons = get_lessons();
+        auto it = find_if(lessons.begin(), lessons.end(), [&](const Lesson& l) { return l.slug == slug; });
+
+        if (it == lessons.end()) {
+            res.status = 404;
+            string html = "<html><head><meta charset='UTF-8'><meta name='viewport' content='width=device-width, initial-scale=1.0'>"
+                          + get_modern_blue_css() + "</head><body>"
+                          + get_navbar_html() +
+                          "<div class='container' style='display:flex; align-items:center; justify-content:center; min-height:50vh;'>"
+                          "<div class='card' style='text-align:center; max-width:450px;'>"
+                          "<h2>⚠️ الدرس غير متوفر حالياً</h2>"
+                          "<p style='color:#94a3b8; margin-bottom:24px;'>الرابط المطلوب غير متاح أو تم نقله لمسار آخر.</p>"
+                          "<a class='btn-secondary' href='/blog'>⬅️ العودة للمكتبة والشروحات</a>"
+                          "</div></div>"
+                          "</body></html>";
+            res.set_content(html, "text/html; charset=utf-8"); return;
+        }
+
+        string tag_class = (it->type == "video") ? "tag-video" : "tag-article";
+        string tag_label = (it->type == "video") ? "🎥 فيديو تعليمي" : "📖 مقال تقني مخصص";
+
+        ostringstream body;
+        if (it->type == "video" && !it->video_embed_url.empty()) {
+            body << "<div class='video-embed'><iframe src='" << it->video_embed_url
+                 << "' allow='accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture' "
+                    "allowfullscreen loading='lazy'></iframe></div>";
+        }
+        if (!it->content_html.empty()) {
+            body << "<div class='lesson-body'><h3>📌 تفاصيل الشرح والمخطط الفني:</h3>" << it->content_html << "</div>";
+        }
+
+        string meta = get_seo_meta(it->title, it->summary);
+        string html = "<html><head><meta charset='UTF-8'><meta name='viewport' content='width=device-width, initial-scale=1.0'>"
+                      "<link href='https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&family=JetBrains+Mono:wght@500;600&display=swap' rel='stylesheet'>"
+                      + meta + get_modern_blue_css() + "</head><body>"
+                      + get_navbar_html() +
+                      "<div class='container' style='max-width:750px;'>"
+                      "<div class='card'>"
+                      "<span class='lesson-tag " + tag_class + "'>" + tag_label + "</span>"
+                      "<h2>" + html_escape(it->title) + "</h2>"
+                      "<div class='sub-title'>" + html_escape(it->summary) + "</div>"
+                      + body.str() +
+                      "<div class='actions'><a class='btn-secondary' href='/blog'>⬅️ العودة للمكتبة والشروحات</a></div>"
+                      "</div></div>"
+                      "<div class='footer'>منصة ضربة شاكوش الفنية © 2026 - إنشاء محمد الشعراوي</div>"
+                      "</body></html>";
+        res.set_content(html, "text/html; charset=utf-8");
+    });
+
+    // 4.2️⃣ صفحة المسارات (تجميعة الكورسات والمسارات الشاملة)
+    svr.Get("/paths", [](const httplib::Request&, httplib::Response& res) {
+        auto tracks = get_tracks();
+        ostringstream cards;
+        for (auto& t : tracks) {
+            cards << "<a href='/track/" << t.slug << "' class='nav-card'>"
+                  << "<h3>" << t.emoji << " " << html_escape(t.title) << "</h3>"
+                  << "<p>" << html_escape(t.description) << "</p>"
+                  << "</a>";
+        }
+        string meta = get_seo_meta("مسارات التعلم والكورسات الهندسية", "تصفح المسارات المرتبة أكاديمياً لتعلم فنيات التركيب الميكانيكي وتأسيس لوحات دوائر الأمان والكنترول للمصاعد.");
+        string html = "<html><head><meta charset='UTF-8'><meta name='viewport' content='width=device-width, initial-scale=1.0'>"
+                      "<link href='https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&family=JetBrains+Mono:wght@500;600&display=swap' rel='stylesheet'>"
+                      + meta + get_modern_blue_css() + "</head><body>"
+                      + get_navbar_html() +
+                      "<div class='container'>"
+                      "<div class='section-intro'><h1>🧭 مسارات التعلم الأكاديمية والمهنية</h1>"
+                      "<p>كل مسار مخصص لجمع وتدريس الحلقات والدروس بالترتيب الصحيح لضمان الانتقال السلس من مرحلة التأسيس إلى مرحلة الاحتراف.</p></div>"
+                      "<div class='grid-nav'>" + cards.str() + "</div>"
+                      "</div>"
+                      "<div class='footer'>منصة ضربة شاكوش الفنية © 2026 - إنشاء محمد الشعراوي</div>"
+                      "</body></html>";
+        res.set_content(html, "text/html; charset=utf-8");
+    });
+
+    // 4.3️⃣ عرض محتويات كورس/مسار تعليمي واحد مرتب بالأرقام
+    svr.Get(R"(/track/([a-zA-Z0-9\-]+))", [](const httplib::Request& req, httplib::Response& res) {
+        string slug = req.matches[1].str();
+        auto tracks = get_tracks();
+        auto trackIt = find_if(tracks.begin(), tracks.end(), [&](const Track& t) { return t.slug == slug; });
+
+        if (trackIt == tracks.end()) {
+            res.status = 404;
+            string html = "<html><head><meta charset='UTF-8'><meta name='viewport' content='width=device-width, initial-scale=1.0'>"
+                          + get_modern_blue_css() + "</head><body>"
+                          + get_navbar_html() +
+                          "<div class='container' style='display:flex; align-items:center; justify-content:center; min-height:50vh;'>"
+                          "<div class='card' style='text-align:center; max-width:450px;'>"
+                          "<h2>⚠️ المسار التعليمي غير متاح</h2>"
+                          "<p style='color:#94a3b8; margin-bottom:24px;'>المسار التدريبي المطلوب قد يكون قيد التحضير.</p>"
+                          "<a class='btn-secondary' href='/paths'>⬅️ العودة لجميع المسارات</a>"
+                          "</div></div>"
+                          "</body></html>";
+            res.set_content(html, "text/html; charset=utf-8"); return;
+        }
+
+        auto lessons = get_lessons_by_track(slug);
+        ostringstream items;
+        for (auto& l : lessons) {
+            string tag_emoji = (l.type == "video") ? "🎥" : "📖";
+            items << "<a href='/lesson/" << l.slug << "' class='track-item'>"
+                  << "<span class='track-order'>" << l.order << "</span>"
+                  << "<div><div class='track-item-title'>" << tag_emoji << " " << html_escape(l.title) << "</div>"
+                  << "<div class='track-item-summary'>" << html_escape(l.summary) << "</div></div>"
+                  << "</a>";
+        }
+        if (lessons.empty()) {
+            items << "<p style='color:#8b96ab;'>يتم رفع وتدقيق الدروس الخاصة بهذا الكورس حالياً، تابعنا قريباً.</p>";
+        }
+
+        string meta = get_seo_meta(trackIt->title, trackIt->description);
+        string html = "<html><head><meta charset='UTF-8'><meta name='viewport' content='width=device-width, initial-scale=1.0'>"
+                      "<link href='https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&family=JetBrains+Mono:wght@500;600&display=swap' rel='stylesheet'>"
+                      + meta + get_modern_blue_css() + "</head><body>"
+                      + get_navbar_html() +
+                      "<div class='container' style='max-width:700px;'>"
+                      "<div class='card'>"
+                      "<h2>" + trackIt->emoji + " " + html_escape(trackIt->title) + "</h2>"
+                      "<div class='sub-title'>" + html_escape(trackIt->description) + "</div>"
+                      "<div class='track-list'>" + items.str() + "</div>"
+                      "<div class='actions' style='margin-top:25px;'><a class='btn-secondary' href='/paths'>⬅️ العودة لكافة المسارات</a></div>"
+                      "</div></div>"
+                      "<div class='footer'>منصة ضربة شاكوش الفنية © 2026 - إنشاء محمد الشعراوي</div>"
+                      "</body></html>";
+        res.set_content(html, "text/html; charset=utf-8");
+    });
+
+    // 5️⃣ صفحة التواصل الفني والمهني
+    svr.Get("/contact", [](const httplib::Request&, httplib::Response& res) {
+        string meta = get_seo_meta("اتصل بنا | الدعم الفني", "تواصل مباشرة مع إدارة منصة ضربة شاكوش لطرح الأسئلة الفنية أو الإبلاغ عن مشكلة برمجية.");
+        string html = "<html><head><meta charset='UTF-8'><meta name='viewport' content='width=device-width, initial-scale=1.0'>"
+                      "<link href='https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&family=JetBrains+Mono:wght@500;600&display=swap' rel='stylesheet'>"
+                      + meta + get_modern_blue_css() + "</head><body>"
+                      + get_navbar_html() +
+                      "<div class='container' style='max-width:650px;'>"
+                      "<div class='card'><h2>📩 تواصل مع الدعم الفني للهندسة</h2>"
+                      "<div class='sub-title'>لديك أي استفسار فني خاص بالمقاسات، اقتراح لتطوير الموقع، أو واجهتك مشكلة بالحاسبة؟ تواصل معنا فوراً.</div>"
+                      "<a class='btn-action' href='mailto:support@darbat-shakosh.com' style='margin-bottom:14px; display:block;'>📧 راسلنا على البريد الإلكتروني الرسمي للمنصة</a>"
+                      "<p style='color:#8b96ab; font-size:0.9rem; text-align:center;'>المراسلات يتم الرد عليها ومراجعتها من المهندس المختص خلال 24 ساعة.</p>"
+                      "</div></div>"
+                      "<div class='footer'>منصة ضربة شاكوش الفنية © 2026 - إنشاء محمد الشعراوي</div>"
+                      "</body></html>";
+        res.set_content(html, "text/html; charset=utf-8");
+    });
+
+    // 6️⃣ مركز المساعدة والأسئلة الشائعة للمصاعد
+    svr.Get("/support", [](const httplib::Request&, httplib::Response& res) {
+        string meta = get_seo_meta("مركز المساعدة والأسئلة الشائعة الفنية للمصاعد.", "محتاج مساعدة في فهم كيفية حساب أبعاد الـ DBG الصافي وشواكيل التصفية؟");
+        string html = "<html><head><meta charset='UTF-8'><meta name='viewport' content='width=device-width, initial-scale=1.0'>"
+                      "<link href='https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&family=JetBrains+Mono:wght@500;600&display=swap' rel='stylesheet'>"
+                      + meta + get_modern_blue_css() + "</head><body>"
+                      + get_navbar_html() +
+                      "<div class='container' style='max-width:650px;'>"
+                      "<div class='card'><h2>🛟 مركز الدعم والمساعدة الفنية</h2>"
+                      "<div class='sub-title'>محتاج مساعدة في فهم كيفية حساب أبعاد الـ DBG الصافي وشواكيل التصفية؟</div>"
+                      "<p style='color:#e2e8f0; line-height:1.8; margin-bottom:24px;'>يمكنك مراجعة المسارات والدروس التعليمية المتاحة بالمكتبة، وفي حال وجود تعارض في المقاسات المعمارية يمكنك فتح تذكرة دعم فني.</p>"
+                      "<div class='actions'>"
+                      "  <a class='btn-print' href='/blog'>❓ تصفح الشروحات</a>"
+                      "  <a class='btn-secondary' href='/contact'>📩 فتح تذكرة دعم</a>"
+                      "</div></div></div>"
+                      "<div class='footer'>منصة ضربة شاكوش الفنية © 2026 - إنشاء محمد الشعراوي</div>"
+                      "</body></html>";
+        res.set_content(html, "text/html; charset=utf-8");
+    });
+
+    // 7️⃣ صفحة دعم المنصة واستمرارية التطوير
+    svr.Get("/donate", [](const httplib::Request&, httplib::Response& res) {
+        string meta = get_seo_meta("الموقع وحاسبة مقاسات بئر المصاعد مجاني تماماً لخدمة الوطن العربي.", "الموقع وحاسبة مقاسات بئر المصاعد مجاني تماماً لخدمة فنيي ومندوبي ومهندسي الوطن العربي.");
+        string html = "<html><head><meta charset='UTF-8'><meta name='viewport' content='width=device-width, initial-scale=1.0'>"
+                      "<link href='https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&family=JetBrains+Mono:wght@500;600&display=swap' rel='stylesheet'>"
+                      + meta + get_modern_blue_css() + "</head><body>"
+                      + get_navbar_html() +
+                      "<div class='container' style='max-width:650px;'>"
+                      "<div class='card'><h2>❤️ المساهمة في دعم واستمرارية المنصة</h2>"
+                      "<div class='sub-title'>الموقع وحاسبة مقاسات بئر المصاعد مجاني تماماً لخدمة فنيي ومندوبي ومهندسي الوطن العربي، مساهمتك تساعد في تطوير الخوادم وزيادة جودة الشروحات الميكانيكية.</div>"
+                      "<a class='btn-action' href='/contact' style='display:block;'>💳 استعراض وسائل وطرق المساهمة المتاحة</a>"
+                      "</div></div>"
+                      "<div class='footer'>منصة ضربة شاكوش الفنية © 2026 - إنشاء محمد الشعراوي</div>"
+                      "</body></html>";
+        res.set_content(html, "text/html; charset=utf-8");
+    });
+
     const char* port_env = getenv("PORT");
     int port = port_env ? safe_stoi(port_env, 8080) : 8080;
-    cout << "🚀 الخادم يعمل على المنفذ " << port << endl;
+    cout << "🚀 Professional Hammer-Platform active on port: " << port << endl;
     svr.listen("0.0.0.0", port);
     return 0;
 }
