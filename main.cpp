@@ -1,9 +1,10 @@
-/* <  وَأَن لَّيْسَ لِلإِنسَانِ إِلاَّ مَا سَعَى * وَأَنَّ سَعْيَهُ سوفَ يُرَى * ثُمَّ يُجْزَاهُ الْجَزَاء الأَوْفَى  >
-                               ============================================================
-                               =                                                          =
-                               =                  منصة ضربة شاكوش الرقمية                 =
-                               =                                                          =
-                               ============================================================
+/*                      <  وَأَن لَّيْسَ لِلإِنسَانِ إِلاَّ مَا سَعَى * وَأَنَّ سَعْيَهُ سوفَ يُرَى * ثُمَّ يُجْزَاهُ الْجَزَاء الأَوْفَى  >
+
+                                       ============================================================
+                                       =                                                          =
+                                       =                  منصة ضربة شاكوش الرقمية                 =
+                                       =                                                          =
+                                       ============================================================
  */          
 
 #include "httplib.h"
@@ -236,7 +237,6 @@ static string get_modern_blue_css() {
            ".nav-dropdown .chevron{width:13px; height:13px; fill:currentColor; transition:transform 0.2s;}"
            ".nav-dropdown[open] .chevron{transform:rotate(180deg);}"
            ".dropdown-panel{position:absolute; inset-inline-start:0; top:calc(100% + 16px); display:flex; gap:30px; background:var(--surface-2); border:1px solid var(--border); border-radius:12px; padding:18px 22px; min-width:190px; box-shadow:0 20px 25px -5px rgba(0,0,0,0.45); z-index:60; animation:dropdownIn 0.18s ease;}"
-           "@media (prefers-reduced-motion: reduce){.dropdown-panel{animation:none;}}"
            "@keyframes dropdownIn{from{opacity:0; transform:translateY(-6px);} to{opacity:1; transform:translateY(0);}}"
            ".dropdown-col{display:flex; flex-direction:column; gap:11px; min-width:150px;}"
            ".dropdown-panel a, .mobile-panel a{color:#e2e8f0; font-size:0.95rem; font-weight:600; text-decoration:none; transition:color 0.15s;}"
@@ -247,7 +247,7 @@ static string get_modern_blue_css() {
 
            // ===== شريط الأعلام الفاخر والمظلل تحت الهيدر مباشرة في جهة اليسار (Responsive) =====
            ".flags-strip{background:rgba(18,24,38,0.4); backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px); border-bottom:1px solid var(--border); padding:6px 28px; display:flex; justify-content:flex-end; align-items:center; position:relative; z-index:40;}"
-           ".flags-badge-box{display:flex; align-items:center; gap:12px; background:rgba(35,44,63,0.5); border:1px solid rgba(56,189,248,0.2); padding:5px 14px; border-radius:30px; box-shadow:inset 0 1px 2px rgba(255,255,255,0.05), 0 4px 10px rgba(0,0,0,0.3); margin-left:auto;}" 
+           ".flags-badge-box{display:flex; align-items:center; gap:12px; background:rgba(35,44,63,0.5); border:1px solid rgba(56,189,248,0.2); padding:5px 14px; border-radius:30px; box-shadow:inset 0 1px 2px rgba(255,255,255,0.05), 0 4px 10px rgba(0,0,0,0.3); margin-left:auto;}" // جعل الـ margin-left تلقائياً لنقلها لليسار
            ".flag-img-unit{width:22px; height:15px; border-radius:2px; box-shadow:0 2px 4px rgba(0,0,0,0.4); object-fit:cover; display:block;}"
            ".flag-img-sep{color:rgba(139,150,171,0.4); font-size:0.8rem; font-weight:300; user-select:none;}"
 
@@ -298,8 +298,8 @@ static string get_modern_blue_css() {
            ".section-intro h1{color:#ffffff; font-size:1.7rem; font-weight:800; margin:0 0 8px 0;}"
            ".section-intro p{color:var(--text-muted); font-size:1rem; line-height:1.7; margin:0;}"
            ".lesson-tag{display:inline-flex; align-items:center; gap:5px; font-size:0.78rem; font-weight:700; padding:4px 10px; border-radius:20px; margin-bottom:12px; width:fit-content;}"
-           ".lesson-tag.tag-article{background:rgba(56,189,248,0.14); color:var(--accent);}"
-           ".lesson-tag.tag-video{background:rgba(245,165,36,0.16); color:var(--accent-2);}"
+           ".tag-article{background:rgba(56,189,248,0.14); color:var(--accent);}"
+           ".tag-video{background:rgba(245,165,36,0.16); color:var(--accent-2);}"
            ".video-embed{position:relative; width:100%; aspect-ratio:16/9; border-radius:10px; overflow:hidden; background:#000; margin:20px 0; border:1px solid var(--border); box-shadow: 0 4px 12px rgba(0,0,0,0.3);}"
            ".video-embed iframe{position:absolute; inset:0; width:100%; height:100%; border:0;}"
            ".lesson-body{color:#e2e8f0; font-size:1.02rem; line-height:1.9; background: var(--bg); padding: 20px; border-radius: 8px; border: 1px solid var(--border); margin-top: 15px;}"
@@ -437,7 +437,7 @@ int main() {
                       + get_navbar_html() +
                       "<div class='container' style='max-width:650px;'>"
                       "<div class='card'><h2>🧮 حاسبة مقاسات بئر المصعد الفنية</h2>"
-                      "<div class='sub-title'>الرجاء إدخل القياسات الحُرّة الصافية المأخوذة من الموقع للبء في الحساب والتصفية التلقائية للمقايسة المعمارية:</div>"
+                      "<div class='sub-title'>الرجاء إدخال القياسات الحُرّة الصافية المأخوذة من الموقع للبء في الحساب والتصفية التلقائية للمقايسة المعمارية:</div>"
                       "<form action='/calculate' method='post'>"
                       "<div class='f-group'><label>👑 نوع نظام تشغيل المصعد:</label><select name='m_type'><option value='MR'>غرفة محرك أعلى البئر القياسي (MR)</option><option value='MRL'>نظام بدون غرفة محرك علوية (MRL)</option></select></div>"
                       "<div class='f-group'><label>📐 عرض بئر المصعد الحُر الصافي (CM):</label><input type='number' name='width' required min='80' max='250' placeholder='مثال لعرض البئر الحُر: 160'></div>"
@@ -445,7 +445,7 @@ int main() {
                       "<div class='f-group'><label>🏢 إجمالي عدد الوقفات (الأدوار الإنشائية):</label><input type='number' name='floors' required min='1' max='60' placeholder='أدخل عدد طوابق المبنى'></div>"
                       "<div class='f-group'><label>🕳️ عمق حفرة المصعد السفلية Pit (CM):</label><input type='number' name='depth_pit' required min='10' max='500' value='100'></div>"
                       "<div class='f-group'><label>🏠 ارتفاع الدور الأخير من بلاطة الوقف للجريد Overhead (CM):</label><input type='number' name='overhead' required min='100' max='800' value='400'></div>"
-                      "<div class='f-group'><label>🏛️ استخراج مقاسات الصاعدة الهندسية وتوليد المقايسة</button></form>"
+                      "<button type='submit'>🏛️ استخراج مقاسات الصاعدة الهندسية وتوليد المقايسة</button></form>"
                       "</div></div>"
                       "<div class='footer'>منصة ضربة شاكوش الفنية © 2026 - إنشاء محمد الشعراوي</div>"
                       "</body></html>";
@@ -515,11 +515,11 @@ int main() {
            << "  document.getElementById('pBtn').addEventListener('click', function(){"
            << "    var element = document.getElementById('pdf-area');"
            << "    var opt = {"
-           << "      margin:        0.5,"
-           << "      filename:      'Shakosh_Elevator_Report.pdf',"
-           << "      image:         { type: 'jpeg', quality: 0.98 },"
-           << "      html2canvas:   { scale: 2, backgroundColor: '#121826' },"
-           << "      jsPDF:         { unit: 'in', format: 'letter', orientation: 'portrait' }"
+           << "      margin:       0.5,"
+           << "      filename:     'Shakosh_Elevator_Report.pdf',"
+           << "      image:        { type: 'jpeg', quality: 0.98 },"
+           << "      html2canvas:  { scale: 2, backgroundColor: '#121826' },"
+           << "      jsPDF:        { unit: 'in', format: 'letter', orientation: 'portrait' }"
            << "    };"
            << "    html2pdf().set(opt).from(element).save();"
            << "  });"
