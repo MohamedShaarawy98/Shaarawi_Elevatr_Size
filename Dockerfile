@@ -1,28 +1,30 @@
-# استخدام نسخة خفيفة ومستقرة من دبيان تحتوي على أدوات البناء
-FROM gcc:latest AS builder
+# استخدام نفس نسخة دبيان المستقرة لبيئتي البناء والتشغيل لضمان توافق المكتبات
+FROM debian:bookworm-slim AS builder
 
-# تحديد مجلد العمل داخل الحاوية
+# تثبيت أدوات بناء الـ ++C المطلوبة داخل بيئة دبيان
+RUN apt-get update && apt-get install -y \
+    g++ \
+    make \
+    && rm -rf /var/lib/apt/lists/*
+
 WORKDIR /app
 
-# نسخ ملفات المشروع بالكامل إلى الحاوية
 COPY . .
 
-# عمل Compile لكود الـ ++C وربطه بالمكتبات المطلوبة
+# عمل Compile لكود الـ ++C وربطه بالمكتبات
 RUN g++ -O3 main.cpp -o hammer_platform -pthread
 
-# استخدام حاوية تشغيل نظيفة وخفيفة جداً لتقليل المساحة وتسريع الأداء
+# مرحلة التشغيل النهائية النظيفة
 FROM debian:bookworm-slim
 
 WORKDIR /app
 
-# تثبيت حزم الشهادات الأمنية لضمان عمل روابط الـ HTTPS (مثل flagcdn و media) بدون مشاكل
+# تثبيت حزم الشهادات الأمنية
 RUN apt-get update && apt-get install -y ca-certificates && rm -rf /var/lib/apt/lists/*
 
-# نسخ الملف التنفيذي فقط من المرحلة الأولى
+# نسخ الملف التنفيذي من مرحلة البناء بنفس التوافقية
 COPY --from=builder /app/hammer_platform .
 
-# إعلام الحاوية بالمنفذ الذي سيعمل عليه السيرفر
 EXPOSE 8080
 
-# أمر تشغيل السيرفر فوراً عند انطلاق الحاوية
 CMD ["./hammer_platform"]
