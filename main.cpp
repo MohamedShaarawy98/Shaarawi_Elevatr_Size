@@ -114,7 +114,7 @@ public:
         else if (sa >= 160 && sa < 167)  return "Auto 90 SI || Auto 70 CO";
         else if (sa >= 155 && sa < 160)  return "Auto 80 SI || Auto 70 CO";
         else if (sa >= 145 && sa < 155)  return "Auto 80 SI || S";
-        else if (sa >= 128 && max(128, sa) < 145)  return "Auto 70 SI";
+        else if (sa >= 128 && sa < 145)  return "Auto 70 SI";
         else if (sa >= 120 && sa < 128)  return "Semi Auto 80";
         else if (sa >= 110 && sa < 120)  return "Semi Auto 70";
         return "تصفية خاصة - مراجعة يدوية";
@@ -205,6 +205,7 @@ static vector<Lesson> get_lessons_by_track(const string& track_slug) {
     return filtered;
 }
 
+// ===== دالة الـ CSS المتطورة والداعمة للتبديل الفوري بين الليل والنهار والمطابقة للطباعة =====
 static string get_modern_blue_css() {
     return "<style>"
            "*{box-sizing:border-box;}"
@@ -214,24 +215,27 @@ static string get_modern_blue_css() {
            "--text:#f3f4f6; --text-muted:#8b96ab;"
            "--font-display:'Cairo', sans-serif; --font-mono:'JetBrains Mono', 'Cairo', monospace;"
            "}"
+           "body.light-mode{"
+           "--bg:#f8fafc; --surface:#ffffff; --surface-2:#f1f5f9; --border:#cbd5e1;"
+           "--text:#0f172a; --text-muted:#64748b;"
+           "}"
            "@media (prefers-reduced-motion: reduce){*{animation-duration:0.01ms !important; transition-duration:0.01ms !important;}}"
            "body{font-family:var(--font-display); background-color:var(--bg); color:var(--text); direction:rtl; text-align:right; margin:0; padding:0; min-height:100vh; display:flex; flex-direction:column;"
            "background-image:linear-gradient(rgba(56,189,248,0.045) 1px, transparent 1px), linear-gradient(90deg, rgba(56,189,248,0.045) 1px, transparent 1px);"
-           "background-size:30px 30px;}"
+           "background-size:30px 30px; transition: background-color 0.3s, color 0.3s;}"
            "a{outline-offset:3px; text-decoration:none; color:inherit;}"
            ":focus-visible{outline:2px solid var(--accent); outline-offset:2px; border-radius:4px;}"
 
-           // ===== الهيدر المحترف =====
-           ".navbar{background-color:var(--surface); border-bottom:1px solid var(--border); padding:14px 28px; display:flex; justify-content:space-between; align-items:center; position:relative; z-index:50; box-shadow:0 4px 6px -1px rgba(0,0,0,0.15);}"
+           ".navbar{background-color:var(--surface); border-bottom:1px solid var(--border); padding:14px 28px; display:flex; justify-content:space-between; align-items:center; position:relative; z-index:50; box-shadow:0 4px 6px -1px rgba(0,0,0,0.15); transition: background-color 0.3s;}"
            ".nav-right{display:flex; align-items:center; gap:20px; flex-wrap:wrap;}"
-           ".navbar-brand{display:flex; align-items:center; gap:10px; color:#ffffff; font-size:1.25rem; font-weight:800; text-decoration:none; padding-inline-end:22px; border-inline-end:1px solid var(--border);}"
+           ".navbar-brand{display:flex; align-items:center; gap:10px; color:var(--text); font-size:1.25rem; font-weight:800; text-decoration:none; padding-inline-end:22px; border-inline-end:1px solid var(--border);}"
            ".brand-mark{width:34px; height:34px; flex-shrink:0; border-radius:8px; display:flex; align-items:center; justify-content:center; overflow:hidden; border: 1px solid var(--border); background-color: var(--bg);}"
            ".brand-mark img{width:100%; height:100%; object-fit:cover;}"
            ".nav-center{display:flex; align-items:center; gap:18px; flex-wrap:wrap;}"
-           ".nav-link{color:#cbd5e1; font-size:1rem; font-weight:600; text-decoration:none; transition:color 0.15s;}"
+           ".nav-link{color:var(--text); font-size:1rem; font-weight:600; text-decoration:none; transition:color 0.15s;}"
            ".nav-link:hover{color:var(--accent);}"
            ".nav-dropdown{position:relative;}"
-           ".nav-dropdown summary{cursor:pointer; list-style:none; display:flex; align-items:center; gap:6px; color:#cbd5e1; font-weight:600; font-size:1rem; user-select:none;}"
+           ".nav-dropdown summary{cursor:pointer; list-style:none; display:flex; align-items:center; gap:6px; color:var(--text); font-weight:600; font-size:1rem; user-select:none;}"
            ".nav-dropdown summary::-webkit-details-marker{display:none;}"
            ".nav-dropdown summary:hover{color:var(--accent);}"
            ".nav-dropdown .chevron{width:13px; height:13px; fill:currentColor; transition:transform 0.2s;}"
@@ -239,45 +243,44 @@ static string get_modern_blue_css() {
            ".dropdown-panel{position:absolute; inset-inline-start:0; top:calc(100% + 16px); display:flex; gap:30px; background:var(--surface-2); border:1px solid var(--border); border-radius:12px; padding:18px 22px; min-width:190px; box-shadow:0 20px 25px -5px rgba(0,0,0,0.45); z-index:60; animation:dropdownIn 0.18s ease;}"
            "@keyframes dropdownIn{from{opacity:0; transform:translateY(-6px);} to{opacity:1; transform:translateY(0);}}"
            ".dropdown-col{display:flex; flex-direction:column; gap:11px; min-width:150px;}"
-           ".dropdown-panel a, .mobile-panel a{color:#e2e8f0; font-size:0.95rem; font-weight:600; text-decoration:none; transition:color 0.15s;}"
+           ".dropdown-panel a, .mobile-panel a{color:var(--text); font-size:0.95rem; font-weight:600; text-decoration:none; transition:color 0.15s;}"
            ".dropdown-panel a:hover{color:var(--accent);}"
            ".desktop-only{display:flex;}"
            ".mobile-only{display:none;}"
            "@media (max-width:860px){.desktop-only{display:none;} .mobile-only{display:flex;} .navbar-brand span:last-child{font-size:1.05rem;}}"
 
-           // ===== شريط الأعلام =====
            ".flags-strip{background:rgba(18,24,38,0.4); backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px); border-bottom:1px solid var(--border); padding:6px 28px; display:flex; justify-content:flex-end; align-items:center; position:relative; z-index:40;}"
            ".flags-badge-box{display:flex; align-items:center; gap:12px; background:rgba(35,44,63,0.5); border:1px solid rgba(56,189,248,0.2); padding:5px 14px; border-radius:30px; box-shadow:inset 0 1px 2px rgba(255,255,255,0.05), 0 4px 10px rgba(0,0,0,0.3); margin-left:auto;}" 
            ".flag-img-unit{width:22px; height:15px; border-radius:2px; box-shadow:0 2px 4px rgba(0,0,0,0.4); object-fit:cover; display:block;}"
            ".flag-img-sep{color:rgba(139,150,171,0.4); font-size:0.8rem; font-weight:300; user-select:none;}"
 
-           // ===== قائمة الموبايل =====
            ".nav-left{display:flex; align-items:center; gap:18px;}"
-           ".nav-icon{color:#94a3b8; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:0.2s; text-decoration:none; list-style:none;}"
+           ".nav-icon{color:var(--text-muted); cursor:pointer; display:flex; align-items:center; justify-content:center; transition:0.2s; text-decoration:none; list-style:none; background:none; border:none; padding:0;}"
            ".nav-icon::-webkit-details-marker{display:none;}"
            ".nav-icon:hover{color:var(--accent);}"
            ".nav-icon svg{width:22px; height:22px; fill:currentColor;}"
+           
+           "body.light-mode .theme-sun, body:not(.light-mode) .theme-moon { display:none; }"
+
            ".mobile-menu{position:relative;}"
            ".mobile-panel{position:absolute; inset-inline-end:0; top:calc(100% + 14px); background:var(--surface-2); border:1px solid var(--border); border-radius:12px; padding:18px 20px; display:flex; flex-direction:column; gap:4px; min-width:230px; box-shadow:0 20px 25px -5px rgba(0,0,0,0.45); z-index:60; animation:dropdownIn 0.18s ease;}"
            ".mobile-panel a{padding:9px 6px; border-radius:6px; display:block;}"
            ".mobile-panel a:hover{background:rgba(56,189,248,0.1); color:var(--accent);}"
            ".mobile-divider{height:1px; background:var(--border); margin:8px 2px;}"
 
-           // ===== الحاويات والبطاقات =====
            ".container{max-width:900px; margin:0 auto; padding:50px 20px; flex:1; width:100%;}"
-           ".card{position:relative; background:var(--surface); border:1px solid var(--border); padding:40px; border-radius:12px; box-shadow:0 20px 25px -5px rgba(0,0,0,0.3); text-align:right;}"
+           ".card{position:relative; background:var(--surface); border:1px solid var(--border); padding:40px; border-radius:12px; box-shadow:0 20px 25px -5px rgba(0,0,0,0.3); text-align:right; transition: background-color 0.3s;}"
            ".card::before, .nav-card::before{content:''; position:absolute; top:-1px; right:-1px; width:18px; height:18px; border-top:2px solid var(--accent); border-right:2px solid var(--accent); border-top-right-radius:6px; opacity:0.6;}"
            ".card::after, .nav-card::after{content:''; position:absolute; bottom:-1px; left:-1px; width:18px; height:18px; border-bottom:2px solid var(--accent); border-left:2px solid var(--accent); border-bottom-left-radius:6px; opacity:0.6;}"
-           ".card h2{color:#ffffff; font-size:1.6rem; margin-top:0; margin-bottom:15px; font-weight:700; border-bottom:1px solid var(--border); padding-bottom:15px;}"
+           ".card h2{color:var(--text); font-size:1.6rem; margin-top:0; margin-bottom:15px; font-weight:700; border-bottom:1px solid var(--border); padding-bottom:15px;}"
            ".sub-title{color:var(--text-muted); margin-bottom:35px; font-size:0.95rem; line-height:1.6;}"
            ".f-group{margin-bottom:24px; text-align:right;}"
-           ".f-group label{font-weight:600; color:#e2e8f0; display:block; margin-bottom:12px; font-size:0.95rem;}"
+           ".f-group label{font-weight:600; color:var(--text); display:block; margin-bottom:12px; font-size:0.95rem;}"
            "input,select{width:100%; padding:14px; border:1px solid var(--border); border-radius:8px; text-align:right; font-size:1rem; font-family:var(--font-display); background-color:var(--bg); color:var(--text); transition:0.3s; font-weight:600; padding-right:15px; direction:rtl;}"
            "input:focus, select:focus{outline:none; border-color:var(--accent); box-shadow:0 0 0 3px rgba(56,189,248,0.2);}"
            "button, .btn-action{background:linear-gradient(135deg, #0284c7, #0369a1); color:#ffffff; border:none; padding:16px; border-radius:8px; width:100%; font-size:1.1rem; font-weight:700; cursor:pointer; transition:0.3s; text-decoration:none; display:inline-block; text-align:center; box-shadow: 0 4px 6px rgba(0,0,0,0.1);}"
            "button:hover, .btn-action:hover{background:linear-gradient(135deg, #0369a1, #075985); transform:translateY(-1px);}"
 
-           // ===== الجداول وجداول المعاينة =====
            ".table-container{position:relative; width:100%; overflow-x:auto; background:var(--bg); border-radius:8px; border:1px solid var(--border); margin-top:20px;}"
            ".tbl{width:100%; border-collapse:collapse; text-align:right;}"
            ".tbl th{background:var(--surface); padding:15px; color:var(--accent); font-weight:600; border-bottom:1px solid var(--border); font-size:1rem; text-align:right; width:45%;}"
@@ -294,24 +297,23 @@ static string get_modern_blue_css() {
            ".nav-card p{color:var(--text-muted); font-size:0.95rem; line-height:1.6; margin:0;}"
 
            ".section-intro{margin-bottom:30px; text-align:right;}"
-           ".section-intro h1{color:#ffffff; font-size:1.7rem; font-weight:800; margin:0 0 8px 0;}"
+           ".section-intro h1{color:var(--text); font-size:1.7rem; font-weight:800; margin:0 0 8px 0;}"
            ".section-intro p{color:var(--text-muted); font-size:1rem; line-height:1.7; margin:0;}"
            ".lesson-tag{display:inline-flex; align-items:center; gap:5px; font-size:0.78rem; font-weight:700; padding:4px 10px; border-radius:20px; margin-bottom:12px; width:fit-content;}"
            ".tag-article{background:rgba(56,189,248,0.14); color:var(--accent);}"
            ".tag-video{background:rgba(245,165,36,0.16); color:var(--accent-2);}"
            ".video-embed{position:relative; width:100%; aspect-ratio:16/9; border-radius:10px; overflow:hidden; background:#000; margin:20px 0; border:1px solid var(--border); box-shadow: 0 4px 12px rgba(0,0,0,0.3);}"
            ".video-embed iframe{position:absolute; inset:0; width:100%; height:100%; border:0;}"
-           ".lesson-body{color:#e2e8f0; font-size:1.02rem; line-height:1.9; background: var(--bg); padding: 20px; border-radius: 8px; border: 1px solid var(--border); margin-top: 15px;}"
+           ".lesson-body{color:var(--text); font-size:1.02rem; line-height:1.9; background: var(--bg); padding: 20px; border-radius: 8px; border: 1px solid var(--border); margin-top: 15px;}"
            ".lesson-body p{margin:0 0 16px 0;}"
            ".track-list{display:flex; flex-direction:column; gap:14px; margin-top:10px;}"
            ".track-item{display:flex; align-items:flex-start; gap:16px; background:var(--bg); border:1px solid var(--border); border-radius:10px; padding:18px 20px; text-decoration:none; transition:0.2s;}"
            ".track-item:hover{border-color:var(--accent); transform:translateX(-3px);}"
            ".track-order{flex-shrink:0; width:34px; height:34px; border-radius:8px; background:var(--surface-2); color:var(--accent); font-family:var(--font-mono); font-weight:700; display:flex; align-items:center; justify-content:center; font-size:0.95rem;}"
-           ".track-item-title{color:#f3f4f6; font-weight:700; font-size:1.02rem; margin-bottom:4px;}"
+           ".track-item-title{color:var(--text); font-weight:700; font-size:1.02rem; margin-bottom:4px;}"
 
            ".footer{margin-top:auto; padding:25px 0; font-size:15px; color:var(--text-muted); text-align:center; border-top:1px solid var(--border); background-color:var(--surface); font-weight:600;}"
            
-           // ===== تعديلات الطباعة لضمان ظهور التقرير كاملاً بـ html2pdf =====
            "@media print{"
            "  body, .container, #pdf-area { background: #121826 !important; color: #f3f4f6 !important; height: auto !important; overflow: visible !important; min-height: unset !important; padding: 0 !important; margin: 0 !important; width: 100% !important; }"
            "  .card { box-shadow: none !important; border: none !important; padding: 20px !important; background: #121826 !important; width: 100% !important; height: auto !important; overflow: visible !important; position: static !important; }"
@@ -323,6 +325,7 @@ static string get_modern_blue_css() {
            "</style>";
 }
 
+// ===== دالة الـ SEO Meta البيانات التعريفية =====
 static string get_seo_meta(const string& title, const string& desc) {
     return "<title>موقع ضربة شاكوش</title>"
            "<link rel='icon' type='image/jpeg' href='https://media.darbat-shakosh.com/channels4_profile%20(1).jpg'>"
@@ -331,9 +334,13 @@ static string get_seo_meta(const string& title, const string& desc) {
            "<meta name='robots' content='index, follow'>";
 }
 
+// ===== دالة الـ Navbar المحدثة بزرار تبديل الليل والنهار بجانب البحث الفني تماماً =====
 static string get_navbar_html() {
     const string logo_url = "https://media.darbat-shakosh.com/channels4_profile%20(1).jpg"; 
     const string chevron_svg = "<svg class='chevron' viewBox='0 0 24 24'><path d='M7 10l5 5 5-5z'/></svg>";
+
+    const string moon_icon = "<svg class='theme-moon' viewBox='0 0 24 24'><path d='M12.3 22h-.1c-5.5 0-10-4.5-10-10 0-4.8 3.5-8.9 8.2-9.8.6-.1 1.2.3 1.3.9.1.6-.2 1.2-.8 1.4-3.3 1-5.7 4-5.7 7.5 0 4.4 3.6 8 8 8 3.5 0 6.5-2.4 7.5-5.7.2-.6.8-.9 1.4-.8.6.1 1 .7.9 1.3-.9 4.7-5 8.2-9.8 8.2z'/></svg>";
+    const string sun_icon = "<svg class='theme-sun' viewBox='0 0 24 24'><path d='M12 7c-2.8 0-5 2.2-5 5s2.2 5 5 5 5-2.2 5-5-2.2-5-5-5zm0-5c.6 0 1 .4 1 1v2c0 .6-.4 1-1 1s-1-.4-1-1V3c0-.6.4-1 1-1zm0 14c.6 0 1 .4 1 1v2c0 .6-.4 1-1 1s-1-.4-1-1v-2c0-.6.4-1 1-1zM4 11h2c.6 0 1 .4 1 1s-.4 1-1 1H4c-.6 0-1-.4-1-1s.4-1 1-1zm14 0h2c.6 0 1 .4 1 1s-.4 1-1 1h-2c-.6 0-1-.4-1-1s.4-1 1-1zM5.2 5.2c.4-.4 1-.4 1.4 0l1.4 1.4c.4.4.4 1 0 1.4s-1 .4-1.4 0L5.2 6.6c-.4-.4-.4-1 0-1.4zm12 12c.4-.4 1-.4 1.4 0l1.4 1.4c.4.4.4 1 0 1.4s-1 .4-1.4 0l-1.4-1.4c-.4-.4-.4-1 0-1.4zM7.6 16.4c.4-.4 1-.4 1.4 0l1.4 1.4c.4.4.4 1 0 1.4s-1 .4-1.4 0l-1.4-1.4c-.4-.4-.4-1 0-1.4zm12-12c.4-.4 1-.4 1.4 0l1.4 1.4c.4.4.4 1 0 1.4s-1 .4-1.4 0l-1.4-1.4c-.4-.4-.4-1 0-1.4z'/></svg>";
 
     return "<nav class='navbar'>"
            "  <div class='nav-right'>"
@@ -356,6 +363,7 @@ static string get_navbar_html() {
            "    </div>"
            "  </div>"
            "  <div class='nav-left'>"
+           "    <button class='nav-icon' id='themeBtn' title='تغيير الوضع المضيء/الليلي'>" + moon_icon + sun_icon + "</button>"
            "    <a class='nav-icon' title='بحث الفيديوهات'><svg viewBox='0 0 24 24'><path d='M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z'/></svg></a>"
            "    <a class='nav-icon' title='بوابة المشتركين'><svg viewBox='0 0 24 24'><path d='M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z'/></svg></a>"
            "    <details class='nav-dropdown mobile-menu mobile-only'>"
@@ -384,6 +392,26 @@ static string get_navbar_html() {
            "</div>";
 }
 
+// دالة مساعدة لتوليد كود جافا سكريبت المشترك للتحكم في الوضع الليلي/النهاري لمنع التكرار
+static string get_theme_script(const string& nonce) {
+    return "<script nonce='" + nonce + "'>"
+           "  if(localStorage.getItem('theme') === 'light'){"
+           "    document.body.classList.add('light-mode');"
+           "  }"
+           "  document.getElementById('themeBtn').addEventListener('click', function(){"
+           "    document.body.classList.toggle('light-mode');"
+           "    if(document.body.classList.contains('light-mode')){"
+           "      localStorage.setItem('theme', 'light');"
+           "    } else {"
+           "      localStorage.setItem('theme', 'dark');"
+           "    }"
+           "  });"
+           "</script>";
+}
+
+// ============================================================
+// دالة الـ Main وتشغيل المنصة البرمجية بالكامل
+// ============================================================
 int main() {
     httplib::Server svr;
     Elevator elevator;
@@ -407,6 +435,7 @@ int main() {
 
     // 1️⃣ الصفحة الرئيسية
     svr.Get("/", [](const httplib::Request&, httplib::Response& res) {
+        string nonce = generate_nonce(); set_csp(res, nonce);
         string meta = get_seo_meta("المنصة التعليمية والهندسية الأولى للمصاعد", "شروحات فنية متخصصة في ميكانيكا وكهرباء المصاعد وحساب أبعاد الصاعدة هندسياً.");
         string html = "<html><head><meta charset='UTF-8'><meta name='viewport' content='width=device-width, initial-scale=1.0'>"
                       "<link href='https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&family=JetBrains+Mono:wght@500;600&display=swap' rel='stylesheet'>"
@@ -415,7 +444,7 @@ int main() {
                       + get_navbar_html() +
                       "<div class='container'>"
                       "<div class='section-intro' style='text-align: center; margin-bottom: 40px;'>"
-                      "  <h1 style='color: #ffffff; font-size: 2.2rem;'>مرحباً بك في منصة ضربة شاكوش الرقمية</h1>"
+                      "  <h1 style='font-size: 2.2rem;'>مرحباً بك في منصة ضربة شاكوش الرقمية</h1>"
                       "  <p style='color: var(--text-muted); font-size: 1.1rem;'>الأدوات الهندسية الذكية والكورسات التطبيقية المتخصصة في مجال تركيب وصيانة المصاعد.</p>"
                       "</div>"
                       "<div class='grid-nav'>"
@@ -424,12 +453,14 @@ int main() {
                       "</div>"
                       "</div>"
                       "<div class='footer'>منصة ضربة شاكوش الفنية © 2026 - إنشاء محمد الشعراوي</div>"
+                      + get_theme_script(nonce) +
                       "</body></html>";
         res.set_content(html, "text/html; charset=utf-8");
     });
 
     // 2️⃣ واجهة الحاسبة
     svr.Get("/calculator", [](const httplib::Request&, httplib::Response& res) {
+        string nonce = generate_nonce(); set_csp(res, nonce);
         string meta = get_seo_meta("حاسبة مقاسات بئر ومقصورة المصاعد", "أداة هندسية لحساب وتصفية مقاسات كابينة المصعد وأبعاد الثقل ونوع الأبواب المتاحة أوتوماتيكياً.");
         string html = "<html><head><meta charset='UTF-8'><meta name='viewport' content='width=device-width, initial-scale=1.0'>"
                       "<link href='https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&family=JetBrains+Mono:wght@500;600&display=swap' rel='stylesheet'>"
@@ -449,11 +480,12 @@ int main() {
                       "<button type='submit'>🏛️ استخراج مقاسات الصاعدة الهندسية وتوليد المقايسة</button></form>"
                       "</div></div>"
                       "<div class='footer'>منصة ضربة شاكوش الفنية © 2026 - إنشاء محمد الشعراوي</div>"
+                      + get_theme_script(nonce) +
                       "</body></html>";
         res.set_content(html, "text/html; charset=utf-8");
     });
 
-    // 3️⃣ نظام معالجة وتصدير تقرير المقايسة الفنية لـ PDF (تم حل مشكلة تمديد وقص الصفحة)
+    // 3️⃣ نظام معالجة وتصدير تقرير المقايسة وتوليد الـ PDF بدون قص في كلا الوضعين المضيء والمظلم
     svr.Post("/calculate", [&elevator](const httplib::Request& req, httplib::Response& res) {
         string m_type = html_escape(req.get_param_value("m_type"));
         if (m_type != "MR" && m_type != "MRL") m_type = "MR";
@@ -512,19 +544,30 @@ int main() {
            << "  <a class='btn-secondary' href='/calculator'>🔄 تصفية مقاسات بئر جديد</a>"
            << "</div></div>"
            <<"<div class='footer'>منصة ضربة شاكوش الفنية © 2026 - إنشاء محمد الشعراوي</div>"
-           // إضافة خيارات الـ html2canvas المحسنة لعدم قص الأبعاد وزيادة دقة الأطراف
            << "<script nonce='" << nonce << "'>"
-           << "  document.getElementById('pBtn').addEventListener('click', function(){"
-           << "    var element = document.getElementById('pdf-area');"
-           << "    var opt = {"
-           << "      margin:        [0.3, 0.3, 0.3, 0.3],"
-           << "      filename:      'Shakosh_Elevator_Report.pdf',"
-           << "      image:         { type: 'jpeg', quality: 1.0 },"
-           << "      html2canvas:   { scale: 2, useCORS: true, backgroundColor: '#121826', scrollY: 0 },"
-           << "      jsPDF:         { unit: 'in', format: 'a4', orientation: 'portrait' }"
-           << "    };"
-           << "    html2pdf().set(opt).from(element).save();"
-           << "  });"
+           "  if(localStorage.getItem('theme') === 'light'){"
+           "    document.body.classList.add('light-mode');"
+           "  }"
+           "  document.getElementById('themeBtn').addEventListener('click', function(){"
+           "    document.body.classList.toggle('light-mode');"
+           "    if(document.body.classList.contains('light-mode')){"
+           "      localStorage.setItem('theme', 'light');"
+           "    } else {"
+           "      localStorage.setItem('theme', 'dark');"
+           "    }"
+           "  });"
+           // معالجة تصدير التقرير وتفادي مشكلة القص مع وضع الألوان المناسبة للثيم المفعل
+           "  document.getElementById('pBtn').addEventListener('click', function(){"
+           "    var element = document.getElementById('pdf-area');"
+           "    var opt = {"
+           "      margin:        [0.3, 0.3, 0.3, 0.3],"
+           "      filename:      'Shakosh_Elevator_Report.pdf',"
+           "      image:         { type: 'jpeg', quality: 1.0 },"
+           "      html2canvas:   { scale: 2, useCORS: true, backgroundColor: document.body.classList.contains('light-mode') ? '#ffffff' : '#121826', scrollY: 0 },"
+           "      jsPDF:         { unit: 'in', format: 'a4', orientation: 'portrait' }"
+           "    };"
+           "    html2pdf().set(opt).from(element).save();"
+           "  });"
            << "</script>"
            << "</body></html>";
         res.set_content(os.str(), "text/html; charset=utf-8");
@@ -532,6 +575,7 @@ int main() {
 
     // 4️⃣ صفحة المقالات والفيديوهات 
     svr.Get("/blog", [](const httplib::Request&, httplib::Response& res) {
+        string nonce = generate_nonce(); set_csp(res, nonce);
         auto lessons = get_lessons();
         ostringstream cards;
         for (auto& l : lessons) {
@@ -554,12 +598,14 @@ int main() {
                       "<div class='grid-nav'>" + cards.str() + "</div>"
                       "</div>"
                       "<div class='footer'>منصة ضربة شاكوش الفنية © 2026 - إنشاء محمد الشعراوي</div>"
+                      + get_theme_script(nonce) +
                       "</body></html>";
         res.set_content(html, "text/html; charset=utf-8");
     });
 
     // 4.1️⃣ عرض مقال أو فيديو واحد بالتفصيل
     svr.Get(R"(/lesson/([a-zA-Z0-9\-]+))", [](const httplib::Request& req, httplib::Response& res) {
+        string nonce = generate_nonce(); set_csp(res, nonce);
         string slug = req.matches[1].str();
         auto lessons = get_lessons();
         auto it = find_if(lessons.begin(), lessons.end(), [&](const Lesson& l) { return l.slug == slug; });
@@ -606,12 +652,14 @@ int main() {
                       "<div class='actions'><a class='btn-secondary' href='/blog'>⬅️ العودة للمكتبة والشروحات</a></div>"
                       "</div></div>"
                       "<div class='footer'>منصة ضربة شاكوش الفنية © 2026 - إنشاء محمد الشعراوي</div>"
+                      + get_theme_script(nonce) +
                       "</body></html>";
         res.set_content(html, "text/html; charset=utf-8");
     });
 
     // 4.2️⃣ صفحة المسارات
     svr.Get("/paths", [](const httplib::Request&, httplib::Response& res) {
+        string nonce = generate_nonce(); set_csp(res, nonce);
         auto tracks = get_tracks();
         ostringstream cards;
         for (auto& t : tracks) {
@@ -631,12 +679,14 @@ int main() {
                       "<div class='grid-nav'>" + cards.str() + "</div>"
                       "</div>"
                       "<div class='footer'>منصة ضربة شاكوش الفنية © 2026 - إنشاء محمد الشعراوي</div>"
+                      + get_theme_script(nonce) +
                       "</body></html>";
         res.set_content(html, "text/html; charset=utf-8");
     });
 
-    // 4.3️⃣ عرض محتويات كورس/مسار تعليمي واحد
+    // 4.3️⃣ عرض محتويات مسار تعليمي واحد
     svr.Get(R"(/track/([a-zA-Z0-9\-]+))", [](const httplib::Request& req, httplib::Response& res) {
+        string nonce = generate_nonce(); set_csp(res, nonce);
         string slug = req.matches[1].str();
         auto tracks = get_tracks();
         auto trackIt = find_if(tracks.begin(), tracks.end(), [&](const Track& t) { return t.slug == slug; });
@@ -683,12 +733,14 @@ int main() {
                       "<div class='actions' style='margin-top:25px;'><a class='btn-secondary' href='/paths'>⬅️ العودة لكافة المسارات</a></div>"
                       "</div></div>"
                       "<div class='footer'>منصة ضربة شاكوش الفنية © 2026 - إنشاء محمد الشعراوي</div>"
+                      + get_theme_script(nonce) +
                       "</body></html>";
         res.set_content(html, "text/html; charset=utf-8");
     });
 
     // 5️⃣ صفحة التواصل
     svr.Get("/contact", [](const httplib::Request&, httplib::Response& res) {
+        string nonce = generate_nonce(); set_csp(res, nonce);
         string meta = get_seo_meta("اتصل بنا | الدعم الفني", "تواصل مباشرة مع إدارة منصة ضربة شاكوش لطرح الأسئلة الفنية أو الإبلاغ عن مشكلة برمجية.");
         string html = "<html><head><meta charset='UTF-8'><meta name='viewport' content='width=device-width, initial-scale=1.0'>"
                       "<link href='https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&family=JetBrains+Mono:wght@500;600&display=swap' rel='stylesheet'>"
@@ -701,12 +753,14 @@ int main() {
                       "<p style='color:#8b96ab; font-size:0.9rem; text-align:center;'>المراسلات يتم الرد عليها ومراجعتها من المهندس المختص خلال 24 ساعة.</p>"
                       "</div></div>"
                       "<div class='footer'>منصة ضربة شاكوش الفنية © 2026 - إنشاء محمد الشعراوي</div>"
+                      + get_theme_script(nonce) +
                       "</body></html>";
         res.set_content(html, "text/html; charset=utf-8");
     });
 
     // 6️⃣ مركز المساعدة
     svr.Get("/support", [](const httplib::Request&, httplib::Response& res) {
+        string nonce = generate_nonce(); set_csp(res, nonce);
         string meta = get_seo_meta("مركز المساعدة والأسئلة الشائعة الفنية للمصاعد.", "محتاج مساعدة في فهم كيفية حساب أبعاد الـ DBG الصافي وشواكيل التصفية؟");
         string html = "<html><head><meta charset='UTF-8'><meta name='viewport' content='width=device-width, initial-scale=1.0'>"
                       "<link href='https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&family=JetBrains+Mono:wght@500;600&display=swap' rel='stylesheet'>"
@@ -715,18 +769,20 @@ int main() {
                       "<div class='container' style='max-width:650px;'>"
                       "<div class='card'><h2>🛟 مركز الدعم والمساعدة الفنية</h2>"
                       "<div class='sub-title'>محتاج مساعدة في فهم كيفية حساب أبعاد الـ DBG الصافي وشواكيل التصفية؟</div>"
-                      "<p style='color:#e2e8f0; line-height:1.8; margin-bottom:24px;'>يمكنك مراجعة المسارات والدروس التعليمية المتاحة بالمكتبة، وفي حال وجود تعارض في المقاسات المعمارية يمكنك فتح تذكرة دعم فني.</p>"
+                      "<p style='line-height:1.8; margin-bottom:24px;'>يمكنك مراجعة المسارات والدروس التعليمية المتاحة بالمكتبة، وفي حال وجود تعارض في المقاسات المعمارية يمكنك فتح تذكرة دعم فني.</p>"
                       "<div class='actions'>"
                       "  <a class='btn-print' href='/blog'>❓ تصفح الشروحات</a>"
                       "  <a class='btn-secondary' href='/contact'>📩 فتح تذكرة دعم</a>"
                       "</div></div></div>"
                       "<div class='footer'>منصة ضربة شاكوش الفنية © 2026 - إنشاء محمد الشعراوي</div>"
+                      + get_theme_script(nonce) +
                       "</body></html>";
         res.set_content(html, "text/html; charset=utf-8");
     });
 
     // 7️⃣ صفحة دعم المنصة
     svr.Get("/donate", [](const httplib::Request&, httplib::Response& res) {
+        string nonce = generate_nonce(); set_csp(res, nonce);
         string meta = get_seo_meta("الموقع وحاسبة مقاسات بئر المصاعد مجاني تماماً لخدمة الوطن العربي.", "الموقع وحاسبة مقاسات بئر المصاعد مجاني تماماً لخدمة فنيي ومندوبي ومهندسي الوطن العربي.");
         string html = "<html><head><meta charset='UTF-8'><meta name='viewport' content='width=device-width, initial-scale=1.0'>"
                       "<link href='https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&family=JetBrains+Mono:wght@500;600&display=swap' rel='stylesheet'>"
@@ -738,6 +794,7 @@ int main() {
                       "<a class='btn-action' href='/contact' style='display:block;'>💳 استعراض وسائل وطرق المساهمة المتاحة</a>"
                       "</div></div>"
                       "<div class='footer'>منصة ضربة شاكوش الفنية © 2026 - إنشاء محمد الشعراوي</div>"
+                      + get_theme_script(nonce) +
                       "</body></html>";
         res.set_content(html, "text/html; charset=utf-8");
     });
