@@ -1,10 +1,10 @@
-/*                      <  وَأَن لَّيْسَ لِلإِنسَانِ إِلاَّ مَا سَعَى * وَأَنَّ سَعْيَهُ سوفَ يُرَى * ثُمَّ يُجْزَاهُ الْجَزَاء الأَوْفَى  >
+/* <  وَأَن لَّيْسَ لِلإِنسَانِ إِلاَّ مَا سَعَى * وَأَنَّ سَعْيَهُ سوفَ يُرَى * ثُمَّ يُجْزَاهُ الْجَزَاء الأَوْفَى  >
 
-                                       ============================================================
-                                       =                                                          =
-                                       =                  منصة ضربة شاكوش الرقمية                 =
-                                       =                                                          =
-                                       ============================================================
+                               ============================================================
+                               =                                                          =
+                               =                  منصة ضربة شاكوش الرقمية                 =
+                               =                                                          =
+                               ============================================================
  */          
 
 #include "httplib.h"
@@ -76,7 +76,7 @@ static void set_security_headers(httplib::Response& res) {
 static void set_csp(httplib::Response& res, const string& script_nonce = "") {
     string script_src = script_nonce.empty() ? "script-src 'none'; " : ("script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com 'nonce-" + script_nonce + "'; ");
     string csp = "default-src 'self'; "
-                 "img-src 'self' data: https://media.darbat-shakosh.com https://flagcdn.com; " // السماح بنطاق الصور والأعلام
+                 "img-src 'self' data: https://media.darbat-shakosh.com https://flagcdn.com; " 
                  "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
                  "font-src https://fonts.gstatic.com; "
                  + script_src +
@@ -114,7 +114,7 @@ public:
         else if (sa >= 160 && sa < 167)  return "Auto 90 SI || Auto 70 CO";
         else if (sa >= 155 && sa < 160)  return "Auto 80 SI || Auto 70 CO";
         else if (sa >= 145 && sa < 155)  return "Auto 80 SI || S";
-        else if (sa >= 128 && sa < 145)  return "Auto 70 SI";
+        else if (sa >= 128 && max(128, sa) < 145)  return "Auto 70 SI";
         else if (sa >= 120 && sa < 128)  return "Semi Auto 80";
         else if (sa >= 110 && sa < 120)  return "Semi Auto 70";
         return "تصفية خاصة - مراجعة يدوية";
@@ -245,13 +245,13 @@ static string get_modern_blue_css() {
            ".mobile-only{display:none;}"
            "@media (max-width:860px){.desktop-only{display:none;} .mobile-only{display:flex;} .navbar-brand span:last-child{font-size:1.05rem;}}"
 
-           // ===== شريط الأعلام الفاخر والمظلل تحت الهيدر مباشرة في جهة اليسار (Responsive) =====
+           // ===== شريط الأعلام =====
            ".flags-strip{background:rgba(18,24,38,0.4); backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px); border-bottom:1px solid var(--border); padding:6px 28px; display:flex; justify-content:flex-end; align-items:center; position:relative; z-index:40;}"
-           ".flags-badge-box{display:flex; align-items:center; gap:12px; background:rgba(35,44,63,0.5); border:1px solid rgba(56,189,248,0.2); padding:5px 14px; border-radius:30px; box-shadow:inset 0 1px 2px rgba(255,255,255,0.05), 0 4px 10px rgba(0,0,0,0.3); margin-left:auto;}" // جعل الـ margin-left تلقائياً لنقلها لليسار
+           ".flags-badge-box{display:flex; align-items:center; gap:12px; background:rgba(35,44,63,0.5); border:1px solid rgba(56,189,248,0.2); padding:5px 14px; border-radius:30px; box-shadow:inset 0 1px 2px rgba(255,255,255,0.05), 0 4px 10px rgba(0,0,0,0.3); margin-left:auto;}" 
            ".flag-img-unit{width:22px; height:15px; border-radius:2px; box-shadow:0 2px 4px rgba(0,0,0,0.4); object-fit:cover; display:block;}"
            ".flag-img-sep{color:rgba(139,150,171,0.4); font-size:0.8rem; font-weight:300; user-select:none;}"
 
-           // ===== قائمة الموبايل والتابلت الجانبية =====
+           // ===== قائمة الموبايل =====
            ".nav-left{display:flex; align-items:center; gap:18px;}"
            ".nav-icon{color:#94a3b8; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:0.2s; text-decoration:none; list-style:none;}"
            ".nav-icon::-webkit-details-marker{display:none;}"
@@ -263,7 +263,7 @@ static string get_modern_blue_css() {
            ".mobile-panel a:hover{background:rgba(56,189,248,0.1); color:var(--accent);}"
            ".mobile-divider{height:1px; background:var(--border); margin:8px 2px;}"
 
-           // ===== الحاويات والبطاقات الهندسية =====
+           // ===== الحاويات والبطاقات =====
            ".container{max-width:900px; margin:0 auto; padding:50px 20px; flex:1; width:100%;}"
            ".card{position:relative; background:var(--surface); border:1px solid var(--border); padding:40px; border-radius:12px; box-shadow:0 20px 25px -5px rgba(0,0,0,0.3); text-align:right;}"
            ".card::before, .nav-card::before{content:''; position:absolute; top:-1px; right:-1px; width:18px; height:18px; border-top:2px solid var(--accent); border-right:2px solid var(--accent); border-top-right-radius:6px; opacity:0.6;}"
@@ -277,7 +277,7 @@ static string get_modern_blue_css() {
            "button, .btn-action{background:linear-gradient(135deg, #0284c7, #0369a1); color:#ffffff; border:none; padding:16px; border-radius:8px; width:100%; font-size:1.1rem; font-weight:700; cursor:pointer; transition:0.3s; text-decoration:none; display:inline-block; text-align:center; box-shadow: 0 4px 6px rgba(0,0,0,0.1);}"
            "button:hover, .btn-action:hover{background:linear-gradient(135deg, #0369a1, #075985); transform:translateY(-1px);}"
 
-           // ===== الجداول وجداول تقرير المعاينة =====
+           // ===== الجداول وجداول المعاينة =====
            ".table-container{position:relative; width:100%; overflow-x:auto; background:var(--bg); border-radius:8px; border:1px solid var(--border); margin-top:20px;}"
            ".tbl{width:100%; border-collapse:collapse; text-align:right;}"
            ".tbl th{background:var(--surface); padding:15px; color:var(--accent); font-weight:600; border-bottom:1px solid var(--border); font-size:1rem; text-align:right; width:45%;}"
@@ -293,7 +293,6 @@ static string get_modern_blue_css() {
            ".nav-card h3{color:var(--accent); font-size:1.3rem; margin:0 0 12px 0;}"
            ".nav-card p{color:var(--text-muted); font-size:0.95rem; line-height:1.6; margin:0;}"
 
-           // ===== مشغلات الفيديوهات الذكية السلسة =====
            ".section-intro{margin-bottom:30px; text-align:right;}"
            ".section-intro h1{color:#ffffff; font-size:1.7rem; font-weight:800; margin:0 0 8px 0;}"
            ".section-intro p{color:var(--text-muted); font-size:1rem; line-height:1.7; margin:0;}"
@@ -310,13 +309,20 @@ static string get_modern_blue_css() {
            ".track-order{flex-shrink:0; width:34px; height:34px; border-radius:8px; background:var(--surface-2); color:var(--accent); font-family:var(--font-mono); font-weight:700; display:flex; align-items:center; justify-content:center; font-size:0.95rem;}"
            ".track-item-title{color:#f3f4f6; font-weight:700; font-size:1.02rem; margin-bottom:4px;}"
 
-           // ===== التذييل =====
            ".footer{margin-top:auto; padding:25px 0; font-size:15px; color:var(--text-muted); text-align:center; border-top:1px solid var(--border); background-color:var(--surface); font-weight:600;}"
-           "@media print{.btn-print, .btn-secondary, h2, h3, .navbar, .flags-strip, .footer {display:none;} .card{box-shadow:none; padding:0; border:none; background:none; color:#000;} .card::before, .card::after{display:none;} .tbl th{background:#eee; color:#000;} .tbl td{color:#000; font-family:inherit;}}"
+           
+           // ===== تعديلات الطباعة لضمان ظهور التقرير كاملاً بـ html2pdf =====
+           "@media print{"
+           "  body, .container, #pdf-area { background: #121826 !important; color: #f3f4f6 !important; height: auto !important; overflow: visible !important; min-height: unset !important; padding: 0 !important; margin: 0 !important; width: 100% !important; }"
+           "  .card { box-shadow: none !important; border: none !important; padding: 20px !important; background: #121826 !important; width: 100% !important; height: auto !important; overflow: visible !important; position: static !important; }"
+           "  .table-container { overflow: visible !important; width: 100% !important; border: 1px solid #232c3f !important; background: #0a0e16 !important; }"
+           "  .tbl { width: 100% !important; table-layout: fixed !important; }"
+           "  .btn-print, .btn-secondary, h3, .navbar, .flags-strip, .footer { display: none !important; }"
+           "  .card::before, .card::after { display: none !important; }"
+           "}"
            "</style>";
 }
 
-// التايتل المطلوب "موقع ضربة شاكوش" وربط أيقونة التبويب برابط الـ R2 المباشر
 static string get_seo_meta(const string& title, const string& desc) {
     return "<title>موقع ضربة شاكوش</title>"
            "<link rel='icon' type='image/jpeg' href='https://media.darbat-shakosh.com/channels4_profile%20(1).jpg'>"
@@ -325,7 +331,6 @@ static string get_seo_meta(const string& title, const string& desc) {
            "<meta name='robots' content='index, follow'>";
 }
 
-// تعديل نص الهيدر واللوجو، وإضافة كبسولة الأعلام الفاخرة بدون نصوص في جهة اليسار بالترتيب المكتوب
 static string get_navbar_html() {
     const string logo_url = "https://media.darbat-shakosh.com/channels4_profile%20(1).jpg"; 
     const string chevron_svg = "<svg class='chevron' viewBox='0 0 24 24'><path d='M7 10l5 5 5-5z'/></svg>";
@@ -368,7 +373,6 @@ static string get_navbar_html() {
            "    </details>"
            "  </div>"
            "</nav>"
-           // شريط الأعلام الفاخر الموجه أوتوماتيكياً لجهة اليسار (Left Side) وبدون أي كلمات وبترتيب (فلسطين -> مصر -> السعودية)
            "<div class='flags-strip'>"
            "  <div class='flags-badge-box'>"
            "    <img src='https://flagcdn.com/w40/ps.png' class='flag-img-unit' alt='Gaza Palestine'>"
@@ -380,9 +384,6 @@ static string get_navbar_html() {
            "</div>";
 }
 
-// ============================================================
-//  الدالة الرئيسية وتشغيل المنصة
-// ============================================================
 int main() {
     httplib::Server svr;
     Elevator elevator;
@@ -452,7 +453,7 @@ int main() {
         res.set_content(html, "text/html; charset=utf-8");
     });
 
-    // 3️⃣ نظام معالجة وتصدير تقرير المقايسة الفنية لـ PDF
+    // 3️⃣ نظام معالجة وتصدير تقرير المقايسة الفنية لـ PDF (تم حل مشكلة تمديد وقص الصفحة)
     svr.Post("/calculate", [&elevator](const httplib::Request& req, httplib::Response& res) {
         string m_type = html_escape(req.get_param_value("m_type"));
         if (m_type != "MR" && m_type != "MRL") m_type = "MR";
@@ -511,15 +512,16 @@ int main() {
            << "  <a class='btn-secondary' href='/calculator'>🔄 تصفية مقاسات بئر جديد</a>"
            << "</div></div>"
            <<"<div class='footer'>منصة ضربة شاكوش الفنية © 2026 - إنشاء محمد الشعراوي</div>"
+           // إضافة خيارات الـ html2canvas المحسنة لعدم قص الأبعاد وزيادة دقة الأطراف
            << "<script nonce='" << nonce << "'>"
            << "  document.getElementById('pBtn').addEventListener('click', function(){"
            << "    var element = document.getElementById('pdf-area');"
            << "    var opt = {"
-           << "      margin:       0.5,"
-           << "      filename:     'Shakosh_Elevator_Report.pdf',"
-           << "      image:        { type: 'jpeg', quality: 0.98 },"
-           << "      html2canvas:  { scale: 2, backgroundColor: '#121826' },"
-           << "      jsPDF:        { unit: 'in', format: 'letter', orientation: 'portrait' }"
+           << "      margin:        [0.3, 0.3, 0.3, 0.3],"
+           << "      filename:      'Shakosh_Elevator_Report.pdf',"
+           << "      image:         { type: 'jpeg', quality: 1.0 },"
+           << "      html2canvas:   { scale: 2, useCORS: true, backgroundColor: '#121826', scrollY: 0 },"
+           << "      jsPDF:         { unit: 'in', format: 'a4', orientation: 'portrait' }"
            << "    };"
            << "    html2pdf().set(opt).from(element).save();"
            << "  });"
@@ -608,7 +610,7 @@ int main() {
         res.set_content(html, "text/html; charset=utf-8");
     });
 
-    // 4.2️⃣ صفحة المسارات (تجميعة الكورسات والمسارات الشاملة)
+    // 4.2️⃣ صفحة المسارات
     svr.Get("/paths", [](const httplib::Request&, httplib::Response& res) {
         auto tracks = get_tracks();
         ostringstream cards;
@@ -633,7 +635,7 @@ int main() {
         res.set_content(html, "text/html; charset=utf-8");
     });
 
-    // 4.3️⃣ عرض محتويات كورس/مسار تعليمي واحد مرتب بالأرقام
+    // 4.3️⃣ عرض محتويات كورس/مسار تعليمي واحد
     svr.Get(R"(/track/([a-zA-Z0-9\-]+))", [](const httplib::Request& req, httplib::Response& res) {
         string slug = req.matches[1].str();
         auto tracks = get_tracks();
@@ -685,7 +687,7 @@ int main() {
         res.set_content(html, "text/html; charset=utf-8");
     });
 
-    // 5️⃣ صفحة التواصل الفني والمهني
+    // 5️⃣ صفحة التواصل
     svr.Get("/contact", [](const httplib::Request&, httplib::Response& res) {
         string meta = get_seo_meta("اتصل بنا | الدعم الفني", "تواصل مباشرة مع إدارة منصة ضربة شاكوش لطرح الأسئلة الفنية أو الإبلاغ عن مشكلة برمجية.");
         string html = "<html><head><meta charset='UTF-8'><meta name='viewport' content='width=device-width, initial-scale=1.0'>"
@@ -703,7 +705,7 @@ int main() {
         res.set_content(html, "text/html; charset=utf-8");
     });
 
-    // 6️⃣ مركز المساعدة والأسئلة الشائعة للمصاعد
+    // 6️⃣ مركز المساعدة
     svr.Get("/support", [](const httplib::Request&, httplib::Response& res) {
         string meta = get_seo_meta("مركز المساعدة والأسئلة الشائعة الفنية للمصاعد.", "محتاج مساعدة في فهم كيفية حساب أبعاد الـ DBG الصافي وشواكيل التصفية؟");
         string html = "<html><head><meta charset='UTF-8'><meta name='viewport' content='width=device-width, initial-scale=1.0'>"
@@ -723,7 +725,7 @@ int main() {
         res.set_content(html, "text/html; charset=utf-8");
     });
 
-    // 7️⃣ صفحة دعم المنصة واستمرارية التطوير
+    // 7️⃣ صفحة دعم المنصة
     svr.Get("/donate", [](const httplib::Request&, httplib::Response& res) {
         string meta = get_seo_meta("الموقع وحاسبة مقاسات بئر المصاعد مجاني تماماً لخدمة الوطن العربي.", "الموقع وحاسبة مقاسات بئر المصاعد مجاني تماماً لخدمة فنيي ومندوبي ومهندسي الوطن العربي.");
         string html = "<html><head><meta charset='UTF-8'><meta name='viewport' content='width=device-width, initial-scale=1.0'>"
