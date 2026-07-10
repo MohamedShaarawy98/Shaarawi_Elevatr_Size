@@ -335,7 +335,7 @@ static string get_modern_blue_css() {
 //  بدلاً من سرد كل الروابط في صف واحد
 // ============================================================
 static string get_navbar_html() {
-    const string logo_url = "https://raw.githubusercontent.com/MohamedShaarawi98/shakosh-dev/main/channels4_profile.jpg"; 
+    const string logo_url = "https://media.darbat-shakosh.com/channels4_profile%20(1).jpg"; 
     const string chevron_svg = "<svg class='chevron' viewBox='0 0 24 24'><path d='M7 10l5 5 5-5z'/></svg>";
 
     return "<nav class='navbar'>"
