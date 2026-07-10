@@ -1,8 +1,8 @@
-/*                     <  وَأَن لَّيْسَ لِلإِنسَانِ إِلاَّ مَا سَعَى * وَأَنَّ سَعْيَهُ سوفَ يُرَى * ثُمَّ يُجْزَاهُ الْجَزَاء الأَوْفَى  >
+/*                     <  وَأَن لَّيسَ لِلإِنسَانِ إِلاَّ مَا سَعَى * وَأَنَّ سَعْيَهُ سَوْفَ يُرَى * ثُمَّ يُجْزَاهُ الْجَزَاء الأَوْفَى  >
 
                                ============================================================
                                =                                                          =
-                               =                  منصة ضربة شاكوش الرقمية               =
+                               =                  منصة ضربة شاكوش الرقمية                 =
                                =                                                          =
                                ============================================================
  */          
@@ -21,27 +21,48 @@
 
 using namespace std;
 
-// بنية بيانات لتحديد معدل الطلبات لحماية السيرفر من هجمات الحرمان من الخدمة
+// ============================================================================
+// [مفهوم ++C] الـ Structs و الـ Enums: تستخدم لتنظيم البيانات المعقدة وجعل الكود مقروءاً.
+// ============================================================================
+
+// بنية بيانات لتحديد معدل الطلبات لحماية السيرفر من هجمات الحرمان من الخدمة (Rate Limiting)
 struct RateLimitInfo {
     int count = 0;
     chrono::steady_clock::time_point reset_time;
 };
 
+// هيكل برمجى يمثل "البضاعة والخامات الحديدية" المطلوبة للمصعد بناءً على تصفيته
+struct ElevatorMaterials {
+    int MainRailsCount = 0;      // عدد سكك الكابينة الرئيسية
+    int CwtRailsCount = 0;       // عدد سكك ثقل الموازنة (إن وجد)
+    int BracketFixingPairs = 0;  // عدد أزواج كوابيل/سكاكين التثبيت بجدول البئر
+    string SupportBeamsType;     // نوع كمرات الحديد وشاسيه التثبيت (علوي، جانبي، كراسي سلندر)
+    string Notes;                // ملاحظات فنية خاصة بالخامات
+};
+
+// قاموس لتتبع معدل طلبات المستخدمين وحماية موارد الخادم
 static map<string, RateLimitInfo> ip_tracker;
-static mutex rate_limit_mtx;
-const int MAX_REQUESTS_PER_MINUTE = 20; // رفع الحد الأقصى قليلاً لضمان سلاسة التصفح للأدوات
+static mutex rate_limit_mtx; // [مفهوم ++C] الـ Mutex: يمنع الـ Race Condition عند دخول خيوط (Threads) متعددة لتعديل نفس الخريطة.
+const int MAX_REQUESTS_PER_MINUTE = 20; 
 
 static string CF_VERIFY_SECRET = getenv("CF_VERIFY_SECRET") ? getenv("CF_VERIFY_SECRET") : "";
 static string SECURE_HEADER_NAME = "X-Verify-Secret"; 
 
+// ============================================================================
+// [دوال مساعدة - Utility Functions]: دوال آمنة للتعامل مع البيانات وحمايتها
+// ============================================================================
+
+// دالة آمنة لتحويل النصوص إلى أرقام صحيحة مع حماية السيرفر من الانهيار (Crash) في حال إدخال نصوص خبيثة
 static int safe_stoi(const string& s, int default_val = 0) {
     try { if (s.empty()) return default_val; return stoi(s); } catch (...) { return default_val; }
 }
 
+// دالة آمنة لتحويل النصوص إلى أرقام عشرية
 static float safe_stof(const string& s, float default_val = 0.0f) {
     try { if (s.empty()) return default_val; return stof(s); } catch (...) { return default_val; }
 }
 
+// دالة التطهير (Sanitization): تمنع هجمات حقن الكود (XSS) عن طريق تحويل الحروف الحساسة إلى كيانات نصية آمنة
 static string html_escape(const string& data) {
     string buffer; buffer.reserve(data.size());
     for (size_t pos = 0; pos != data.size(); ++pos) {
@@ -57,6 +78,7 @@ static string html_escape(const string& data) {
     return buffer;
 }
 
+// توليد رمز تشفير فريد واستخدامه لمرة واحدة (Nonce) لتأمين متصفح المستخدم وحظر الاسكربتات الخارجية
 static string generate_nonce() {
     random_device rd; mt19937_64 gen(rd());
     uint64_t a = gen(), b = gen();
@@ -64,6 +86,7 @@ static string generate_nonce() {
     return oss.str();
 }
 
+// إعداد ترويسات الأمان (Security Headers) لحظر الـ Clickjacking وحماية البيانات في المتصفحات
 static void set_security_headers(httplib::Response& res) {
     res.set_header("X-Frame-Options", "DENY");
     res.set_header("X-Content-Type-Options", "nosniff");
@@ -73,6 +96,7 @@ static void set_security_headers(httplib::Response& res) {
     res.set_header("Server", "Hammer-Engine/1.1");
 }
 
+// سياسة أمان المحتوى (CSP): تحدد المواقع الموثوقة التي يسمح للمتصفح بجلب الصور والملفات منها (مثل خادم الـ R2)
 static void set_csp(httplib::Response& res, const string& script_nonce = "") {
     string script_src = script_nonce.empty() ? "script-src 'none'; " : ("script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com 'nonce-" + script_nonce + "'; ");
     string csp = "default-src 'self'; "
@@ -89,11 +113,13 @@ static void set_csp(httplib::Response& res, const string& script_nonce = "") {
     res.set_header("Content-Security-Policy", csp);
 }
 
+// استخراج الآي بي الحقيقي للزائر سواء كان يمر عبر جدار حماية Cloudflare أو اتصال مباشر
 static string get_client_ip(const httplib::Request& req) {
     if (req.has_header("CF-Connecting-IP")) return req.get_header_value("CF-Connecting-IP");
     return req.remote_addr;
 }
 
+// فحص تكرار الطلبات لحظر برمجيات الـ بوت والـ سكرابرز (Rate Limiter)
 static bool is_rate_limited(const string& ip) {
     lock_guard<mutex> lock(rate_limit_mtx);
     auto now = chrono::steady_clock::now();
@@ -104,8 +130,12 @@ static bool is_rate_limited(const string& ip) {
     return ip_tracker[ip].count > MAX_REQUESTS_PER_MINUTE;
 }
 
+// ============================================================================
+// [الكلاس الميكانيكي - Elevator Class]: يحتوي على لوجيك الحسابات الهندسية والخامات
+// ============================================================================
 class Elevator {
 public:
+    // تحديد الأبواب المناسبة هندسياً بناءً على عرض بئر المصعد الصافي الصاعد (SA)
     string get_door_type(int sa) {
         if (sa >= 210 && sa <= 250)      return "Auto 80 CO || Auto 90 CO || Auto 100 CO";
         else if (sa >= 190 && sa < 210)  return "Auto 80 CO || Auto 90 CO || Auto 100 SI";
@@ -132,9 +162,45 @@ public:
     int get_cabin_width(int cw) { return cw - 40; }
     int get_cabin_depth(int cd) { return cd - 60; }
 
+    // حساب الارتفاع الرأسي الإجمالي للبئر بناءً على نوع نظام التشغيل (MR , MRL , Hydraulic)
     float get_shaft_height(float f, float pit_m, float overhead_m, string t) {
         float h = (f - 1) * 3.2f + pit_m + overhead_m;
-        return (t == "MRL") ? h + 1.5f : h;
+        if (t == "MRL") {
+            return h + 1.5f; // زيادة للـ Overhead لتركيب الماكينة داخل البئر
+        } else if (t == "Hydraulic") {
+            return h - 0.5f; // المصعد الهيدروليكي لا يحتاج لارتفاع علوي ضخم لغياب الماكينة العلوية
+        }
+        return h; // النسبة القياسية لـ MR
+    }
+
+    // [الدالة الجديدة]: دالة هندسية مخصصة لحساب "البضاعة" والكميات الحديدية والسكك لكل مصعد بناءً على أبعاده ونوعه
+    ElevatorMaterials calculate_materials(int width, int depth, int floors, const string& type) {
+        ElevatorMaterials mat;
+        
+        // حساب السكك الحديدية (الجريد): كل دور إنشائي يأخذ متوسط عدد سكك بناءً على الارتفاع
+        int estimated_rail_lengths = (floors * 3 / 5) + 2; 
+        mat.MainRailsCount = estimated_rail_lengths * 2; // جانبين للكابينة
+        
+        // حساب كوابيل وتثبيت الشواكيل: كابول لكل 2.5 متر طولي تقريباً
+        mat.BracketFixingPairs = floors * 2;
+
+        if (type == "Hydraulic") {
+            mat.CwtRailsCount = 0; // المصعد الهيدروليكي المباشر أو غير المباشر لا يحتاج لثقل موازنة في الأغلب
+            mat.SupportBeamsType = "شاسيه حامل السلندر السفلي (Piston Base) + كراسي جك جانبي";
+            mat.Notes = "برجاء مراجعة مساحة حفرة الـ Pit لتتحمل ضغط السلندر الهيدروليكي الأساسي والزيت.";
+        } 
+        else if (type == "MRL") {
+            mat.CwtRailsCount = estimated_rail_lengths * 2;
+            mat.SupportBeamsType = "كمرات تثبيت جانبية عيارية (Bedplate Beams) لتثبيت الماكينة على السكك";
+            mat.Notes = "تأكد من استخدام سكك كابينة متينة (مثلا T89 أو T125) لأن الماكينة محملة عليها علوياً.";
+        } 
+        else { // نظام MR القياسي بوجود غرفة
+            mat.CwtRailsCount = estimated_rail_lengths * 2;
+            mat.SupportBeamsType = "كمرات حديد مجرى (I-Beam) لتأسيس قاعدة الماكينة فوق بلاطة الغرفة العلوية";
+            mat.Notes = "يلزم مراجعة فتحات الوايرات وسلك الإشارة في بلاطة غرفة المحرك قبل الصب.";
+        }
+        
+        return mat;
     }
 };
 
@@ -160,7 +226,7 @@ static vector<Track> get_tracks() {
     return {
         { "basics", "🧱", "مسار الأساسات الهندسية", "المفاهيم الأولى لتصفية أبعاد بئر المصعد ومكوناته الرئيسية وقراءة المخططات الفنية." },
         { "doors",  "🚪", "مسار أبواب المصاعد", "أنواع الأبواب وأكواد الفتح المختلفة وإزاي تختار النوع المناسب للمساحة المتوفرة لبئر المصعد." },
-        { "darbat" , "🔨" , "كورس كهرباء المصاعد الشامل"  , "كورس تطبيقي متخصص في تعليم كل شيء يخص كهرباء الدوائر، الكنترولات، وتوصيل كوابل الأمان."}
+        { "darbat" , "🔨" , "كورس كهرباء المصاعد الشامل"  , "كورس تطبيقية متخصص في تعليم كل شيء يخص كهرباء الدوائر، الكنترولات، وتوصيل كوابل الأمان."}
     }; 
 }
 
@@ -188,7 +254,7 @@ static vector<Lesson> get_lessons() {
           "<p> ثانياً: تركيب الكنترول وتوصيل المحرك (الماكينة) وقفل دوائر السيفتي الرئيسية {الشوكة - الكالون - الاستوب} ثم اختبار حركة المصعد السريعة والبطيئة لضمان الاستجابة.</p>",
           "https://www.youtube.com/embed/ZluG-pfc2HY", 2},
 
-           {"darbat-shakosh-tow" ,"darbat" , "article", 
+          {"darbat-shakosh-tow" ,"darbat" , "article", 
             "المبادئ الأولى لكهرباء وكروت المصاعد - الدرس 1",
             "نظرة عامة على لوحة التحكم والروابط الكهربائية وتغذية الفرامل ومغناطيس التهدئة والتوقف الفني.",
           "<p> أولاً: يتم التأكد من كهرباء المبنى وتغذية المصدر سواء كانت الفازة 220 فولت أو 380 فولت لعمل وتأسيس لوحة الكنترول على هذا الأساس السليم.</p>"
@@ -197,6 +263,7 @@ static vector<Lesson> get_lessons() {
           "https://www.youtube.com/embed/ZluG-pfc2HY", 1}
     };
 }
+
 static vector<Lesson> get_lessons_by_track(const string& track_slug) {
     vector<Lesson> all = get_lessons();
     vector<Lesson> filtered;
@@ -205,7 +272,7 @@ static vector<Lesson> get_lessons_by_track(const string& track_slug) {
     return filtered;
 }
 
-// ===== دالة الـ CSS المتطورة والداعمة للتبديل الفوري بين الليل والنهار والمطابقة للطباعة =====
+// ===== تصميم الـ CSS المتطور الداعم للتبديل الفوري وحل امتداد شريط الأعلام =====
 static string get_modern_blue_css() {
     return "<style>"
            "*{box-sizing:border-box;}"
@@ -249,8 +316,10 @@ static string get_modern_blue_css() {
            ".mobile-only{display:none;}"
            "@media (max-width:860px){.desktop-only{display:none;} .mobile-only{display:flex;} .navbar-brand span:last-child{font-size:1.05rem;}}"
 
-           ".flags-strip{background:rgba(18,24,38,0.4); backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px); border-bottom:1px solid var(--border); padding:6px 28px; display:flex; justify-content:flex-end; align-items:center; position:relative; z-index:40;}"
-           ".flags-badge-box{display:flex; align-items:center; gap:12px; background:rgba(35,44,63,0.5); border:1px solid rgba(56,189,248,0.2); padding:5px 14px; border-radius:30px; box-shadow:inset 0 1px 2px rgba(255,255,255,0.05), 0 4px 10px rgba(0,0,0,0.3); margin-left:auto;}" 
+           // [تعديل] شريط الأعلام: جعل الحاوية الكبيرة شفافة بالكامل وبدون حدود ممتدة
+           ".flags-strip{background:none; border-bottom:none; padding:6px 28px; display:flex; justify-content:flex-end; align-items:center; position:relative; z-index:40;}"
+           // [تعديل] صندوق الأعلام: حصر الخلفية والـ Blur والحدود هنا فقط لتصبح تحت الأعلام مباشرة وتحتويها بشكل أنيق
+           ".flags-badge-box{display:flex; align-items:center; gap:12px; background:var(--surface); backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px); border:1px solid var(--border); padding:5px 14px; border-radius:30px; box-shadow:0 4px 10px rgba(0,0,0,0.3); margin-left:auto;}" 
            ".flag-img-unit{width:22px; height:15px; border-radius:2px; box-shadow:0 2px 4px rgba(0,0,0,0.4); object-fit:cover; display:block;}"
            ".flag-img-sep{color:rgba(139,150,171,0.4); font-size:0.8rem; font-weight:300; user-select:none;}"
 
@@ -325,7 +394,6 @@ static string get_modern_blue_css() {
            "</style>";
 }
 
-// ===== دالة الـ SEO Meta البيانات التعريفية =====
 static string get_seo_meta(const string& title, const string& desc) {
     return "<title>موقع ضربة شاكوش</title>"
            "<link rel='icon' type='image/jpeg' href='https://media.darbat-shakosh.com/channels4_profile%20(1).jpg'>"
@@ -334,11 +402,9 @@ static string get_seo_meta(const string& title, const string& desc) {
            "<meta name='robots' content='index, follow'>";
 }
 
-// ===== دالة الـ Navbar المحدثة بزرار تبديل الليل والنهار بجانب البحث الفني تماماً =====
 static string get_navbar_html() {
     const string logo_url = "https://media.darbat-shakosh.com/channels4_profile%20(1).jpg"; 
     const string chevron_svg = "<svg class='chevron' viewBox='0 0 24 24'><path d='M7 10l5 5 5-5z'/></svg>";
-
     const string moon_icon = "<svg class='theme-moon' viewBox='0 0 24 24'><path d='M12.3 22h-.1c-5.5 0-10-4.5-10-10 0-4.8 3.5-8.9 8.2-9.8.6-.1 1.2.3 1.3.9.1.6-.2 1.2-.8 1.4-3.3 1-5.7 4-5.7 7.5 0 4.4 3.6 8 8 8 3.5 0 6.5-2.4 7.5-5.7.2-.6.8-.9 1.4-.8.6.1 1 .7.9 1.3-.9 4.7-5 8.2-9.8 8.2z'/></svg>";
     const string sun_icon = "<svg class='theme-sun' viewBox='0 0 24 24'><path d='M12 7c-2.8 0-5 2.2-5 5s2.2 5 5 5 5-2.2 5-5-2.2-5-5-5zm0-5c.6 0 1 .4 1 1v2c0 .6-.4 1-1 1s-1-.4-1-1V3c0-.6.4-1 1-1zm0 14c.6 0 1 .4 1 1v2c0 .6-.4 1-1 1s-1-.4-1-1v-2c0-.6.4-1 1-1zM4 11h2c.6 0 1 .4 1 1s-.4 1-1 1H4c-.6 0-1-.4-1-1s.4-1 1-1zm14 0h2c.6 0 1 .4 1 1s-.4 1-1 1h-2c-.6 0-1-.4-1-1s.4-1 1-1zM5.2 5.2c.4-.4 1-.4 1.4 0l1.4 1.4c.4.4.4 1 0 1.4s-1 .4-1.4 0L5.2 6.6c-.4-.4-.4-1 0-1.4zm12 12c.4-.4 1-.4 1.4 0l1.4 1.4c.4.4.4 1 0 1.4s-1 .4-1.4 0l-1.4-1.4c-.4-.4-.4-1 0-1.4zM7.6 16.4c.4-.4 1-.4 1.4 0l1.4 1.4c.4.4.4 1 0 1.4s-1 .4-1.4 0l-1.4-1.4c-.4-.4-.4-1 0-1.4zm12-12c.4-.4 1-.4 1.4 0l1.4 1.4c.4.4.4 1 0 1.4s-1 .4-1.4 0l-1.4-1.4c-.4-.4-.4-1 0-1.4z'/></svg>";
 
@@ -392,7 +458,6 @@ static string get_navbar_html() {
            "</div>";
 }
 
-// دالة مساعدة لتوليد كود جافا سكريبت المشترك للتحكم في الوضع الليلي/النهاري لمنع التكرار
 static string get_theme_script(const string& nonce) {
     return "<script nonce='" + nonce + "'>"
            "  if(localStorage.getItem('theme') === 'light'){"
@@ -410,12 +475,13 @@ static string get_theme_script(const string& nonce) {
 }
 
 // ============================================================
-// دالة الـ Main وتشغيل المنصة البرمجية بالكامل
+// دالة الـ Main وتشغيل السيرفر بالكامل وإدارة الـ Routes
 // ============================================================
 int main() {
     httplib::Server svr;
     Elevator elevator;
 
+    // الـ Middleware الخاص بالسيرفر للتأكد من مطابقة شروط التوثيق والـ Rate Limiting في خطوة واحدة
     svr.set_pre_routing_handler([](const httplib::Request& req, httplib::Response& res) {
         set_security_headers(res);
         set_csp(res);
@@ -458,7 +524,7 @@ int main() {
         res.set_content(html, "text/html; charset=utf-8");
     });
 
-    // 2️⃣ واجهة الحاسبة
+    // 2️⃣ واجهة الحاسبة (تعديل: إضافة خيار الهيدروليك للقائمة)
     svr.Get("/calculator", [](const httplib::Request&, httplib::Response& res) {
         string nonce = generate_nonce(); set_csp(res, nonce);
         string meta = get_seo_meta("حاسبة مقاسات بئر ومقصورة المصاعد", "أداة هندسية لحساب وتصفية مقاسات كابينة المصعد وأبعاد الثقل ونوع الأبواب المتاحة أوتوماتيكياً.");
@@ -469,14 +535,20 @@ int main() {
                       + get_navbar_html() +
                       "<div class='container' style='max-width:650px;'>"
                       "<div class='card'><h2>🧮 حاسبة مقاسات بئر المصعد الفنية</h2>"
-                      "<div class='sub-title'>الرجاء إدخال القياسات الحُرّة الصافية المأخوذة من الموقع للبء في الحساب والتصفية التلقائية للمقايسة المعمارية:</div>"
+                      "<div class='sub-title'>الرجاء إدخال القياسات الحُرّة الصافية المأخوذة من الموقع للبدء في الحساب والتصفية التلقائية للمقايسة المعمارية:</div>"
                       "<form action='/calculate' method='post'>"
-                      "<div class='f-group'><label>👑 نوع نظام تشغيل المصعد:</label><select name='m_type'><option value='MR'>غرفة محرك أعلى البئر القياسي (MR)</option><option value='MRL'>نظام بدون غرفة محرك علوية (MRL)</option></select></div>"
+                      "<div class='f-group'><label>👑 نوع نظام تشغيل المصعد:</label>"
+                      "<select name='m_type'>"
+                      "<option value='MR'>غرفة محرك أعلى البئر القياسي (MR)</option>"
+                      "<option value='MRL'>نظام بدون غرفة محرك علوية (MRL)</option>"
+                      "<option value='Hydraulic'>نظام تشغيل هيدروليك (Hydraulic) 🛠️</option>" // [تعديل] إضافة الخيار الجديد هنا
+                      "</select></div>"
                       "<div class='f-group'><label>📐 عرض بئر المصعد الحُر الصافي (CM):</label><input type='number' name='width' required min='80' max='250' placeholder='مثال لعرض البئر الحُر: 160'></div>"
                       "<div class='f-group'><label>📏 عمق بئر المصعد الحُر الصافي (CM):</label><input type='number' name='depth' required min='80' max='250' placeholder='مثال لعمق البئر الحُر: 160'></div>"
                       "<div class='f-group'><label>🏢 إجمالي عدد الوقفات (الأدوار الإنشائية):</label><input type='number' name='floors' required min='1' max='60' placeholder='أدخل عدد طوابق المبنى'></div>"
                       "<div class='f-group'><label>🕳️ عمق حفرة المصعد السفلية Pit (CM):</label><input type='number' name='depth_pit' required min='10' max='500' value='100'></div>"
                       "<div class='f-group'><label>🏠 ارتفاع الدور الأخير من بلاطة الوقف للجريد Overhead (CM):</label><input type='number' name='overhead' required min='100' max='800' value='400'></div>"
+                      "<div class='f-group'><label>⛓️ حساب الخامات والبضاعة التقريبية:</label><select name='calc_mat'><option value='yes'>نعم، أظهر جدول البضاعة والسكك المطلوبة</option><option value='no'>لا، أريد مقاسات البئر فقط</option></select></div>"
                       "<button type='submit'>🏛️ استخراج مقاسات الصاعدة الهندسية وتوليد المقايسة</button></form>"
                       "</div></div>"
                       "<div class='footer'>منصة ضربة شاكوش الفنية © 2026 - إنشاء محمد الشعراوي</div>"
@@ -485,10 +557,12 @@ int main() {
         res.set_content(html, "text/html; charset=utf-8");
     });
 
-    // 3️⃣ نظام معالجة وتصدير تقرير المقايسة وتوليد الـ PDF بدون قص في كلا الوضعين المضيء والمظلم
+    // 3️⃣ نظام التصفية الحسابية وتوليد المقايسة وإدراج جدول البضاعة
     svr.Post("/calculate", [&elevator](const httplib::Request& req, httplib::Response& res) {
         string m_type = html_escape(req.get_param_value("m_type"));
-        if (m_type != "MR" && m_type != "MRL") m_type = "MR";
+        if (m_type != "MR" && m_type != "MRL" && m_type != "Hydraulic") m_type = "MR";
+
+        string calc_mat = html_escape(req.get_param_value("calc_mat"));
 
         int w = safe_stoi(req.get_param_value("width"), 0);
         int d = safe_stoi(req.get_param_value("depth"), 0);
@@ -496,14 +570,15 @@ int main() {
         int p = safe_stoi(req.get_param_value("depth_pit"), 100);
         int oh = safe_stoi(req.get_param_value("overhead"), 400);
 
-        if (w < 110 || d < 100) {
+        // [تعديل الحماية الصارمة ضد التلاعب بالبيانات]: التأكد من أن الأرقام حقيقية وموجبة تماماً
+        if (w < 110 || d < 100 || f <= 0 || p <= 0 || oh <= 0) {
             string err = "<html><head><meta charset='UTF-8'><meta name='viewport' content='width=device-width, initial-scale=1.0'>"
                          "<link href='https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&family=JetBrains+Mono:wght@500;600&display=swap' rel='stylesheet'>"
                          + get_modern_blue_css() + "</head><body>"
                          "<div style='display:flex; align-items:center; justify-content:center; min-height:100vh;'>"
                          "<div class='card' style='border-color:#ef4444; max-width:500px; text-align:center;'>"
-                         "<h2 style='color:#ef4444;'>⚠️ الأبعاد المدخلة غير مطابقة للمواصفات</h2>"
-                         "<p style='color:#94a3b8;'>المقاسات الحالية المكتوبة أقل من الحد الأدنى الهندسي لتركيب المصاعد القياسية (العرض المطلوب الأدنى 110سم، والعمق 100سم).</p>"
+                         "<h2 style='color:#ef4444;'>⚠️ البيانات المدخلة غير سليمة هندسياً</h2>"
+                         "<p style='color:#94a3b8;'>يرجى إدخال قيم موجبة مطابقة للحدود الدنيا المعمارية لتركيب المصاعد القياسية (العرض الأدنى 110سم، العمق 100سم، وعدد وقفات حقيقي).</p>"
                          "<a href='/calculator' class='btn-action' style='background:#ef4444;'>🔄 العودة وتعديل أبعاد البئر</a>"
                          "</div></div>"
                          "</body></html>";
@@ -517,6 +592,9 @@ int main() {
         int cab_d = elevator.get_cabin_depth(d);
         float h = elevator.get_shaft_height(f, p/100.0f, oh/100.0f, m_type);
 
+        // استدعاء دالة البضاعة الجديدة
+        ElevatorMaterials materials = elevator.calculate_materials(w, d, static_cast<int>(f), m_type);
+
         string nonce = generate_nonce(); set_csp(res, nonce);
         ostringstream os;
         os << "<html><head><meta charset='UTF-8'><meta name='viewport' content='width=device-width, initial-scale=1.0'>"
@@ -528,22 +606,35 @@ int main() {
            << "<div class='card' id='pdf-area'><h2>📋 تقرير تصفية المقاسات النهائي المعتمد</h2>"
            << "<div class='sub-title' style='margin-bottom:20px;'>منصة ضربة شاكوش لحساب أبعاد الكابينة ومقايسات بئر المصاعد الإنشائية:</div>"
            << "<div class='table-container'><table class='tbl'>"
-           << "<tr><th>نوع ونظام التشغيل:</th><td>" << (m_type == "MR" ? "غرفة محرك علوية" : "بدون غرفة محرك MRL") << "</td></tr>"
+           << "<tr><th>نوع ونظام التشغيل:</th><td>" << (m_type == "MR" ? "غرفة محرك علوية Standard" : (m_type == "MRL" ? "بدون غرفة محرك MRL" : "نظام تشغيل هيدروليك Hydraulic 🛠️")) << "</td></tr>"
            << "<tr><th>أبعاد البئر المدخلة:</th><td>العرض: " << w << " سم || العمق: " << d << " سم</td></tr>"
            << "<tr><th>نوع وعرض باب المصعد المتاح هندسياً:</th><td style='color:#38bdf8; font-weight:700;'>" << door << "</td></tr>"
            << "<tr><th>مقاس شاسيه DBG الكابينة الصافي:</th><td>" << cabin_dbg << " CM</td></tr>"
-           << "<tr><th>مقاس شاسيه DBG ثقل الموازنة (CWT):</th><td>" << (cwt_dbg ? to_string(cwt_dbg) + " CM" : "مراجعة فنية يدوية") << "</td></tr>"
+           << "<tr><th>مقاس شاسيه DBG ثقل الموازنة (CWT):</th><td>" << (m_type == "Hydraulic" ? "لا يوجد ثقل نظام هيدروليك" : (cwt_dbg ? to_string(cwt_dbg) + " CM" : "مراجعة فنية يدوية")) << "</td></tr>"
            << "<tr><th>صافي العرض الداخلي لكابينة المصعد:</th><td style='color:#f5a524;'>" << cab_w << " CM</td></tr>"
            << "<tr><th>صافي العمق الداخلي لكابينة المصعد:</th><td style='color:#f5a524;'>" << cab_d << " CM</td></tr>"
            << "<tr><th>إجمالي مشوار البئر والارتفاع الرأسي المحسوب:</th><td style='color:#38bdf8;'>" << h << " متر طولي</td></tr>"
-           << "</table></div>"
-           << "<p style='margin-top:25px; font-size:0.85rem; color:var(--text-muted); text-align:center;'>تمت التصفية والمطابقة آلياً بالاعتماد على خوارزميات التصفية القياسية للمصاعد.</p>"
+           << "</table></div>";
+
+        // عرض جدول البضاعة والخامات بناءً على رغبة المستخدم
+        if (calc_mat == "yes") {
+            os << "<h3 style='margin-top:30px; color:var(--accent); font-size:1.2rem; border-bottom:1px solid var(--border); padding-bottom:8px;'>📦 جدول البضاعة وكميات الحديد التقريبية للموقع:</h3>"
+               << "<div class='table-container'><table class='tbl'>"
+               << "<tr><th>عدد عيار قضبان/سكك الكابينة:</th><td>" << materials.MainRailsCount << " عود سكة صالحة</td></tr>"
+               << "<tr><th>عدد عيار قضبان/سكك الثقل (CWT):</th><td>" << (m_type == "Hydraulic" ? "0 (نظام هيدروليك)" : to_string(materials.CwtRailsCount) + " عود سكة") << "</td></tr>"
+               << "<tr><th>عدد أزواج سكاكين وكوابيل التثبيت:</th><td>" << materials.BracketFixingPairs << " طقم كوابيل جدارية</td></tr>"
+               << "<tr><th>نوع ونظام شواكيل كمرات الحديد:</th><td>" << materials.SupportBeamsType << "</td></tr>"
+               << "<tr><th>⚠️ تنبيهات الخامات الفنية للتركيب:</th><td style='font-size:0.9rem; color:var(--accent-2);'>" << materials.Notes << "</td></tr>"
+               << "</table></div>";
+        }
+
+        os << "<p style='margin-top:25px; font-size:0.85rem; color:var(--text-muted); text-align:center;'>تمت التصفية والمطابقة آلياً بالاعتماد على خوارزميات التصفية القياسية للمصاعد.</p>"
            << "</div>" 
            << "<div class='actions' style='max-width:750px; margin: 20px auto 0 auto; padding:0 40px;'>"
            << "  <button class='btn-print' id='pBtn'>📥 تحميل التقرير كملف PDF مخصص</button>"
            << "  <a class='btn-secondary' href='/calculator'>🔄 تصفية مقاسات بئر جديد</a>"
            << "</div></div>"
-           <<"<div class='footer'>منصة ضربة شاكوش الفنية © 2026 - إنشاء محمد الشعراوي</div>"
+           << "<div class='footer'>منصة ضربة شاكوش الفنية © 2026 - إنشاء محمد الشعراوي</div>"
            << "<script nonce='" << nonce << "'>"
            "  if(localStorage.getItem('theme') === 'light'){"
            "    document.body.classList.add('light-mode');"
@@ -556,7 +647,6 @@ int main() {
            "      localStorage.setItem('theme', 'dark');"
            "    }"
            "  });"
-           // معالجة تصدير التقرير وتفادي مشكلة القص مع وضع الألوان المناسبة للثيم المفعل
            "  document.getElementById('pBtn').addEventListener('click', function(){"
            "    var element = document.getElementById('pdf-area');"
            "    var opt = {"
@@ -573,7 +663,7 @@ int main() {
         res.set_content(os.str(), "text/html; charset=utf-8");
     });
 
-    // 4️⃣ صفحة المقالات والفيديوهات 
+    // 4️⃣ صفحة المقالات والفيديوهات
     svr.Get("/blog", [](const httplib::Request&, httplib::Response& res) {
         string nonce = generate_nonce(); set_csp(res, nonce);
         auto lessons = get_lessons();
@@ -603,7 +693,7 @@ int main() {
         res.set_content(html, "text/html; charset=utf-8");
     });
 
-    // 4.1️⃣ عرض مقال أو فيديو واحد بالتفصيل
+    // 4.1️⃣ عرض مقال أو فيديو واحد بالتفصيل (تعديل الأمان: إضافة عزل سياق الـ CSP للمقالات)
     svr.Get(R"(/lesson/([a-zA-Z0-9\-]+))", [](const httplib::Request& req, httplib::Response& res) {
         string nonce = generate_nonce(); set_csp(res, nonce);
         string slug = req.matches[1].str();
@@ -635,6 +725,8 @@ int main() {
                     "allowfullscreen loading='lazy'></iframe></div>";
         }
         if (!it->content_html.empty()) {
+            // [ملاحظة الأمان]: محتوى الـ HTML يتم تمريره مباشرة لتفعيل وسوم التنسيق والصور المعتمدة والمخزنة على الـ R2 الموثوق،
+            // وحمايته تعتمد بشكل كلي على جدار الحماية وعزل سياسة الـ CSP الصارمة التي تم ضبطها في الأعلى لمنع الـ Script Injection تماماً.
             body << "<div class='lesson-body'><h3>📌 تفاصيل الشرح والمخطط الفني:</h3>" << it->content_html << "</div>";
         }
 
@@ -657,7 +749,7 @@ int main() {
         res.set_content(html, "text/html; charset=utf-8");
     });
 
-    // 4.2️⃣ صفحة المسارات
+    // 4.2️⃣ صفحة المسارات التعليمية
     svr.Get("/paths", [](const httplib::Request&, httplib::Response& res) {
         string nonce = generate_nonce(); set_csp(res, nonce);
         auto tracks = get_tracks();
@@ -684,7 +776,7 @@ int main() {
         res.set_content(html, "text/html; charset=utf-8");
     });
 
-    // 4.3️⃣ عرض محتويات مسار تعليمي واحد
+    // 4.3️⃣ صفحة تفاصيل مسار واحد
     svr.Get(R"(/track/([a-zA-Z0-9\-]+))", [](const httplib::Request& req, httplib::Response& res) {
         string nonce = generate_nonce(); set_csp(res, nonce);
         string slug = req.matches[1].str();
@@ -738,7 +830,7 @@ int main() {
         res.set_content(html, "text/html; charset=utf-8");
     });
 
-    // 5️⃣ صفحة التواصل
+    // 5️⃣ صفحة اتصل بنا
     svr.Get("/contact", [](const httplib::Request&, httplib::Response& res) {
         string nonce = generate_nonce(); set_csp(res, nonce);
         string meta = get_seo_meta("اتصل بنا | الدعم الفني", "تواصل مباشرة مع إدارة منصة ضربة شاكوش لطرح الأسئلة الفنية أو الإبلاغ عن مشكلة برمجية.");
@@ -758,7 +850,7 @@ int main() {
         res.set_content(html, "text/html; charset=utf-8");
     });
 
-    // 6️⃣ مركز المساعدة
+    // 6️⃣ مركز الدعم والمساعدة
     svr.Get("/support", [](const httplib::Request&, httplib::Response& res) {
         string nonce = generate_nonce(); set_csp(res, nonce);
         string meta = get_seo_meta("مركز المساعدة والأسئلة الشائعة الفنية للمصاعد.", "محتاج مساعدة في فهم كيفية حساب أبعاد الـ DBG الصافي وشواكيل التصفية؟");
@@ -780,7 +872,7 @@ int main() {
         res.set_content(html, "text/html; charset=utf-8");
     });
 
-    // 7️⃣ صفحة دعم المنصة
+    // 7️⃣ صفحة دعم واستمرارية المنصة
     svr.Get("/donate", [](const httplib::Request&, httplib::Response& res) {
         string nonce = generate_nonce(); set_csp(res, nonce);
         string meta = get_seo_meta("الموقع وحاسبة مقاسات بئر المصاعد مجاني تماماً لخدمة الوطن العربي.", "الموقع وحاسبة مقاسات بئر المصاعد مجاني تماماً لخدمة فنيي ومندوبي ومهندسي الوطن العربي.");
@@ -799,6 +891,7 @@ int main() {
         res.set_content(html, "text/html; charset=utf-8");
     });
 
+    // تشغيل الخادم على المنفذ (Port) المعين من البيئة السحابية أو الافتراضي 8080
     const char* port_env = getenv("PORT");
     int port = port_env ? safe_stoi(port_env, 8080) : 8080;
     cout << "🚀 Professional Hammer-Platform active on port: " << port << endl;
