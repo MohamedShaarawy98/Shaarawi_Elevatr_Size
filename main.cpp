@@ -2,7 +2,7 @@
 
                                ============================================================
                                =                                                          =
-                               =                  منصة ضربة شاكوش الرقمية                 =
+                               =                  منصة ضربة شاكوش الرقمية                     =
                                =                                                          =
                                ============================================================
  */          
@@ -237,7 +237,7 @@ public:
         return load;
     }
 
-    // هيكلية تقرير المقايسة الشاملة
+    // هيكلية تقرير المقايسة الشاملة المصلحة بالكامل
     struct FullSpecificationReport {
         // المرحلة الأولى
         string door_exterior_name;
@@ -375,10 +375,10 @@ public:
         
         r.total_exterior_doors = floors * 1;
         if (w >= 128) {
-            r.door_exterior_name = name_door_auto;
+            r.door_exterior_name = name_door_auto + " (" + get_door_type(w) + ")";
             r.door_casing_note   = name_door_casing + " (يلزم تركيب علب التلبيس لحماية كوالين الأبواب الأوتوماتيك)";
         } else {
-            r.door_exterior_name = name_door_semi;
+            r.door_exterior_name = name_door_semi + " (" + get_door_type(w) + ")";
             r.door_casing_note   = "لا يحتاج تلبيس حلوق (الأبواب المتاحة نصف أوتوماتيكية)";
         }
 
@@ -414,6 +414,7 @@ public:
             r.sub_cwt_name         = name_sub_cwt;
         }
 
+        // إسناد مسميات المسامير
         r.hilti_bolts_name         = name_hilti_bolt;
         r.assembly_bolts_name      = name_assem_bolt;
         r.bolts_8mm_name           = name_bolt_8mm;
@@ -598,6 +599,14 @@ static vector<Lesson> get_lessons() {
     };
 }
 
+static vector<Lesson> get_lessons_by_track(const string& track_slug) {
+    vector<Lesson> all = get_lessons();
+    vector<Lesson> filtered;
+    for (auto& l : all) if (l.track_slug == track_slug) filtered.push_back(l);
+    sort(filtered.begin(), filtered.end(), [](const Lesson& a, const Lesson& b) { return a.order < b.order; });
+    return filtered;
+}
+
 static string get_modern_blue_css() {
     return "<style>"
            "*{box-sizing:border-box;}"
@@ -706,22 +715,6 @@ static string get_modern_blue_css() {
 
            ".footer{margin-top:auto; padding:25px 0; font-size:15px; color:var(--text-muted); text-align:center; border-top:1px solid var(--border); background-color:var(--surface); font-weight:600;}"
            
-           "@media (max-width: 600px) {"
-           "  .container { padding: 20px 10px !important; }"
-           "  .card { padding: 20px 15px !important; }"
-           "  .card h2 { font-size: 1.3rem !important; }"
-           "  .section-intro h1 { font-size: 1.4rem !important; }"
-           "  .sub-title { font-size: 0.85rem !important; margin-bottom: 20px !important; }"
-           "  .tbl th, .tbl td { padding: 10px 8px !important; font-size: 0.85rem !important; }"
-           "  .actions { flex-direction: column !important; gap: 12px !important; margin-top: 25px !important; }"
-           "  .btn-print, .btn-secondary, button { padding: 12px 20px !important; font-size: 1rem !important; width: 100% !important; }"
-           "  .nav-card { padding: 20px 15px !important; }"
-           "  .nav-card h3 { font-size: 1.15rem !important; }"
-           "  .track-item { padding: 14px 15px !important; gap: 12px !important; }"
-           "  .f-group label { font-size: 0.85rem !important; }"
-           "  input, select { padding: 10px !important; font-size: 0.9rem !important; }"
-           "  h3 { font-size: 1.05rem !important; }"
-           "}"
            "@media print{"
            "  body, .container, #pdf-area { background: #121826 !important; color: #f3f4f6 !important; height: auto !important; overflow: visible !important; min-height: unset !important; padding: 0 !important; margin: 0 !important; width: 100% !important; }"
            "  .card { box-shadow: none !important; border: none !important; padding: 20px !important; background: #121826 !important; width: 100% !important; height: auto !important; overflow: visible !important; position: static !important; }"
@@ -892,7 +885,7 @@ int main() {
         res.set_content(html, "text/html; charset=utf-8");
     });
 
-    // 3️⃣ معالجة الحسابات وتوليد الجداول الثلاثية الشاملة
+    // 3️⃣ معالجة الحسابات وتوليد الجداول الثلاثية الشاملة المفككة بالكامل
     svr.Post("/calculate", [&elevator](const httplib::Request& req, httplib::Response& res) {
         string m_type = html_escape(req.get_param_value("m_type"));
         if (m_type != "MR" && m_type != "MRL" && m_type != "Hydraulic") m_type = "MR";
@@ -991,6 +984,7 @@ int main() {
            << "</table></div>";
 
         if (calc_mat == "yes") {
+            // تفكيك وعرض كل بند منفرد بخلية مستقلة مع عدده بدقة تامة
             os << "<h3 style='color:var(--accent); font-size:1.15rem; margin-top:25px; margin-bottom:10px;'>⚙️ ثانياً: بضاعة المرحلة الأولى (السكك والأبواب والحديد):</h3>"
                << "<div class='table-container'><table class='tbl'>"
                << "<thead><tr><th>اسم بيان الصنف والخامة الحديدية</th><th>الكمية المطلوبة للموقع</th></tr></thead>"
