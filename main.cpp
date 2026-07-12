@@ -21,8 +21,12 @@
 
 using namespace std;
 
-// متغير برمي للتحكم في جاهزية النظام الهيدروليكي (اجعله false لإظهار رسالة جاري التطوير)
-const bool IS_HYDRAULIC_READY = false;
+// ============================================================================
+// متغيرات التحكم في جاهزية أنواع المصاعد (اجعل القيمة false لإغلاق النوع وإظهار رسالة التعديل)
+// ============================================================================
+const bool IS_MR_READY        = true;   // المصعد القياسي (غرفة)
+const bool IS_MRL_READY       = false;  // المصعد الجيرليس (بدون غرفة)
+const bool IS_HYDRAULIC_READY = false;  // المصعد الهيدروليك
 
 // بنية بيانات لتحديد معدل الطلبات لحماية السيرفر من هجمات الحرمان من الخدمة (Rate Limiting)
 struct RateLimitInfo {
@@ -176,6 +180,7 @@ private:
     const string name_floor_poles   = "بولات المغناطيس لحديد السكك";
 
 public:
+    // دوال الأبعاد واللوجيك الهندسي
     string get_door_type(int sa) {
         if (sa >= 210 && sa <= 250)      return "Auto 80 CO || Auto 90 CO || Auto 100 CO";
         else if (sa >= 190 && sa < 210)  return "Auto 80 CO || Auto 90 CO || Auto 100 SI";
@@ -238,10 +243,10 @@ public:
         string door_exterior_name;
         int total_exterior_doors;
         string cabin_rails_name;
-        string cabin_rails_type; // تم إصلاح هذا العضو المفقود
+        string cabin_rails_type; 
         int cabin_rails_count;
         string cwt_rails_name;
-        string cwt_rails_type;  // تم إصلاح هذا العضو المفقود
+        string cwt_rails_type;  
         int cwt_rails_count;
         string cabin_brackets_name;
         int cabin_brackets_count;
@@ -301,7 +306,7 @@ public:
         float static_trunk_10cm = 6;
         float trunk_4cm_meters;
         int trunk_screws_8mm;
-        int wire_1mm_coils; // تم إصلاح هذا العضو المفقود
+        int wire_1mm_coils; 
         string wire_1mm_count_desc;
         float net_cable_meters;
         int lop_buttons_count;
@@ -321,7 +326,7 @@ public:
         string charger_batt_name;
         int charger_batt_count = 1;
         string emerg_alarm_name;
-        int emerg_alarm_count = 1; // تم إصلاح السبيلنج هنا من المكتوب بالخطأ سابقاً
+        int emerg_alarm_count = 1; 
         string flex_cable_name;
         string flex_holder_name;
         string trunk_4cm_name;
@@ -359,7 +364,7 @@ public:
         int cwt_dbg = get_cwt_dbg(w); 
         
         r.rated_load_kg = calculate_rated_load(cab_w, cab_d);
-        r.ceiling_cut_name   = name_ceiling_cut;
+        r.ceiling_cut_name    = name_ceiling_cut;
         r.parachute_name      = name_parachute;
         r.governor_rope_name  = name_governor_rope;
         r.buffer_set_name     = name_buffer_set;
@@ -394,7 +399,6 @@ public:
         r.sub_cabin_name       = name_sub_cab;
 
         if (type == "Hydraulic") {
-            r.cwt_rails_type       = "لا يوجد (نظام هيدروليك)";
             r.cwt_rails_name       = "لا يوجد (نظام هيدروليك)";
             r.cwt_rails_count      = 0;
             r.cwt_brackets_count   = 0;
@@ -402,7 +406,6 @@ public:
             r.sub_cwt_count        = 0;
             r.sub_cwt_name         = "لا يوجد (نظام هيدروليك)";
         } else {
-            r.cwt_rails_type       = name_rail_5;
             r.cwt_rails_name       = name_rail_5;
             r.cwt_rails_count      = single_side_rails * 2;
             r.cwt_brackets_count   = floors * 8; 
@@ -411,6 +414,7 @@ public:
             r.sub_cwt_name         = name_sub_cwt;
         }
 
+        // إسناد مسميات المسامير
         r.hilti_bolts_name         = name_hilti_bolt;
         r.assembly_bolts_name      = name_assem_bolt;
         r.bolts_8mm_name           = name_bolt_8mm;
@@ -433,7 +437,7 @@ public:
             r.machine_rubber_note = "لا يحتاج ربر (قواعد تثبيت هيدروليك أرضية بسلندر)";
             r.cabin_design_type   = get_cabin_type(w, d) + " هيدروليك جانبية";
             r.cwt_design_type     = "بدون ثقل (نظام دفع سلندر)";
-            r.cabin_wires_name    = "لا يحتاج حبال جر جر ميكانيكي";
+            r.cabin_wires_name    = "لا يحتاج حبال جر ميكانيكي";
             r.cabin_wires_meters  = 0;
             r.rope_hitches_count  = 0;
             r.rope_clamps_count   = 0;
@@ -881,10 +885,36 @@ int main() {
         res.set_content(html, "text/html; charset=utf-8");
     });
 
-    // 3️⃣ معالجة الحسابات وتوليد الجداول الثلاثية الشاملة
+    // 3️⃣ معالجة الحسابات وتوليد الجداول الثلاثية الشاملة المفككة بالكامل
     svr.Post("/calculate", [&elevator](const httplib::Request& req, httplib::Response& res) {
         string m_type = html_escape(req.get_param_value("m_type"));
         if (m_type != "MR" && m_type != "MRL" && m_type != "Hydraulic") m_type = "MR";
+
+        if (m_type == "MR" && !IS_MR_READY) {
+            string html = "<html><head><meta charset='UTF-8'><meta name='viewport' content='width=device-width, initial-scale=1.0'>"
+                          "<link href='https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap' rel='stylesheet'>"
+                          + get_modern_blue_css() + "</head><body>"
+                          "<div style='display:flex; align-items:center; justify-content:center; min-height:100vh;'>"
+                          "<div class='card' style='border-color:var(--accent-2); max-width:520px; text-align:center;'>"
+                          "<h2>⚙️ نظام MR قيد التحديث</h2>"
+                          "<p style='color:var(--text-muted); margin-bottom:24px; line-height:1.7;'>جاري تعديل وتحديث بيانات المصاعد القياسية (بغرفة) من قِبل الإدارة.. شكراً لثقتكم!</p>"
+                          "<a class='btn-secondary' href='/calculator'>🔄 العودة للحاسبة</a>"
+                          "</div></div></body></html>";
+            res.set_content(html, "text/html; charset=utf-8"); return;
+        }
+
+        if (m_type == "MRL" && !IS_MRL_READY) {
+            string html = "<html><head><meta charset='UTF-8'><meta name='viewport' content='width=device-width, initial-scale=1.0'>"
+                          "<link href='https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap' rel='stylesheet'>"
+                          + get_modern_blue_css() + "</head><body>"
+                          "<div style='display:flex; align-items:center; justify-content:center; min-height:100vh;'>"
+                          "<div class='card' style='border-color:var(--accent-2); max-width:520px; text-align:center;'>"
+                          "<h2>⚙️ نظام MRL قيد التعديل</h2>"
+                          "<p style='color:var(--text-muted); margin-bottom:24px; line-height:1.7;'>جاري تعديل وتحديث معادلات المصاعد الجيرليس (بدون غرفة) حالياً من قِبل محمد الشعراوي.. شكراً لثقتكم!</p>"
+                          "<a class='btn-secondary' href='/calculator'>🔄 العودة للحاسبة</a>"
+                          "</div></div></body></html>";
+            res.set_content(html, "text/html; charset=utf-8"); return;
+        }
 
         if (m_type == "Hydraulic" && !IS_HYDRAULIC_READY) {
             string html = "<html><head><meta charset='UTF-8'><meta name='viewport' content='width=device-width, initial-scale=1.0'>"
@@ -954,6 +984,7 @@ int main() {
            << "</table></div>";
 
         if (calc_mat == "yes") {
+            // تفكيك وعرض كل بند منفرد بخلية مستقلة مع عدده بدقة تامة
             os << "<h3 style='color:var(--accent); font-size:1.15rem; margin-top:25px; margin-bottom:10px;'>⚙️ ثانياً: بضاعة المرحلة الأولى (السكك والأبواب والحديد):</h3>"
                << "<div class='table-container'><table class='tbl'>"
                << "<thead><tr><th>اسم بيان الصنف والخامة الحديدية</th><th>الكمية المطلوبة للموقع</th></tr></thead>"
@@ -968,7 +999,7 @@ int main() {
                << "<tr><td>" << specs.cwt_brackets_name << "</td><td>" << specs.cwt_brackets_count << " كابول تجميع</td></tr>"
                << "<tr><td>" << specs.sub_cabin_name << "</td><td>" << specs.sub_cabin_count << " قطعة تدعيم</td></tr>"
                << "<tr><td>" << specs.sub_cwt_name << "</td><td>" << specs.sub_cwt_count << " قطعة تدعيم</td></tr>"
-               << "<tr><td>" << specs.hilti_bolts_name << "</td><td>" << specs.hilti_bolts_12mm << " مسمار تثبيت جداري</td></tr>"
+               << "<tr><td>" << specs.hilti_bolts_name << "</td><td>" << specs.hilti_bolts_12mm << " مسمار هلتي</td></tr>"
                << "<tr><td>" << specs.assembly_bolts_name << "</td><td>" << specs.assembly_bolts_12mm << " مسمار عادي</td></tr>"
                << "<tr><td>" << specs.bolts_8mm_name << "</td><td>" << specs.bolts_8mm << " مسمار تجميع ثقل</td></tr>"
                << "<tr><td>" << specs.spring_washers_8mm_name << "</td><td>" << specs.spring_washers_8mm << " طقم صامولة ووردة</td></tr>"
@@ -1023,7 +1054,7 @@ int main() {
                << "<tr><td>3 ليميت سويتش ميكانيكي بالبئر</td><td>ثابتة (3 قطع ليميت أمان)</td></tr>"
                << "<tr><td>3 حساسات مغناطيسية عيارية</td><td>ثابتة (3 قطع حساس لفل)</td></tr>"
                << "<tr><td>" << specs.floor_poles_name << "</td><td>" << specs.floor_poles_count << " قطعة بول مغناطيسي للسكك</td></tr>"
-               << "<tr><td>لقم وكراسي انزلاق وتزليق المقصورة (لقم)</td><td>4 كراسي وتزليق كامل للكابينة</td></tr>"
+               << "<tr><td>لقم وكراسي تزليق المقصورة (لقم)</td><td>4 كراسي وتزليق كامل للكابينة</td></tr>"
                << "<tr><td>لقم وكراسي تزليق وزن الثقل (لقم)</td><td>" << (m_type == "Hydraulic" ? "0 كراسي" : "4 كراسي وتزليق للوزن") << "</td></tr>"
                << "<tr><td>📝 لوجيك تأمين الستارة والأمان الضوئي:</td><td style='font-size:0.88rem; color:var(--text-muted);'>" << specs.photocell_note << "</td></tr>"
                << "</tbody></table></div>";
