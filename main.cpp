@@ -118,32 +118,32 @@ static bool is_rate_limited(const string& ip) {
 // ============================================================================
 class Elevator {
 private:
-    // 🔒 [قسم خاص - Private]: أسماء ومسميات البضاعة الثابتة
-    const string name_door_auto     = "باب اتوماتيك تخزين / سنتر";
+    // 🔒 [قسم خاص - Private]: أسماء مسميات البضاعة الثابتة
+    const string name_door_auto     = " الابواب";
     const string name_door_semi     = "باب نصف اتوماتيك";
     const string name_rail_16       = "سكة كابينة 16 مللي";
     const string name_rail_9        = "سكة كابينة 9 مللي";
     const string name_rail_5        = "سكة تقل 5 مللي";
-    const string name_bracket_cab   = "كوابيل كابينة حسب مقاس السكة";
-    const string name_bracket_cwt   = "كوابيل التقل القياسية";
-    const string name_scaffolding   = "سقالة تركيب متكاملة";
-    const string name_plumb_lines   = "شواكيل خيط عيار هندسي";
-    const string name_balance_tube  = "تيوب ميزان المياه للميزانية";
-    const string name_hilti_bolt    = "مسمار هلتي 12 مللي جداري";
-    const string name_assem_bolt    = "مسمار تجميع 12 مللي للسمك";
-    const string name_bolt_8mm      = "مسمار 8 مللي لتجميع الثقل";
-    const string name_washer_spring = "وردة سوسته 12 مللي أمان";
-    const string name_nut_12mm      = "صامولة 12 مللي مجلفنة";
-    const string name_washer_flat   = "وردة صاج 12 مللي عريضة";
+    const string name_bracket_cab   = "كوابيل كابينة";
+    const string name_bracket_cwt   = "كوابيل التقل ";
+    const string name_scaffolding   = "سقالة";
+    const string name_plumb_lines   = " خيط ميزانية";
+    const string name_balance_tube  = "تيوب او خشب للميزانية";
+    const string name_hilti_bolt    = "مسمار هلتي 12 مللي ";
+    const string name_assem_bolt    = "مسمار تجميع 12 مللي ";
+    const string name_bolt_8mm      = "مسمار 8 مللي  ";
+    const string name_washer_spring = "وردة سوسته 12 مللي ";
+    const string name_nut_12mm      = "صامولة 12 مللي ";
+    const string name_washer_flat   = "وردة صاج 12 مللي ";
     const string name_spring_8mm    = "وردة سوستة وصامولة 8 مللي للثقل";
-    const string name_sub_cab       = "سبورتينات كابينة معتمدة";
-    const string name_sub_cwt       = "سبورتينات ثقل معتمدة";
+    const string name_sub_cab       = "سبورتينات كابينة ";
+    const string name_sub_cwt       = "سبورتينات ثقل ";
     const string name_door_casing   = "تلبيس حلوق الأبواب الخارجية";
     const string name_ceiling_cut   = "تفتيح وتجهيز فتحات سقف البئر";
-    const string name_rubber_pads   = "طقم ربر كراسي الماكينة للغرفة";
-    const string name_wire_6_5mm    = "ويرات فولاذية 6.50 مللي";
-    const string name_wire_11mm     = "ويرات فولاذية 11 مللي متينة";
-    const string name_rope_hitch    = "شداد حبل معتمد عيار الحبل";
+    const string name_rubber_pads   = "طقم ربر كراسي الماكينة ";
+    const string name_wire_6_5mm    = "ويرات  6.50 مللي";
+    const string name_wire_11mm     = "ويرات  11 مللي متينة";
+    const string name_rope_hitch    = "شداد مقاس الخبل";
     const string name_rope_clamp    = "زرجينة حبل حديد";
     const string name_parachute     = "جهاز براشوت الأمان السفلي";
     const string name_governor_rope = "حبل براشوت منظم السرعة";
