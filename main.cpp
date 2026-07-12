@@ -2,7 +2,7 @@
 
                                ============================================================
                                =                                                          =
-                               =                  منصة ضربة شاكوش الرقمية                 =
+                               =                  منصة ضربة شاكوش الرقمية                     =
                                =                                                          =
                                ============================================================
  */          
@@ -119,64 +119,64 @@ static bool is_rate_limited(const string& ip) {
 class Elevator {
 private:
     // 🔒 [قسم خاص - Private]: أسماء ومسميات البضاعة الثابتة
-    const string name_door_auto     = "باب اتوماتيك تخزين / سنتر";
-    const string name_door_semi     = "باب نصف اتوماتيك";
+    const string name_door_auto     ="الأبواب الاوتوماتيك ";
+    const string name_door_semi     = "ابواب نصف اتوماتيك";
     const string name_rail_16       = "سكة كابينة 16 مللي";
     const string name_rail_9        = "سكة كابينة 9 مللي";
     const string name_rail_5        = "سكة تقل 5 مللي";
-    const string name_bracket_cab   = "كوابيل كابينة حسب مقاس السكة";
-    const string name_bracket_cwt   = "كوابيل التقل القياسية";
-    const string name_scaffolding   = "سقالة  ";
-    const string name_plumb_lines   = "شواكيل خيط عيار هندسي";
-    const string name_balance_tube  = "تيوب ميزان المياه للميزانية";
-    const string name_hilti_bolt    = "مسمار هلتي 12 مللي جداري";
-    const string name_assem_bolt    = "مسمار تجميع 12 مللي للسمك";
+    const string name_bracket_cab   = "كوابيل كابينة";
+    const string name_bracket_cwt   = "كوابيل التقل ";
+    const string name_scaffolding   = "تركيب سقالة";
+    const string name_plumb_lines   = " خيط للميزانية";
+    const string name_balance_tube  = "تيوب للميزانية";
+    const string name_hilti_bolt    = "مسمار هلتي 12 مللي ";
+    const string name_assem_bolt    = "مسمار تجميع 12 مللي ";
     const string name_bolt_8mm      = "مسمار 8 مللي لتجميع الثقل";
-    const string name_washer_spring = "وردة سوسته 12 مللي ";
+    const string name_washer_spring = "وردة سوسته 12 مللي أمان";
     const string name_nut_12mm      = "صامولة 12 مللي ";
     const string name_washer_flat   = "وردة صاج 12 مللي ";
     const string name_spring_8mm    = "وردة سوستة وصامولة 8 مللي للثقل";
     const string name_sub_cab       = "سبورتينات كابينة ";
     const string name_sub_cwt       = "سبورتينات ثقل ";
-    const string name_door_casing   = "تلبيس حلوق الأبواب الخارجية";
+    const string name_door_casing   = "تلبيس الأبواب الخارجية";
     const string name_ceiling_cut   = "تفتيح وتجهيز فتحات سقف البئر";
-    const string name_rubber_pads   = "طقم ربر كراسي الماكينة للغرفة";
-    const string name_wire_6_5mm    = "ويرات فولاذية 6.50 مللي";
-    const string name_wire_11mm     = "ويرات فولاذية 11 مللي ";
-    const string name_rope_hitch    = "شداد حبل ";
+    const string name_rubber_pads   = "طقم ربر كرسي الماكينة ";
+    const string name_wire_6_5mm    = "ويرات  6.50 مللي";
+    const string name_wire_11mm     = "ويرات  11 مللي ";
+    const string name_rope_hitch    = "شداد حبل معتمد عيار ";
     const string name_rope_clamp    = "زرجينة حبل ";
     const string name_parachute     = "جهاز براشوت الأمان ";
-    const string name_governor_rope = "حبل براشوت منظم السرعة";
-    const string name_buffer_set    = "طقم بفر الهيدروليك";
-    const string name_counterweight = "بلوكات زهر حديد للثقل";
-    const string name_shoes_cab     = "كراسي  الكابينة";
-    const string name_shoes_cwt     = "كراسي وتزليق الثقل";
+    const string name_governor_rope = "حبل براشوت  ";
+    const string name_buffer_set    = "طقم بفر هيدروليك";
+    const string name_counterweight = "بلوكات زهر للثقل";
+    const string name_shoes_cab     = "كراسي الكابينة";
+    const string name_shoes_cwt     = "كراسي للتقل";
     const string name_control_panel = "لوحة تحكم (كنترول) ";
     const string name_ard_system    = "كنترول طوارئ إنقاذ آلي (ARD)";
     const string name_ctrl_fischer  = "مسامير وفيشر 12 مللي لتثبيت الكنترول";
-    const string name_inspect_box   = "علبة صيانة فوق ظهر الكابينة";
-    const string name_charger_batt  = "شاحن وبطارية طوارئ الكنترول";
-    const string name_emerg_alarm   = "جرس وبطارية طوارئ ";
-    const string name_flex_cable    = "كيبل مرن  (Traveling Cable)";
-    const string name_flex_holder   = "حامل  الكيبل المرن";
-    const string name_trunk_4cm     = "ترنكات بلاستيك 4 سم ";
-    const string name_trunk_10cm    = "ترنكات بلاستيك 10 سم ";
+    const string name_inspect_box   = "علبة صيانة  أعلي الكابينة";
+    const string name_charger_batt  = "شاحن وجرس طوارئ ";
+    const string name_emerg_alarm   = "كليبس";
+    const string name_flex_cable    = "كيبل مرن متكامل (Traveling Cable)";
+    const string name_flex_holder   = "حامل ومثبت الكيبل المرن";
+    const string name_trunk_4cm     = "ترنكات بلاستيك 4 سم للتمديد";
+    const string name_trunk_10cm    = "ترنكات بلاستيك 10 سم رئيسية";
     const string name_trunk_screws  = "مسامير وفيشر 8 مللي لتثبيت الترنكات";
-    const string name_oiler_set     = "طقم مزايت";
-    const string name_wire_6mm      = "سلك كهرباء 6 مللي رئيسي";
-    const string name_wire_11mm_c   = "سلك 10 مللي في حالة الجيربوكس";
+    const string name_oiler_set     = "طقم مزايت للسكك ";
+    const string name_wire_6mm      = "سلك كهرباء 6 مللي ";
+    const string name_wire_11mm_c   = "سلك 1 مللي في حالة ";
     const string name_wire_1rem     = "سلك طعام";
     const string name_wire_1mm      = "سلك إشارة وتوصيل 1 مللي لفة";
-    const string name_net_cable     = "سلك نت  شاشات وانتركم";
+    const string name_net_cable     = "سلك نت مجدول شاشات وانتركم";
     const string name_cop_panel     = "لوحة طلبات داخلية الكابينة (COP)";
     const string name_lop_buttons   = "طلبات خارجية للأدوار (LOP)";
     const string name_intercom      = "جهاز انتركم  ";
-    const string name_safety_door   = "باب داخلي سلامة لحماية الركاب";
-    const string name_photocell     = "جهاز فوتوسيل (ستارة سحرية) للأمان";
-    const string name_stop_magnet   = "مغناطيس توقف نهائي لفل";
-    const string name_count_magnet  = "مغناطيس عداد  الادوار";
-    const string name_limit_sw      = "ليميت سويتش ميكانيكي ";
-    const string name_limit_sensors = "حساسات مغناطيسية عيارية";
+    const string name_safety_door   = "باب داخلي سلامة ";
+    const string name_photocell     = "جهاز فوتوسيل";
+    const string name_stop_magnet   = "مغناطيس توقف لفل";
+    const string name_count_magnet  = "مغناطيس عداد حساب الأدوار";
+    const string name_limit_sw      = "ليميت سويتش || حساس للنهايات ";
+    const string name_limit_sensors = "حساسات مغناطيسية للنهايات";
     const string name_floor_poles   = "بولات المغناطيس  ";
 
 public:
@@ -237,7 +237,7 @@ public:
         return load;
     }
 
-    // هيكلية تقرير المقايسة الشاملة المصلحة بالكامل
+    // هيكلية تقرير المقايسة الشاملة
     struct FullSpecificationReport {
         // المرحلة الأولى
         string door_exterior_name;
@@ -375,10 +375,10 @@ public:
         
         r.total_exterior_doors = floors * 1;
         if (w >= 128) {
-            r.door_exterior_name = name_door_auto ;
-            r.door_casing_note   = name_door_casing + " (يلزم تركيب علب التلبيس لحماية  الأبواب الأوتوماتيك)";
+            r.door_exterior_name = name_door_auto;
+            r.door_casing_note   = name_door_casing + " (يلزم تركيب علب التلبيس لحماية كوالين الأبواب الأوتوماتيك)";
         } else {
-            r.door_exterior_name = name_door_semi ;
+            r.door_exterior_name = name_door_semi;
             r.door_casing_note   = "لا يحتاج تلبيس حلوق (الأبواب المتاحة نصف أوتوماتيكية)";
         }
 
@@ -414,7 +414,6 @@ public:
             r.sub_cwt_name         = name_sub_cwt;
         }
 
-        // إسناد مسميات المسامير
         r.hilti_bolts_name         = name_hilti_bolt;
         r.assembly_bolts_name      = name_assem_bolt;
         r.bolts_8mm_name           = name_bolt_8mm;
@@ -434,10 +433,10 @@ public:
 
         if (type == "Hydraulic") {
             r.machine_type_desc   = "بستم ومجموعة ضخ هيدروليكية بالكامل (Hydraulic Pump Pack)";
-            r.machine_rubber_note = "لا يوجد)";
+            r.machine_rubber_note = "لا يحتاج ربر (قواعد تثبيت هيدروليك أرضية بسلندر)";
             r.cabin_design_type   = get_cabin_type(w, d) + " هيدروليك جانبية";
-            r.cwt_design_type     = "لا يوجد تقل في الهيدرولي";
-            r.cabin_wires_name    = " جاري التعديل ";
+            r.cwt_design_type     = "بدون ثقل (نظام دفع سلندر)";
+            r.cabin_wires_name    = "لا يحتاج حبال جر ميكانيكي";
             r.cabin_wires_meters  = 0;
             r.rope_hitches_count  = 0;
             r.rope_clamps_count   = 0;
@@ -445,7 +444,7 @@ public:
         } 
         else if (type == "MRL") {
             r.machine_type_desc   = "ماكينة بدون غرف جيرليس متطورة (Gearless MRL)";
-            r.machine_rubber_note = "لا يوجد";
+            r.machine_rubber_note = "لا يوجد كراسي ربر علوية (الماكينة تثبت داخل البئر مباشرة)";
             r.cabin_design_type   = get_cabin_type(w, d) + " نظام تعليق جيرليس عياري";
             r.cwt_design_type     = get_cwt_position(w, d) + " جانبي / خلفي موفر للمساحة";
             
@@ -475,7 +474,7 @@ public:
         if (type != "Hydraulic" && cwt_dbg > 6) {
             r.cwt_blocks_weight_desc = "مقاس شواكيل عرض قالب الزهر = " + to_string(cwt_dbg - 6) + " CM صفي";
         } else {
-            r.cwt_blocks_weight_desc = "لا يوجد";
+            r.cwt_blocks_weight_desc = "لا يحتاج قالب زهر (نظام تشغيل هيدروليكي)";
         }
 
         r.control_panel_name = name_control_panel;
@@ -599,14 +598,6 @@ static vector<Lesson> get_lessons() {
     };
 }
 
-static vector<Lesson> get_lessons_by_track(const string& track_slug) {
-    vector<Lesson> all = get_lessons();
-    vector<Lesson> filtered;
-    for (auto& l : all) if (l.track_slug == track_slug) filtered.push_back(l);
-    sort(filtered.begin(), filtered.end(), [](const Lesson& a, const Lesson& b) { return a.order < b.order; });
-    return filtered;
-}
-
 static string get_modern_blue_css() {
     return "<style>"
            "*{box-sizing:border-box;}"
@@ -715,6 +706,22 @@ static string get_modern_blue_css() {
 
            ".footer{margin-top:auto; padding:25px 0; font-size:15px; color:var(--text-muted); text-align:center; border-top:1px solid var(--border); background-color:var(--surface); font-weight:600;}"
            
+           "@media (max-width: 600px) {"
+           "  .container { padding: 20px 10px !important; }"
+           "  .card { padding: 20px 15px !important; }"
+           "  .card h2 { font-size: 1.3rem !important; }"
+           "  .section-intro h1 { font-size: 1.4rem !important; }"
+           "  .sub-title { font-size: 0.85rem !important; margin-bottom: 20px !important; }"
+           "  .tbl th, .tbl td { padding: 10px 8px !important; font-size: 0.85rem !important; }"
+           "  .actions { flex-direction: column !important; gap: 12px !important; margin-top: 25px !important; }"
+           "  .btn-print, .btn-secondary, button { padding: 12px 20px !important; font-size: 1rem !important; width: 100% !important; }"
+           "  .nav-card { padding: 20px 15px !important; }"
+           "  .nav-card h3 { font-size: 1.15rem !important; }"
+           "  .track-item { padding: 14px 15px !important; gap: 12px !important; }"
+           "  .f-group label { font-size: 0.85rem !important; }"
+           "  input, select { padding: 10px !important; font-size: 0.9rem !important; }"
+           "  h3 { font-size: 1.05rem !important; }"
+           "}"
            "@media print{"
            "  body, .container, #pdf-area { background: #121826 !important; color: #f3f4f6 !important; height: auto !important; overflow: visible !important; min-height: unset !important; padding: 0 !important; margin: 0 !important; width: 100% !important; }"
            "  .card { box-shadow: none !important; border: none !important; padding: 20px !important; background: #121826 !important; width: 100% !important; height: auto !important; overflow: visible !important; position: static !important; }"
@@ -885,7 +892,7 @@ int main() {
         res.set_content(html, "text/html; charset=utf-8");
     });
 
-    // 3️⃣ معالجة الحسابات وتوليد الجداول الثلاثية الشاملة المفككة بالكامل
+    // 3️⃣ معالجة الحسابات وتوليد الجداول الثلاثية الشاملة
     svr.Post("/calculate", [&elevator](const httplib::Request& req, httplib::Response& res) {
         string m_type = html_escape(req.get_param_value("m_type"));
         if (m_type != "MR" && m_type != "MRL" && m_type != "Hydraulic") m_type = "MR";
@@ -984,7 +991,6 @@ int main() {
            << "</table></div>";
 
         if (calc_mat == "yes") {
-            // تفكيك وعرض كل بند منفرد بخلية مستقلة مع عدده بدقة تامة
             os << "<h3 style='color:var(--accent); font-size:1.15rem; margin-top:25px; margin-bottom:10px;'>⚙️ ثانياً: بضاعة المرحلة الأولى (السكك والأبواب والحديد):</h3>"
                << "<div class='table-container'><table class='tbl'>"
                << "<thead><tr><th>اسم بيان الصنف والخامة الحديدية</th><th>الكمية المطلوبة للموقع</th></tr></thead>"
