@@ -132,52 +132,52 @@ private:
     const string name_hilti_bolt    = "مسمار هلتي 12 مللي جداري";
     const string name_assem_bolt    = "مسمار تجميع 12 مللي للسمك";
     const string name_bolt_8mm      = "مسمار 8 مللي لتجميع الثقل";
-    const string name_washer_spring = "وردة سوسته 12 مللي أمان";
-    const string name_nut_12mm      = "صامولة 12 مللي مجلفنة";
-    const string name_washer_flat   = "وردة صاج 12 مللي عريضة";
+    const string name_washer_spring = "وردة سوسته 12 مللي ";
+    const string name_nut_12mm      = "صامولة 12 مللي ";
+    const string name_washer_flat   = "وردة صاج 12 مللي ";
     const string name_spring_8mm    = "وردة سوستة وصامولة 8 مللي للثقل";
-    const string name_sub_cab       = "سبورتينات كابينة معتمدة";
-    const string name_sub_cwt       = "سبورتينات ثقل معتمدة";
+    const string name_sub_cab       = "سبورتينات كابينة ";
+    const string name_sub_cwt       = "سبورتينات ثقل ";
     const string name_door_casing   = "تلبيس حلوق الأبواب الخارجية";
     const string name_ceiling_cut   = "تفتيح وتجهيز فتحات سقف البئر";
     const string name_rubber_pads   = "طقم ربر كراسي الماكينة للغرفة";
     const string name_wire_6_5mm    = "ويرات فولاذية 6.50 مللي";
-    const string name_wire_11mm     = "ويرات فولاذية 11 مللي متينة";
-    const string name_rope_hitch    = "شداد حبل معتمد عيار الحبل";
-    const string name_rope_clamp    = "زرجينة حبل حديد";
-    const string name_parachute     = "جهاز براشوت الأمان السفلي";
+    const string name_wire_11mm     = "ويرات فولاذية 11 مللي ";
+    const string name_rope_hitch    = "شداد حبل ";
+    const string name_rope_clamp    = "زرجينة حبل ";
+    const string name_parachute     = "جهاز براشوت الأمان ";
     const string name_governor_rope = "حبل براشوت منظم السرعة";
-    const string name_buffer_set    = "طقم بفر الهيدروليكي / الزيت";
+    const string name_buffer_set    = "طقم بفر الهيدروليك";
     const string name_counterweight = "بلوكات زهر حديد للثقل";
-    const string name_shoes_cab     = "كراسي وتزليق الكابينة (لقم)";
-    const string name_shoes_cwt     = "كراسي وتزليق الثقل (لقم)";
-    const string name_control_panel = "لوحة تحكم (كنترول) ذكية";
+    const string name_shoes_cab     = "كراسي  الكابينة";
+    const string name_shoes_cwt     = "كراسي وتزليق الثقل";
+    const string name_control_panel = "لوحة تحكم (كنترول) ";
     const string name_ard_system    = "كنترول طوارئ إنقاذ آلي (ARD)";
     const string name_ctrl_fischer  = "مسامير وفيشر 12 مللي لتثبيت الكنترول";
     const string name_inspect_box   = "علبة صيانة فوق ظهر الكابينة";
     const string name_charger_batt  = "شاحن وبطارية طوارئ الكنترول";
-    const string name_emerg_alarm   = "جرس وسارينة طوارئ دائرية";
-    const string name_flex_cable    = "كيبل مرن متكامل (Traveling Cable)";
-    const string name_flex_holder   = "حامل ومثبت الكيبل المرن";
-    const string name_trunk_4cm     = "ترنكات بلاستيك 4 سم للتمديد";
-    const string name_trunk_10cm    = "ترنكات بلاستيك 10 سم رئيسية";
+    const string name_emerg_alarm   = "جرس وبطارية طوارئ ";
+    const string name_flex_cable    = "كيبل مرن  (Traveling Cable)";
+    const string name_flex_holder   = "حامل  الكيبل المرن";
+    const string name_trunk_4cm     = "ترنكات بلاستيك 4 سم ";
+    const string name_trunk_10cm    = "ترنكات بلاستيك 10 سم ";
     const string name_trunk_screws  = "مسامير وفيشر 8 مللي لتثبيت الترنكات";
-    const string name_oiler_set     = "طقم مزايت سكك أوتوماتيك";
+    const string name_oiler_set     = "طقم مزايت";
     const string name_wire_6mm      = "سلك كهرباء 6 مللي رئيسي";
-    const string name_wire_11mm_c   = "سلك 11 مللي في حالة الجيربوكس";
+    const string name_wire_11mm_c   = "سلك 10 مللي في حالة الجيربوكس";
     const string name_wire_1rem     = "سلك طعام";
     const string name_wire_1mm      = "سلك إشارة وتوصيل 1 مللي لفة";
-    const string name_net_cable     = "سلك نت مجدول شاشات وانتركم";
+    const string name_net_cable     = "سلك نت  شاشات وانتركم";
     const string name_cop_panel     = "لوحة طلبات داخلية الكابينة (COP)";
     const string name_lop_buttons   = "طلبات خارجية للأدوار (LOP)";
-    const string name_intercom      = "جهاز انتركم اتصال داخلي";
+    const string name_intercom      = "جهاز انتركم  ";
     const string name_safety_door   = "باب داخلي سلامة لحماية الركاب";
     const string name_photocell     = "جهاز فوتوسيل (ستارة سحرية) للأمان";
     const string name_stop_magnet   = "مغناطيس توقف نهائي لفل";
-    const string name_count_magnet  = "مغناطيس عداد حساب الأدوار";
-    const string name_limit_sw      = "ليميت سويتش ميكانيكي مجدول";
+    const string name_count_magnet  = "مغناطيس عداد  الادوار";
+    const string name_limit_sw      = "ليميت سويتش ميكانيكي ";
     const string name_limit_sensors = "حساسات مغناطيسية عيارية";
-    const string name_floor_poles   = "بولات المغناطيس لحديد السكك";
+    const string name_floor_poles   = "بولات المغناطيس  ";
 
 public:
     // دوال الأبعاد واللوجيك الهندسي
@@ -376,7 +376,7 @@ public:
         r.total_exterior_doors = floors * 1;
         if (w >= 128) {
             r.door_exterior_name = name_door_auto + " (" + get_door_type(w) + ")";
-            r.door_casing_note   = name_door_casing + " (يلزم تركيب علب التلبيس لحماية كوالين الأبواب الأوتوماتيك)";
+            r.door_casing_note   = name_door_casing + " (يلزم تركيب علب التلبيس لحماية  الأبواب الأوتوماتيك)";
         } else {
             r.door_exterior_name = name_door_semi + " (" + get_door_type(w) + ")";
             r.door_casing_note   = "لا يحتاج تلبيس حلوق (الأبواب المتاحة نصف أوتوماتيكية)";
@@ -434,10 +434,10 @@ public:
 
         if (type == "Hydraulic") {
             r.machine_type_desc   = "بستم ومجموعة ضخ هيدروليكية بالكامل (Hydraulic Pump Pack)";
-            r.machine_rubber_note = "لا يحتاج ربر (قواعد تثبيت هيدروليك أرضية بسلندر)";
+            r.machine_rubber_note = "لا يوجد)";
             r.cabin_design_type   = get_cabin_type(w, d) + " هيدروليك جانبية";
-            r.cwt_design_type     = "بدون ثقل (نظام دفع سلندر)";
-            r.cabin_wires_name    = "لا يحتاج حبال جر ميكانيكي";
+            r.cwt_design_type     = "لا يوجد تقل في الهيدرولي";
+            r.cabin_wires_name    = " جاري التعديل ";
             r.cabin_wires_meters  = 0;
             r.rope_hitches_count  = 0;
             r.rope_clamps_count   = 0;
@@ -445,7 +445,7 @@ public:
         } 
         else if (type == "MRL") {
             r.machine_type_desc   = "ماكينة بدون غرف جيرليس متطورة (Gearless MRL)";
-            r.machine_rubber_note = "لا يوجد كراسي ربر علوية (الماكينة تثبت داخل البئر مباشرة)";
+            r.machine_rubber_note = "لا يوجد";
             r.cabin_design_type   = get_cabin_type(w, d) + " نظام تعليق جيرليس عياري";
             r.cwt_design_type     = get_cwt_position(w, d) + " جانبي / خلفي موفر للمساحة";
             
@@ -475,7 +475,7 @@ public:
         if (type != "Hydraulic" && cwt_dbg > 6) {
             r.cwt_blocks_weight_desc = "مقاس شواكيل عرض قالب الزهر = " + to_string(cwt_dbg - 6) + " CM صفي";
         } else {
-            r.cwt_blocks_weight_desc = "لا يحتاج قالب زهر (نظام تشغيل هيدروليكي)";
+            r.cwt_blocks_weight_desc = "لا يوجد";
         }
 
         r.control_panel_name = name_control_panel;
