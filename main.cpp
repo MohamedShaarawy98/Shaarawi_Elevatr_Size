@@ -126,7 +126,7 @@ private:
     const string name_rail_5        = "سكة تقل 5 مللي";
     const string name_bracket_cab   = "كوابيل كابينة حسب مقاس السكة";
     const string name_bracket_cwt   = "كوابيل التقل القياسية";
-    const string name_scaffolding   = "سقالة تركيب متكاملة";
+    const string name_scaffolding   = "سقالة  ";
     const string name_plumb_lines   = "شواكيل خيط عيار هندسي";
     const string name_balance_tube  = "تيوب ميزان المياه للميزانية";
     const string name_hilti_bolt    = "مسمار هلتي 12 مللي جداري";
@@ -375,10 +375,10 @@ public:
         
         r.total_exterior_doors = floors * 1;
         if (w >= 128) {
-            r.door_exterior_name = name_door_auto + " (" + get_door_type(w) + ")";
+            r.door_exterior_name = name_door_auto ;
             r.door_casing_note   = name_door_casing + " (يلزم تركيب علب التلبيس لحماية  الأبواب الأوتوماتيك)";
         } else {
-            r.door_exterior_name = name_door_semi + " (" + get_door_type(w) + ")";
+            r.door_exterior_name = name_door_semi ;
             r.door_casing_note   = "لا يحتاج تلبيس حلوق (الأبواب المتاحة نصف أوتوماتيكية)";
         }
 
