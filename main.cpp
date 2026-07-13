@@ -376,10 +376,10 @@ public:
         r.total_exterior_doors = floors * 1;
         if (w >= 128) {
             r.door_exterior_name = name_door_auto;
-            r.door_casing_note   = name_door_casing + " (يلزم تركيب علب التلبيس لحماية كوالين الأبواب الأوتوماتيك)";
+            r.door_casing_note   = name_door_casing + " (يلزم تركيب علب التلبيس لحماية الابواب الخارجية)";
         } else {
             r.door_exterior_name = name_door_semi;
-            r.door_casing_note   = "لا يحتاج تلبيس حلوق (الأبواب المتاحة نصف أوتوماتيكية)";
+            r.door_casing_note   = "لا يحتاج تلبيس الأبواب النصف أوتوماتيكية)";
         }
 
         float travel_path = ((floors - 1) * 3.2f) + 5.0f;
@@ -444,7 +444,7 @@ public:
         } 
         else if (type == "MRL") {
             r.machine_type_desc   = "ماكينة بدون غرف جيرليس متطورة (Gearless MRL)";
-            r.machine_rubber_note = "لا يوجد كراسي ربر علوية (الماكينة تثبت داخل البئر مباشرة)";
+            r.machine_rubber_note = "لا يوجد  ربر  (الماكينة تثبت داخل البئر )";
             r.cabin_design_type   = get_cabin_type(w, d) + " نظام تعليق جيرليس عياري";
             r.cwt_design_type     = get_cwt_position(w, d) + " جانبي / خلفي موفر للمساحة";
             
