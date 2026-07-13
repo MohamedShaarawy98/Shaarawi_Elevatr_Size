@@ -2,7 +2,7 @@
 
                                ============================================================
                                =                                                          =
-                               =                  منصة ضربة شاكوش الرقمية                     =
+                               =                  منصة ضربة شاكوش الرقمية                 =
                                =                                                          =
                                ============================================================
  */          
@@ -143,7 +143,7 @@ private:
     const string name_rubber_pads   = "طقم ربر كراسي الماكينة ";
     const string name_wire_6_5mm    = "ويرات  6.50 مللي";
     const string name_wire_11mm     = "ويرات  11 مللي متينة";
-    const string name_rope_hitch    = "شداد مقاس الخبل";
+    const string name_rope_hitch    = "شداد مقاس الحبل";
     const string name_rope_clamp    = "زرجينة حبل حديد";
     const string name_parachute     = "جهاز براشوت الأمان السفلي";
     const string name_governor_rope = "حبل براشوت منظم السرعة";
@@ -375,10 +375,10 @@ public:
         
         r.total_exterior_doors = floors * 1;
         if (w >= 128) {
-            r.door_exterior_name = name_door_auto + " (" + get_door_type(w) + ")";
+            r.door_exterior_name = name_door_auto;
             r.door_casing_note   = name_door_casing + " (يلزم تركيب علب التلبيس لحماية كوالين الأبواب الأوتوماتيك)";
         } else {
-            r.door_exterior_name = name_door_semi + " (" + get_door_type(w) + ")";
+            r.door_exterior_name = name_door_semi;
             r.door_casing_note   = "لا يحتاج تلبيس حلوق (الأبواب المتاحة نصف أوتوماتيكية)";
         }
 
@@ -414,7 +414,6 @@ public:
             r.sub_cwt_name         = name_sub_cwt;
         }
 
-        // إسناد مسميات المسامير
         r.hilti_bolts_name         = name_hilti_bolt;
         r.assembly_bolts_name      = name_assem_bolt;
         r.bolts_8mm_name           = name_bolt_8mm;
@@ -715,6 +714,28 @@ static string get_modern_blue_css() {
 
            ".footer{margin-top:auto; padding:25px 0; font-size:15px; color:var(--text-muted); text-align:center; border-top:1px solid var(--border); background-color:var(--surface); font-weight:600;}"
            
+           "@media (max-width: 600px) {"
+           "  .container { padding: 15px 10px !important; }"
+           "  .card { padding: 20px 15px !important; }"
+           "  .card h2 { font-size: 1.3rem !important; }"
+           "  .section-intro h1 { font-size: 1.4rem !important; }"
+           "  .sub-title { font-size: 0.85rem !important; margin-bottom: 20px !important; }"
+           "  .actions { flex-direction: column !important; gap: 12px !important; margin-top: 25px !important; }"
+           "  .btn-print, .btn-secondary, button { padding: 12px 20px !important; font-size: 1rem !important; width: 100% !important; }"
+           "  .nav-card { padding: 20px 15px !important; }"
+           "  .nav-card h3 { font-size: 1.15rem !important; }"
+           "  .track-item { padding: 14px 15px !important; gap: 12px !important; }"
+           "  .f-group label { font-size: 0.85rem !important; }"
+           "  input, select { padding: 10px !important; font-size: 0.9rem !important; }"
+           "  h3 { font-size: 1.05rem !important; }"
+           "  .tbl, .tbl tbody, .tbl tr, .tbl th, .tbl td { display: block; width: 100% !important; border: none; }"
+           "  .tbl thead { display: none; }"
+           "  .table-container { border: none !important; background: transparent !important; padding: 0 !important; overflow: visible !important; margin-top: 15px; }"
+           "  .tbl tr { margin-bottom: 12px; border: 1px solid var(--border) !important; border-radius: 8px; overflow: hidden; background: var(--surface); box-shadow: 0 2px 4px rgba(0,0,0,0.1); }"
+           "  .tbl th { background: var(--surface-2); padding: 12px 15px !important; font-size: 0.95rem !important; text-align: right !important; border-bottom: 1px solid var(--border) !important; }"
+           "  .tbl td { padding: 12px 15px !important; font-size: 0.95rem !important; text-align: right !important; }"
+           "  .tbl td:first-child { background: var(--surface-2); color: var(--accent); font-weight: 700; border-bottom: 1px solid var(--border) !important; }"
+           "}"
            "@media print{"
            "  body, .container, #pdf-area { background: #121826 !important; color: #f3f4f6 !important; height: auto !important; overflow: visible !important; min-height: unset !important; padding: 0 !important; margin: 0 !important; width: 100% !important; }"
            "  .card { box-shadow: none !important; border: none !important; padding: 20px !important; background: #121826 !important; width: 100% !important; height: auto !important; overflow: visible !important; position: static !important; }"
