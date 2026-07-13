@@ -79,7 +79,7 @@ static void set_security_headers(httplib::Response& res) {
     res.set_header("X-XSS-Protection", "1; mode=block");
     res.set_header("Strict-Transport-Security", "max-age=31536000; includeSubDomains");
     res.set_header("Referrer-Policy", "strict-origin-when-cross-origin");
-    res.set_header("Server", "Hammer-Engine/1.1");
+    res.set_header("Server", "Hammer-Engine/1.2");
 }
 
 static void set_csp(httplib::Response& res, const string& script_nonce = "") {
@@ -118,7 +118,7 @@ static bool is_rate_limited(const string& ip) {
 // ============================================================================
 class Elevator {
 private:
-    // 🔒 [قسم خاص - Private]: أسماء مسميات البضاعة الثابتة
+    // 🔒 [قسم خاص - Private]: أسماء مسميات البضاعة الثابتة الخاصة بك
     const string name_door_auto     = " الابواب";
     const string name_door_semi     = "باب نصف اتوماتيك";
     const string name_rail_16       = "سكة كابينة 16 مللي";
@@ -180,7 +180,6 @@ private:
     const string name_floor_poles   = "بولات المغناطيس لحديد السكك";
 
 public:
-    // دوال الأبعاد واللوجيك الهندسي
     string get_door_type(int sa) {
         if (sa >= 210 && sa <= 250)      return "Auto 80 CO || Auto 90 CO || Auto 100 CO";
         else if (sa >= 190 && sa < 210)  return "Auto 80 CO || Auto 90 CO || Auto 100 SI";
@@ -237,7 +236,6 @@ public:
         return load;
     }
 
-    // هيكلية تقرير المقايسة الشاملة المصلحة بالكامل
     struct FullSpecificationReport {
         // المرحلة الأولى
         string door_exterior_name;
@@ -523,8 +521,8 @@ public:
 
         if (w >= 128) {
             r.photocell_name = name_photocell;
-            r.photocell_note = "(نظام أوتوماتيكي بالكامل: يتضمن  الشعاع الضوئي (الفوتوسيل .";
-            r.safety_door_name = "ازرار الداخلية  للفتح والغلق اليدوي";
+            r.photocell_note = "(نظام أوتوماتيكي بالكامل: يتضمن  الشعاع الضوئي (الفوتوسيل).";
+            r.safety_door_name = "ازرار الداخلية   للفتح والغلق اليدوي";
         } else {
             r.photocell_name = "غير مطلوب للنظام النص أوتوماتيك";
             r.photocell_note = "المصعد نصف أوتوماتيك : يتم فتح الكالون الخارجي بكامة الكابينة. ";
@@ -564,37 +562,17 @@ static vector<Track> get_tracks() {
     }; 
 }
 
+// تم تفريغ المقالات وترك القالب كما طلبت لسهولة الإضافة مستقبلاً
 static vector<Lesson> get_lessons() {
     return {
-        { "intro-shaft-dimensions", "basics", "video",
-          "مقدمة هندسية: فهم أبعاد بئر المصعد الصافية",
-          "شرح فني يوضح الفرق بين البئر الحر والـ Pit والـ Overhead وأهميتهم الكبرى في التصفية الميكانيكية.",
-          "<p>بئر المصعد بيتكون من 3 قياسات أساسية لازم تكون دقيقة جداً قبل البدء في أي تصفية هندسية: "
-          "العرض والعمق الحُرّين للبئر، عمق حفرة الـ Pit أسفل المحطة الأخيرة، وارتفاع الـ Overhead فوق آخر وقفة للمصعد.</p>"
-          "<p>أي خطأ بسيط في أي قياس من القياسات الثلاثة بيأثر مباشرة على نوع الباب المتاح ومقاس الكابينة الصافي، "
-          "وده اللي بتحسبه الحاسبة الذكية أوتوماتيك من غير الحاجه لجدول ورقي معقد.</p>",
-          "https://www.youtube.com/embed/ZluG-pfc2HY", 1},
-
-        { "door-types-explained", "doors", "video",
-          "شرح أنواع أبواب المصاعد الأوتوماتيكية والنص أوتوماتيك Auto / Semi",
-          "فيديو تفصيلي يوضح الفرق بين أبواب السنتر CO وأبواب التلسكوب الجانبية SI وإزاي تختار المقاس والنوع المناسب لبئرك وعرض فتحة الصاعدة.",
-          "",
-          "https://www.youtube.com/embed/ZluG-pfc2HY", 1},
-
-          {"darbat-shakosh-one" ,"darbat" , "video", 
-            "توصيل الكنترول وقفل دوائر الأمان - الدرس 2",
-            "أهمية ترتيب خطوات تأسيس خطوط الكهرباء وربط دوائر السلسلة للامان وضمان الشغل النضيف والمطابق للمواصفات.",
-          "<p> أولاً: يتم التأكد من كهرباء المبنى وتغذية المصدر سواء كانت الفازة 220 فولت أو 380 فولت لعمل وتأسيس لوحة الكنترول على هذا الأساس السليم.</p>"
-          "<p> ثانياً: تركيب الكنترول وتوصيل المحرك (الماكينة) وقفل دوائر السيفتي الرئيسية {الشوكة - الكالون - الاستوب} ثم اختبار حركة المصعد السريعة والبطيئة لضمان الاستجابة.</p>",
-          "https://www.youtube.com/embed/ZluG-pfc2HY", 2},
-
-          {"darbat-shakosh-tow" ,"darbat" , "article", 
-            "المبادئ الأولى لكهرباء وكروت المصاعد - الدرس 1",
-            "نظرة عامة على لوحة التحكم والروابط الكهربائية وتغذية الفرامل ومغناطيس التهدئة والتوقف الفني.",
-          "<p> أولاً: يتم التأكد من كهرباء المبنى وتغذية المصدر سواء كانت الفازة 220 فولت أو 380 فولت لعمل وتأسيس لوحة الكنترول على هذا الأساس السليم.</p>"
-          "<img src='https://media.darbat-shakosh.com/channels4_profile%20(1).jpg' style='width:100%; max-width:600px; display:block; border-radius:8px; margin:20px auto; border:1px solid var(--border);' alt='خريطة ومخطط المصعد الفني'>"
-          "<p> ثانياً: تركيب الكنترول وتوصيل المحرك (الماكينة) وقفل دوائر السيفتي الرئيسية {الشوكة - الكالون - الاستوب} ثم اختبار حركة المصعد السريعة والبطيئة لضمان الاستجابة.</p>",
-          "https://www.youtube.com/embed/ZluG-pfc2HY", 1}
+        /*
+        // قالب إضافة مقال أو درس:
+        { "رابط-الدرس", "رابط-المسار", "video او article",
+          "عنوان الدرس",
+          "وصف مختصر للدرس يظهر في الكارت",
+          "<p>محتوى الدرس بصيغة HTML (اختياري)</p>",
+          "رابط يوتيوب (اختياري)", 1}
+        */
     };
 }
 
@@ -606,6 +584,7 @@ static vector<Lesson> get_lessons_by_track(const string& track_slug) {
     return filtered;
 }
 
+// دالة التنسيق والـ CSS الشاملة للموبايل والكروت
 static string get_modern_blue_css() {
     return "<style>"
            "*{box-sizing:border-box;}"
@@ -681,15 +660,23 @@ static string get_modern_blue_css() {
            "button, .btn-action{background:linear-gradient(135deg, #0284c7, #0369a1); color:#ffffff; border:none; padding:16px; border-radius:8px; width:100%; font-size:1.1rem; font-weight:700; cursor:pointer; transition:0.3s; text-decoration:none; display:inline-block; text-align:center; box-shadow: 0 4px 6px rgba(0,0,0,0.1);}"
            "button:hover, .btn-action:hover{background:linear-gradient(135deg, #0369a1, #075985); transform:translateY(-1px);}"
 
-           ".table-container{position:relative; width:100%; overflow-x:auto; background:var(--bg); border-radius:8px; border:1px solid var(--border); margin-top:20px;}"
+           /* التنسيق الجديد الجذاب للجداول والكروت */
+           ".table-container{position:relative; width:100%; overflow-x:auto; background:var(--bg); border-radius:8px; border:1px solid var(--border); margin-top:10px;}"
            ".tbl{width:100%; border-collapse:collapse; text-align:right; margin-bottom: 20px;}"
-           ".tbl th{background:var(--surface); padding:15px; color:var(--accent); font-weight:600; border-bottom:1px solid var(--border); font-size:1rem; text-align:right; width:45%;}"
+           ".tbl th{background:var(--surface); padding:15px; color:var(--text); font-weight:600; border-bottom:1px solid var(--border); font-size:1rem; text-align:right; width:45%;}"
            ".tbl td{padding:15px; border-bottom:1px solid var(--border); color:var(--text); font-size:1rem; font-weight:600; text-align:right; font-family:var(--font-mono);}"
+           
+           ".stage-header { padding: 12px 15px; border-radius: 8px; margin: 25px 0 10px 0; font-weight: 800; color: #fff; text-align: center; font-size: 1.1rem; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }"
+           ".stage-1 { background: linear-gradient(135deg, #0ea5e9, #0284c7); }" 
+           ".stage-2 { background: linear-gradient(135deg, #8b5cf6, #7c3aed); }" 
+           ".stage-3 { background: linear-gradient(135deg, #f59e0b, #d97706); }" 
+
            ".actions{display:flex; justify-content:space-between; margin-top:35px; gap:20px;}"
            ".btn-print{background:linear-gradient(135deg, #16a34a, #15803d); color:white; border:none; padding:15px 25px; border-radius:8px; font-weight:700; cursor:pointer; flex:1; transition:0.3s; text-align:center; font-family:var(--font-display); box-shadow: 0 4px 6px rgba(0,0,0,0.1);}"
            ".btn-print:hover{background:linear-gradient(135deg, #15803d, #166534);}"
            ".btn-secondary{background:linear-gradient(135deg, #4f46e5, #4338ca); color:white; padding:15px 25px; border-radius:8px; font-weight:700; text-align:center; flex:1; transition:0.3s; display:inline-block; text-decoration:none; font-family:var(--font-display); box-shadow: 0 4px 6px rgba(0,0,0,0.1);}"
            ".btn-secondary:hover{background:linear-gradient(135deg, #4338ca, #3730a3);}"
+           
            ".grid-nav{display:grid; grid-template-columns:repeat(auto-fit, minmax(280px, 1fr)); gap:25px; width:100%;}"
            ".nav-card{position:relative; background:var(--surface); border:1px solid var(--border); padding:30px; border-radius:12px; text-decoration:none; color:var(--text); transition:0.3s; display:flex; flex-direction:column; text-align:right;}"
            ".nav-card:hover{border-color:var(--accent); transform:translateY(-3px); box-shadow:0 10px 20px rgba(0,0,0,0.2);}"
@@ -714,9 +701,10 @@ static string get_modern_blue_css() {
 
            ".footer{margin-top:auto; padding:25px 0; font-size:15px; color:var(--text-muted); text-align:center; border-top:1px solid var(--border); background-color:var(--surface); font-weight:600;}"
            
+           /* تحويل الجداول لنظام كروت ذكية على الموبايل */
            "@media (max-width: 600px) {"
            "  .container { padding: 15px 10px !important; }"
-           "  .card { padding: 20px 15px !important; }"
+           "  .card { padding: 20px 15px !important; border:none; box-shadow:none; }"
            "  .card h2 { font-size: 1.3rem !important; }"
            "  .section-intro h1 { font-size: 1.4rem !important; }"
            "  .sub-title { font-size: 0.85rem !important; margin-bottom: 20px !important; }"
@@ -727,22 +715,29 @@ static string get_modern_blue_css() {
            "  .track-item { padding: 14px 15px !important; gap: 12px !important; }"
            "  .f-group label { font-size: 0.85rem !important; }"
            "  input, select { padding: 10px !important; font-size: 0.9rem !important; }"
-           "  h3 { font-size: 1.05rem !important; }"
-           "  .tbl, .tbl tbody, .tbl tr, .tbl th, .tbl td { display: block; width: 100% !important; border: none; }"
+           
+           "  .tbl, .tbl tbody, .tbl tr, .tbl th, .tbl td { display: block; width: 100% !important; border: none !important; }"
            "  .tbl thead { display: none; }"
-           "  .table-container { border: none !important; background: transparent !important; padding: 0 !important; overflow: visible !important; margin-top: 15px; }"
-           "  .tbl tr { margin-bottom: 12px; border: 1px solid var(--border) !important; border-radius: 8px; overflow: hidden; background: var(--surface); box-shadow: 0 2px 4px rgba(0,0,0,0.1); }"
-           "  .tbl th { background: var(--surface-2); padding: 12px 15px !important; font-size: 0.95rem !important; text-align: right !important; border-bottom: 1px solid var(--border) !important; }"
-           "  .tbl td { padding: 12px 15px !important; font-size: 0.95rem !important; text-align: right !important; }"
-           "  .tbl td:first-child { background: var(--surface-2); color: var(--accent); font-weight: 700; border-bottom: 1px solid var(--border) !important; }"
+           "  .table-container { border: none !important; background: transparent !important; padding: 0 !important; overflow: visible !important; margin-top: 5px; }"
+           "  .tbl tr { margin-bottom: 15px; border: 1px solid var(--border) !important; border-radius: 10px; background: var(--surface); box-shadow: 0 4px 6px rgba(0,0,0,0.2); position: relative; overflow: hidden; }"
+           "  .tbl tr::before { content: ''; position: absolute; right: 0; top: 0; bottom: 0; width: 5px; background: var(--accent); }"
+           "  .tbl th { display:none; }" 
+           "  .tbl td, .tbl th { padding: 10px 20px 10px 15px !important; text-align: right !important; }"
+           
+           "  .tbl tr th { color: var(--accent); font-size: 0.85rem !important; padding-bottom: 2px !important; display: block; }"
+           "  .tbl tr th + td { font-size: 1.1rem !important; padding-top: 0 !important; }"
+
+           "  .tbl tr td:first-child { color: var(--accent); font-size: 0.85rem !important; padding-bottom: 2px !important; font-weight: bold; }"
+           "  .tbl tr td:last-child { font-size: 1.1rem !important; padding-top: 0 !important; }"
            "}"
            "@media print{"
            "  body, .container, #pdf-area { background: #121826 !important; color: #f3f4f6 !important; height: auto !important; overflow: visible !important; min-height: unset !important; padding: 0 !important; margin: 0 !important; width: 100% !important; }"
            "  .card { box-shadow: none !important; border: none !important; padding: 20px !important; background: #121826 !important; width: 100% !important; height: auto !important; overflow: visible !important; position: static !important; }"
            "  .table-container { overflow: visible !important; width: 100% !important; border: 1px solid #232c3f !important; background: #0a0e16 !important; }"
            "  .tbl { width: 100% !important; table-layout: fixed !important; }"
-           "  .btn-print, .btn-secondary, h3, .navbar, .flags-strip, .footer { display: none !important; }"
+           "  .btn-print, .btn-secondary, .stage-header, .navbar, .flags-strip, .footer { display: none !important; }"
            "  .card::before, .card::after { display: none !important; }"
+           "  .tbl td:first-child { color: #38bdf8 !important; font-weight: bold; }"
            "}"
            "</style>";
 }
@@ -851,7 +846,7 @@ int main() {
     // 1️⃣ الصفحة الرئيسية
     svr.Get("/", [](const httplib::Request&, httplib::Response& res) {
         string nonce = generate_nonce(); set_csp(res, nonce);
-        string meta = get_seo_meta(")المنصة التعليمية والهندسية  للمصاعد والروبوتات", "شروحات فنية متخصصة في ميكانيكا وكهرباء المصاعد وحساب أبعاد الصاعدة فنياً.");
+        string meta = get_seo_meta("المنصة التعليمية والهندسية للمصاعد والروبوتات", "شروحات فنية متخصصة في ميكانيكا وكهرباء المصاعد وحساب أبعاد الصاعدة فنياً.");
         string html = "<html><head><meta charset='UTF-8'><meta name='viewport' content='width=device-width, initial-scale=1.0'>"
                       "<link href='https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&family=JetBrains+Mono:wght@500;600&display=swap' rel='stylesheet'>"
                       + meta + get_modern_blue_css() +
@@ -863,7 +858,7 @@ int main() {
                       "  <p style='color: var(--text-muted); font-size: 1.1rem;'>الأدوات الهندسية الذكية والكورسات التطبيقية المتخصصة في مجال تركيب وصيانة المصاعد.</p>"
                       "</div>"
                       "<div class='grid-nav'>"
-                      "  <a href='/calculator' class='nav-card'><h3>🛗 حاسبة المقاسات الهندسية</h3><p>ابدأ تصفية أبعاد البئر  وحساب المقاسات الصافية للكابينة والبضاعة .</p></a>"
+                      "  <a href='/calculator' class='nav-card'><h3>🛗 حاسبة المقاسات الهندسية</h3><p>ابدأ تصفية أبعاد البئر وحساب المقاسات الصافية للكابينة والبضاعة.</p></a>"
                       "  <a href='/paths' class='nav-card'><h3>🧭 مسارات الكورسات والتعلم</h3><p>اكتشف مسار التأسيس ميكانيكياً، وكورس كهرباء المصاعد الشامل لتوصيل اللوحات والكنترولات خطوة بخطوة.</p></a>"
                       "</div>"
                       "</div>"
@@ -884,12 +879,12 @@ int main() {
                       + get_navbar_html() +
                       "<div class='container' style='max-width:650px;'>"
                       "<div class='card'><h2>🧮 حاسبة مقاسات بئر المصعد الفنية</h2>"
-                      "<div class='sub-title'>الرجاء إدخال القياسات الحُرّة الصافية المأخوذة من الموقع للبدء في الحساب والتصفية التلقائية  :</div>"
+                      "<div class='sub-title'>الرجاء إدخال القياسات الحُرّة الصافية المأخوذة من الموقع للبدء في الحساب والتصفية التلقائية :</div>"
                       "<form action='/calculate' method='post'>"
                       "<div class='f-group'><label>👑 نوع نظام تشغيل المصعد:</label>"
                       "<select name='m_type'>"
-                      "<option value='MR'>غرفة محرك أعلى البئر  (MR)</option>"
-                      "<option value='MRL'> بدون غرفة محرك علوية (MRL)</option>"
+                      "<option value='MR'>غرفة محرك أعلى البئر (MR)</option>"
+                      "<option value='MRL'>بدون غرفة محرك علوية (MRL)</option>"
                       "<option value='Hydraulic'>نظام تشغيل هيدروليك (Hydraulic) 🛠️</option>"
                       "</select></div>"
                       "<div class='f-group'><label>📐 عرض بئر المصعد الحُر الصافي (CM):</label><input type='number' name='width' required min='80' max='250' placeholder='مثال لعرض البئر الحُر: 160'></div>"
@@ -906,7 +901,7 @@ int main() {
         res.set_content(html, "text/html; charset=utf-8");
     });
 
-    // 3️⃣ معالجة الحسابات وتوليد الجداول الثلاثية الشاملة المفككة بالكامل
+    // 3️⃣ معالجة الحسابات وتوليد الجداول/الكروت الشاملة المفككة بالكامل
     svr.Post("/calculate", [&elevator](const httplib::Request& req, httplib::Response& res) {
         string m_type = html_escape(req.get_param_value("m_type"));
         if (m_type != "MR" && m_type != "MRL" && m_type != "Hydraulic") m_type = "MR";
@@ -931,7 +926,7 @@ int main() {
                           "<div style='display:flex; align-items:center; justify-content:center; min-height:100vh;'>"
                           "<div class='card' style='border-color:var(--accent-2); max-width:520px; text-align:center;'>"
                           "<h2>⚙️ نظام MRL قيد التعديل</h2>"
-                          "<p style='color:var(--text-muted); margin-bottom:24px; line-height:1.7;'>جاري تعديل وتحديث معادلات المصاعد الجيرليس (بدون غرفة) حالياً    .. شكراً لثقتكم!</p>"
+                          "<p style='color:var(--text-muted); margin-bottom:24px; line-height:1.7;'>جاري تعديل وتحديث معادلات المصاعد الجيرليس (بدون غرفة) حالياً .. شكراً لثقتكم!</p>"
                           "<a class='btn-secondary' href='/calculator'>🔄 العودة للحاسبة</a>"
                           "</div></div></body></html>";
             res.set_content(html, "text/html; charset=utf-8"); return;
@@ -944,7 +939,7 @@ int main() {
                           "<div style='display:flex; align-items:center; justify-content:center; min-height:100vh;'>"
                           "<div class='card' style='border-color:var(--accent-2); max-width:520px; text-align:center;'>"
                           "<h2>⚙️ النظام الهيدروليكي قيد التطوير</h2>"
-                          "<p style='color:var(--text-muted); margin-bottom:24px; line-height:1.7;'>جاري العمل حالياً على تدقيق وضبط خوارزميات حسابات المصاعد الهيدروليكية وخاماتها.. شكراً لثقتكم   !</p>"
+                          "<p style='color:var(--text-muted); margin-bottom:24px; line-height:1.7;'>جاري العمل حالياً على تدقيق وضبط خوارزميات حسابات المصاعد الهيدروليكية وخاماتها.. شكراً لثقتكم !</p>"
                           "<a class='btn-secondary' href='/calculator'>🔄 العودة للحاسبة</a>"
                           "</div></div></body></html>";
             res.set_content(html, "text/html; charset=utf-8"); return;
@@ -992,7 +987,7 @@ int main() {
            << "<div class='card' id='pdf-area'><h2>📋 تقرير المقايسة وتصفية المقاسات الفنية</h2>"
            << "<div class='sub-title' style='margin-bottom:20px;'>المقايسة المعتمدة هندسياً من منصة ضربة شاكوش الرقمية لتوريد وتركيب الخامات:</div>"
            
-           << "<h3 style='color:var(--accent); font-size:1.15rem; margin-bottom:10px;'>📌 أولاً: المقاسات الإنشائية وأبعاد الصاعدة:</h3>"
+           << "<div class='stage-header stage-1'>📌 أولاً: المقاسات الإنشائية وأبعاد الصاعدة:</div>"
            << "<div class='table-container'><table class='tbl'>"
            << "<tr><th>نوع ونظام التشغيل:</th><td>" << (m_type == "MR" ? "غرفة محرك علوية القياسي" : (m_type == "MRL" ? "بدون غرفة محرك جيرليس MRL" : "نظام بستم هيدروليك Hydraulic 🛠️")) << "</td></tr>"
            << "<tr><th>أبعاد البئر الحرة المأخوذة:</th><td>العرض: " << w << " سم || العمق: " << d << " سم</td></tr>"
@@ -1005,8 +1000,7 @@ int main() {
            << "</table></div>";
 
         if (calc_mat == "yes") {
-            // تفكيك وعرض كل بند منفرد بخلية مستقلة مع عدده بدقة تامة
-            os << "<h3 style='color:var(--accent); font-size:1.15rem; margin-top:25px; margin-bottom:10px;'>⚙️ ثانياً: بضاعة المرحلة الأولى (السكك والأبواب والحديد):</h3>"
+            os << "<div class='stage-header stage-2'>⚙️ ثانياً: بضاعة المرحلة الأولى (السكك والأبواب والحديد):</div>"
                << "<div class='table-container'><table class='tbl'>"
                << "<thead><tr><th>اسم بيان الصنف والخامة الحديدية</th><th>الكمية المطلوبة للموقع</th></tr></thead>"
                << "<tbody>"
@@ -1032,7 +1026,7 @@ int main() {
                << "<tr><td>📌 ملاحظات التركيب وحلوق الأبواب:</td><td style='font-size:0.9rem; color:var(--text-muted);'>" << specs.door_casing_note << "</td></tr>"
                << "</tbody></table></div>";
 
-            os << "<h3 style='color:var(--accent); font-size:1.15rem; margin-top:25px; margin-bottom:10px;'>⚡ ثالثاً: بضاعة المرحلة الثانية والثالثة (المحرك والكابينة والكهرباء):</h3>"
+            os << "<div class='stage-header stage-3'>⚡ ثالثاً: بضاعة المرحلة الثانية والثالثة (المحرك والكابينة والكهرباء):</div>"
                << "<div class='table-container'><table class='tbl'>"
                << "<thead><tr><th>اسم بيان المكون الميكانيكي والكهربائي</th><th>الكمية المطلوبة للموقع</th></tr></thead>"
                << "<tbody>"
@@ -1062,7 +1056,7 @@ int main() {
                << "<tr><td>" << specs.trunk_10cm_name << "</td><td>" << specs.static_trunk_10cm << " متر ترنكات تمديد</td></tr>"
                << "<tr><td>" << specs.trunk_screws_name << "</td><td>" << specs.trunk_screws_8mm << " مسمار وفيشر 8 مللي</td></tr>"
                << "<tr><td>" << specs.oiler_set_name << "</td><td>" << specs.oiler_set_count << " طقم مزايت </td></tr>"
-               << "<tr><td>" << specs.wire_6mm_name << "</td><td>" << specs.wire_6mm_count << " لفة  للباور</td></tr>"
+               << "<tr><td>" << specs.wire_6mm_name << "</td><td>" << specs.wire_6mm_count << " لفة للباور</td></tr>"
                << "<tr><td>" << specs.wire_1mm_name << "</td><td>" << specs.wire_1mm_count_desc << " لإشارات الدوائر</td></tr>"
                << "<tr><td>" << specs.net_cable_name << "</td><td>" << specs.net_cable_meters << " متر تمديد شاشات</td></tr>"
                << "<tr><td>" << specs.cop_panel_name << "</td><td>" << specs.cop_panel_count << " لوحة طلبات داخلية</td></tr>"
@@ -1076,8 +1070,8 @@ int main() {
                << "<tr><td>3 حساسات مغناطيسية عيارية</td><td>ثابتة (3 قطع حساس لفل)</td></tr>"
                << "<tr><td>" << specs.floor_poles_name << "</td><td>" << specs.floor_poles_count << " قطعة بولات مغناطيس </td></tr>"
                << "<tr><td>لقم وكراسي تزليق المقصورة (لقم)</td><td>4 كراسي وتزليق كامل للكابينة</td></tr>"
-               << "<tr><td>لقم وكراسي تزليق وزن الثقل (لقم)</td><td>" << (m_type == "Hydraulic" ? "0 كراسي" : "4 كراسي  للوزن") << "</td></tr>"
-               << "<tr><td>📝  تأمين الستارة والأمان الضوئي:</td><td style='font-size:0.88rem; color:var(--text-muted);'>" << specs.photocell_note << "</td></tr>"
+               << "<tr><td>لقم وكراسي تزليق وزن الثقل (لقم)</td><td>" << (m_type == "Hydraulic" ? "0 كراسي" : "4 كراسي للوزن") << "</td></tr>"
+               << "<tr><td>📝 تأمين الستارة والأمان الضوئي:</td><td style='font-size:0.88rem; color:var(--text-muted);'>" << specs.photocell_note << "</td></tr>"
                << "</tbody></table></div>";
         }
 
@@ -1280,7 +1274,7 @@ int main() {
         res.set_content(html, "text/html; charset=utf-8");
     });
 
-    // 5️⃣ صفحة اتصل بنا
+    // 5️⃣ صفحة اتصل بنا (تم تحديث الإيميل وإضافة أزرار التواصل المباشرة والواتساب)
     svr.Get("/contact", [](const httplib::Request&, httplib::Response& res) {
         string nonce = generate_nonce(); set_csp(res, nonce);
         string meta = get_seo_meta("اتصل بنا | الدعم الفني", "تواصل مباشرة مع إدارة منصة ضربة شاكوش لطرح الأسئلة الفنية أو الإبلاغ عن مشكلة برمجية.");
@@ -1291,7 +1285,13 @@ int main() {
                       "<div class='container' style='max-width:650px;'>"
                       "<div class='card'><h2>📩 تواصل مع الدعم الفني للهندسة</h2>"
                       "<div class='sub-title'>لديك أي استفسار فني خاص بالمقاسات، اقتراح لتطوير الموقع، أو واجهتك مشكلة بالحاسبة؟ تواصل معنا فوراً.</div>"
-                      "<a class='btn-action' href='mailto:support@darbat-shakosh.com' style='margin-bottom:14px; display:block;'>📧 راسلنا على البريد الإلكتروني الرسمي للمنصة</a>"
+                      
+                      "<div style='display:flex; flex-direction:column; gap:15px; margin-bottom:20px;'>"
+                      "<a class='btn-action' href='mailto:darbatshakush98@gmail.com' style='display:block;'>📧 البريد الإلكتروني: darbatshakush98@gmail.com</a>"
+                      "<a class='btn-action' href='https://wa.me/966564406565' target='_blank' style='display:block; background:linear-gradient(135deg, #25D366, #128C7E); box-shadow:0 4px 6px rgba(37,211,102,0.3);'>💬 تواصل واتساب: 00966564406565</a>"
+                      "<a class='btn-secondary' href='tel:00966564406565' style='display:block;'>📞 اتصال هاتفي مباشر</a>"
+                      "</div>"
+                      
                       "<p style='color:#8b96ab; font-size:0.9rem; text-align:center;'>المراسلات يتم الرد عليها ومراجعتها من المهندس المختص خلال 24 ساعة.</p>"
                       "</div></div>"
                       "<div class='footer'>منصة ضربة شاكوش الفنية © 2026 - إنشاء محمد الشعراوي</div>"
