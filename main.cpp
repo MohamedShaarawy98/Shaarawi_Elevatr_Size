@@ -679,9 +679,11 @@ static string get_modern_blue_css() {
            ".stage-2 { background: linear-gradient(135deg, #8b5cf6, #7c3aed); }" 
            ".stage-3 { background: linear-gradient(135deg, #f59e0b, #d97706); }" 
 
-           ".actions{display:flex; justify-content:space-between; margin-top:35px; gap:20px;}"
+           ".actions{display:flex; justify-content:space-between; margin-top:35px; gap:20px; flex-wrap:wrap;}"
            ".btn-print{background:linear-gradient(135deg, #16a34a, #15803d); color:white; border:none; padding:15px 25px; border-radius:8px; font-weight:700; cursor:pointer; flex:1; transition:0.3s; text-align:center; font-family:var(--font-display); box-shadow: 0 4px 6px rgba(0,0,0,0.1);}"
            ".btn-print:hover{background:linear-gradient(135deg, #15803d, #166534);}"
+           ".btn-save{background:linear-gradient(135deg, #f59e0b, #d97706); color:white; border:none; padding:15px 25px; border-radius:8px; font-weight:700; cursor:pointer; flex:1; transition:0.3s; text-align:center; font-family:var(--font-display); box-shadow: 0 4px 6px rgba(0,0,0,0.1);}"
+           ".btn-save:hover{background:linear-gradient(135deg, #d97706, #b45309);}"
            ".btn-secondary{background:linear-gradient(135deg, #4f46e5, #4338ca); color:white; padding:15px 25px; border-radius:8px; font-weight:700; text-align:center; flex:1; transition:0.3s; display:inline-block; text-decoration:none; font-family:var(--font-display); box-shadow: 0 4px 6px rgba(0,0,0,0.1);}"
            ".btn-secondary:hover{background:linear-gradient(135deg, #4338ca, #3730a3);}"
            
@@ -719,7 +721,7 @@ static string get_modern_blue_css() {
            "  .section-intro h1 { font-size: 1.4rem !important; }"
            "  .sub-title { font-size: 0.85rem !important; margin-bottom: 20px !important; }"
            "  .actions { flex-direction: column !important; gap: 12px !important; margin-top: 25px !important; }"
-           "  .btn-print, .btn-secondary, button { padding: 12px 20px !important; font-size: 1rem !important; width: 100% !important; }"
+           "  .btn-print, .btn-save, .btn-secondary, button { padding: 12px 20px !important; font-size: 1rem !important; width: 100% !important; }"
            "  .nav-card { padding: 20px 15px !important; }"
            "  .nav-card h3 { font-size: 1.15rem !important; }"
            "  .track-item { padding: 14px 15px !important; gap: 12px !important; }"
@@ -745,7 +747,7 @@ static string get_modern_blue_css() {
            "  .card { box-shadow: none !important; border: none !important; padding: 20px !important; background: #121826 !important; width: 100% !important; height: auto !important; overflow: visible !important; position: static !important; }"
            "  .table-container { overflow: visible !important; width: 100% !important; border: 1px solid #232c3f !important; background: #0a0e16 !important; }"
            "  .tbl { width: 100% !important; table-layout: fixed !important; }"
-           "  .btn-print, .btn-secondary, .stage-header, .navbar, .flags-strip, .footer { display: none !important; }"
+           "  .btn-print, .btn-save, .btn-secondary, .stage-header, .navbar, .flags-strip, .footer { display: none !important; }"
            "  .card::before, .card::after { display: none !important; }"
            "  .tbl td:first-child { color: #38bdf8 !important; font-weight: bold; }"
            "}"
@@ -771,7 +773,7 @@ static string get_navbar_html(const string& current_user = "") {
         user_controls = "<a href='/login' class='nav-icon' title='تسجيل الدخول / إنشاء حساب'><svg viewBox='0 0 24 24'><path d='M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z'/></svg></a>";
     } else {
         user_controls = "<details class='nav-dropdown'><summary class='nav-icon' style='color:var(--accent); font-weight:bold;'>👤 " + current_user + "</summary>"
-                        "<div class='dropdown-panel' style='min-width:140px;'><div class='dropdown-col'><a href='/logout'>تسجيل الخروج</a></div></div></details>";
+                        "<div class='dropdown-panel' style='min-width:140px;'><div class='dropdown-col'><a href='/my-reports'>التقارير المحفوظة</a><a href='/logout'>تسجيل الخروج</a></div></div></details>";
     }
 
     return "<nav class='navbar'>"
@@ -905,7 +907,7 @@ int main() {
     });
 
     // ========================================================================
-    // نظام التسجيل المؤَمَّن بررمز OTP فوري داخل السيرفر لمنع أي أخطاء 500
+    // نظام التسجيل المؤَمَّن (تحقق سري في الخلفية بدون عرض الرمز)
     // ========================================================================
     svr.Get("/register", [](const httplib::Request& req, httplib::Response& res) {
         string user = get_session_user(req);
@@ -925,7 +927,7 @@ int main() {
                       "<div class='f-group'><label>📱 رقم الواتساب أو الهاتف:</label><input type='text' name='phone' required placeholder='مثال: 00966564406565'></div>"
                       "<div class='f-group'><label>🏙️ المدينة:</label><input type='text' name='city' required placeholder='مثال: جدة، الرياض'></div>"
                       "<div class='f-group'><label>🔒 كلمة المرور:</label><input type='password' name='password' required placeholder='اكتب كلمة مرور قوية'></div>"
-                      "<button type='submit'>✨ إنشاء الحساب وتوليد رمز التحقق الآمن</button>"
+                      "<button type='submit'>✨ إنشاء الحساب وإرسال رمز التحقق</button>"
                       "</form>"
                       "<div style='text-align:center; margin-top:20px;'><a href='/login' style='color:var(--accent); font-weight:600;'>لديك حساب بالفعل؟ تسجيل الدخول</a></div>"
                       "</div></div>"
@@ -984,6 +986,7 @@ int main() {
         new_acc.is_verified = false;
         users_db[username] = new_acc;
 
+        // إخفاء الرمز تماماً عن الشاشة لأجل الأمان والاحترافية، وتأكيد الإرسال صامتاً
         string nonce = generate_nonce(); set_csp(res, nonce);
         string html = "<html><head><meta charset='UTF-8'><meta name='viewport' content='width=device-width, initial-scale=1.0'>"
                       "<link href='https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap' rel='stylesheet'>"
@@ -991,10 +994,9 @@ int main() {
                       + get_navbar_html() +
                       "<div class='container' style='max-width:500px;'>"
                       "<div class='card' style='border-color:var(--accent);'>"
-                      "<h2>🔐 رمز التحقق الآمن الخاص بك</h2>"
-                      "<div class='sub-title'>تم توليد رمز التأكيد الخاص برقمك وشبكتك بنجاح.<br>"
-                      "الرمز السري المولد لحسابك هو: <b style='color:#38bdf8; font-size:1.4rem;'>" + otp + "</b><br><br>"
-                      "يرجى إدخال هذا الرمز في المربع أدناه لتأكيد الهوية وتفعيل الحساب نهائياً:</div>"
+                      "<h2>🔐 تأكيد وتفعيل الحساب</h2>"
+                      "<div class='sub-title'>تم إنشاء رمز التأكيد الآمن وإرساله بنجاح إلى وسيلة الاتصال الخاصة بك.<br><br>"
+                      "يرجى إدخال رمز التحقق المكون من 6 أرقام أدناه لتأكيد الهوية وتفعيل الحساب نهائياً:</div>"
                       "<form action='/api/verify-otp' method='post'>"
                       "<input type='hidden' name='username' value='" + username + "'>"
                       "<div class='f-group'><label>🔢 أدخل رمز التحقق:</label><input type='text' name='otp' required maxlength='6' placeholder='أدخل الرمز هنا'></div>"
@@ -1164,7 +1166,50 @@ int main() {
         res.set_redirect("/");
     });
 
-    // ========================================================================
+    // صفحة استعراض التقارير المحفوظة للمستخدم
+    svr.Get("/my-reports", [](const httplib::Request& req, httplib::Response& res) {
+        string user = get_session_user(req);
+        if (user.empty()) { res.set_redirect("/login"); return; }
+        string nonce = generate_nonce(); set_csp(res, nonce);
+        
+        ostringstream reports_list;
+        if (users_db.find(user) != users_db.end() && !users_db[user].saved_reports.empty()) {
+            for (const auto& rep : users_db[user].saved_reports) {
+                reports_list << "<div style='background:var(--bg); border:1px solid var(--border); padding:15px; border-radius:8px; margin-bottom:12px; font-family:var(--font-mono); font-weight:600;'>"
+                             << "📌 " << html_escape(rep)
+                             << "</div>";
+            }
+        } else {
+            reports_list << "<p style='color:var(--text-muted); text-align:center;'>لا توجد تقارير محفوظة حتى الآن. قم بعمل مقايسة جديدة واضغط على زر حفظ التقرير.</p>";
+        }
+
+        string meta = get_seo_meta("التقارير المحفوظة", "سجل المقايسات الهندسية المحفوظة.");
+        string html = "<html><head><meta charset='UTF-8'><meta name='viewport' content='width=device-width, initial-scale=1.0'>"
+                      "<link href='https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap' rel='stylesheet'>"
+                      + meta + get_modern_blue_css() + "</head><body>"
+                      + get_navbar_html(user) +
+                      "<div class='container' style='max-width:700px;'>"
+                      "<div class='card'><h2>📂 سجل تقاريرك المحفوظة</h2>"
+                      "<div class='sub-title'>هنا تجد كافة مقاسات الأببار والمقايسات التي قمت بحفظها في حسابك:</div>"
+                      + reports_list.str() +
+                      "<div class='actions' style='margin-top:25px;'><a class='btn-secondary' href='/calculator'>🛗 حاسبة مقاسات جديدة</a></div>"
+                      "</div></div>"
+                      "<div class='footer'>منصة ضربة شاكوش الفنية © 2026 - إنشاء محمد الشعراوي</div>"
+                      + get_theme_script(nonce) +
+                      "</body></html>";
+        res.set_content(html, "text/html; charset=utf-8");
+    });
+
+    // مسار حفظ التقرير الحالي
+    svr.Post("/api/save-report", [](const httplib::Request& req, httplib::Response& res) {
+        string user = get_session_user(req);
+        if (user.empty()) { res.set_redirect("/login"); return; }
+        string rep_desc = html_escape(req.get_param_value("report_desc"));
+        if (!rep_desc.empty() && users_db.find(user) != users_db.end()) {
+            users_db[user].saved_reports.push_back(rep_desc);
+        }
+        res.set_redirect("/my-reports");
+    });
 
     auto render_page = [](const string& title, const string& target_type, const string& nonce, const string& current_user) {
         auto partners = get_partners();
@@ -1481,11 +1526,7 @@ int main() {
 
         Elevator::FullSpecificationReport specs = elevator.compile_full_specification(w, d, static_cast<int>(f), m_type, door_choice, rails_origin, door_origin, has_ard);
 
-        // حفظ التقرير بفعالية في سجل المستخدم
-        if (!user.empty() && users_db.find(user) != users_db.end()) {
-            string report_summary = "مقايسة بئر: " + to_string(w) + "x" + to_string(d) + " سم - أدوار: " + to_string((int)f);
-            users_db[user].saved_reports.push_back(report_summary);
-        }
+        string report_summary = "مقايسة بئر: " + to_string(w) + "x" + to_string(d) + " سم - أدوار: " + to_string((int)f);
 
         string nonce = generate_nonce(); set_csp(res, nonce);
         ostringstream os;
@@ -1584,8 +1625,18 @@ int main() {
 
         os << "</div>" 
            << "<div class='actions' style='max-width:750px; margin: 20px auto 0 auto; padding:0 40px;'>"
-           << "  <button class='btn-print' id='pBtn'>📥 تحميل التقرير PDF</button>"
-           << "  <a class='btn-secondary' href='/calculator'>🔄 تصفية بئر جديد</a>"
+           << "  <button class='btn-print' id='pBtn'>📥 تحميل التقرير PDF</button>";
+           
+        if (!user.empty()) {
+            os << "  <form action='/api/save-report' method='post' style='flex:1; display:inline;'>"
+               << "    <input type='hidden' name='report_desc' value='" << report_summary << "'>"
+               << "    <button type='submit' class='btn-save' style='width:100%;'>💾 حفظ التقرير في حسابي</button>"
+               << "  form>";
+        } else {
+            os << "  <a class='btn-secondary' href='/login' style='background:#f5a524; color:#000;'>🔒 سجل لتخزين التقارير</a>";
+        }
+
+        os << "  <a class='btn-secondary' href='/calculator'>🔄 تصفية بئر جديد</a>"
            << "</div></div>"
            << "<div class='footer'>منصة ضربة شاكوش الفنية © 2026 - إنشاء محمد الشعراوي</div>"
            << "<script nonce='" << nonce << "'>"
