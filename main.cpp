@@ -52,6 +52,19 @@ struct UserAccount {
 
 static map<string, UserAccount> users_db;
 
+// دالة إرسال رمز التحقق عبر واتساب تلقائياً باستخدام واجهة برمجية مجانية
+static bool send_whatsapp_otp(const string& phone, const string& otp_code) {
+    httplib::Client cli("https://api.callmebot.com");
+    cli.set_connection_timeout(5);
+    
+    // ملاحظة: يمكن استبدال هذه الخدمة المجانية بأي API خاص بـ WhatsApp Business أو Ultramsg لاحقاً
+    string text = "منصة%20ضربة%20شاكوش:%20رمز%20التفعيل%20الخاص%20بك%20هو%20" + otp_code;
+    string path = "/whatsapp.php?phone=" + phone + "&text=" + text + "&apikey=123456"; // مفتاح تجريبي أو عام
+
+    auto res = cli.Get(path.c_str());
+    return (res && res->status == 200);
+}
+
 static string get_session_user(const httplib::Request& req) {
     if (req.has_header("Cookie")) {
         string cookie = req.get_header_value("Cookie");
@@ -905,7 +918,7 @@ int main() {
     });
 
     // ========================================================================
-    // نظام التسجيل المؤَمَّن برمز OTP وتأكيد الواتساب لضمان الجدية ومنع الحسابات الوهمية
+    // نظام التسجيل المؤَمَّن مع إرسال رمز التحقق الآلي عبر الواتساب
     // ========================================================================
     svr.Get("/register", [](const httplib::Request& req, httplib::Response& res) {
         string user = get_session_user(req);
@@ -918,14 +931,14 @@ int main() {
                       + get_navbar_html() +
                       "<div class='container' style='max-width:500px;'>"
                       "<div class='card'><h2>📝 إنشاء حساب جديد</h2>"
-                      "<div class='sub-title'>أنشئ حسابك الآن (اسم المستخدم بدون مسافات أو رموز خاصة):</div>"
+                      "<div class='sub-title'>أنشئ حسابك الآن برقم هاتفك لاستلام رمز التفعيل فوراً:</div>"
                       "<form action='/api/register' method='post'>"
                       "<div class='f-group'><label>👤 اسم المستخدم (حروف وأرقام فقط):</label><input type='text' name='username' required pattern='[a-zA-Z0-9_]+' placeholder='مثال: mohamed_shaarawy'></div>"
                       "<div class='f-group'><label>📧 البريد الإلكتروني:</label><input type='email' name='email' required placeholder='example@domain.com'></div>"
-                      "<div class='f-group'><label>📱 رقم الواتساب (لتأكيد الهوية):</label><input type='text' name='phone' required placeholder='مثال: 00966564406565'></div>"
+                      "<div class='f-group'><label>📱 رقم الواتساب (بالرمز الدولي بدون +):</label><input type='text' name='phone' required placeholder='مثال: 966564406565'></div>"
                       "<div class='f-group'><label>🏙️ المدينة:</label><input type='text' name='city' required placeholder='مثال: جدة، الرياض'></div>"
                       "<div class='f-group'><label>🔒 كلمة المرور:</label><input type='password' name='password' required placeholder='اكتب كلمة مرور قوية'></div>"
-                      "<button type='submit'>✨ الخطوة التالية: توليد رمز التأكيد</button>"
+                      "<button type='submit'>✨ إرسال رمز التحقق عبر واتساب</button>"
                       "</form>"
                       "<div style='text-align:center; margin-top:20px;'><a href='/login' style='color:var(--accent); font-weight:600;'>لديك حساب بالفعل؟ تسجيل الدخول</a></div>"
                       "</div></div>"
@@ -950,7 +963,7 @@ int main() {
                           + get_navbar_html() +
                           "<div class='container' style='max-width:500px; text-align:center;'><div class='card' style='border-color:#ef4444;'>"
                           "<h2 style='color:#ef4444;'>⚠️ اسم المستخدم غير صالح</h2>"
-                          "<p style='color:var(--text-muted); margin-bottom:20px;'>ممنوع استخدام المسافات أو الرموز الخاصة. يُسمح فقط بالحروف والأرقام والشرطة السفلية (_).</p>"
+                          "<p style='color:var(--text-muted); margin-bottom:20px;'>ممنوع استخدام المسافات أو الرموز الخاصة.</p>"
                           "<a class='btn-secondary' href='/register'>🔄 العودة والتعديل</a>"
                           "</div></div></body></html>";
             res.set_content(html, "text/html; charset=utf-8");
@@ -965,7 +978,7 @@ int main() {
                           + get_navbar_html() +
                           "<div class='container' style='max-width:500px; text-align:center;'><div class='card' style='border-color:#ef4444;'>"
                           "<h2 style='color:#ef4444;'>⚠️ اسم المستخدم مسجل مسبقاً</h2>"
-                          "<p style='color:var(--text-muted); margin-bottom:20px;'>عفواً، هذا الاسم مستخدم بالفعل من قبل شخص آخر.</p>"
+                          "<p style='color:var(--text-muted); margin-bottom:20px;'>عفواً، هذا الاسم مستخدم بالفعل.</p>"
                           "<a class='btn-secondary' href='/register'>🔄 العودة للوراء</a>"
                           "</div></div></body></html>";
             res.set_content(html, "text/html; charset=utf-8");
@@ -984,9 +997,8 @@ int main() {
         new_acc.is_verified = false;
         users_db[username] = new_acc;
 
-        // رابط الواتساب الجاهز لإرسال الرمز للمستخدم أو تفعيله فوراً
-        string wa_text = "مرحباً%20بمهندس%20" + username + "%20-%20رمز%20التأكيد%20الخاص%20بك%20في%20منصة%20ضربة%20شاكوش%20هو:%20*" + otp + "*";
-        string wa_link = "https://wa.me/" + phone + "?text=" + wa_text;
+        // إرسال الرمز تلقائياً للواتساب
+        bool sent = send_whatsapp_otp(phone, otp);
 
         string nonce = generate_nonce(); set_csp(res, nonce);
         string html = "<html><head><meta charset='UTF-8'><meta name='viewport' content='width=device-width, initial-scale=1.0'>"
@@ -995,15 +1007,11 @@ int main() {
                       + get_navbar_html() +
                       "<div class='container' style='max-width:500px;'>"
                       "<div class='card' style='border-color:var(--accent);'>"
-                      "<h2>📱 تأكيد الحساب عبر واتساب</h2>"
-                      "<div class='sub-title'>تم توليد رمز التأكيد الخاص برقمك: <b>" + phone + "</b><br><br>"
-                      "للحصول على الرمز فوراً على تطبيق واتساب، اضغط على الزر أدناه لإرسال رسالة التفعيل، ثم اكتب الرمز في المربع لتفعيل حسابك نهائياً:</div>"
-                      
-                      "<a href='" + wa_link + "' target='_blank' class='btn-action' style='background:#25D366; margin-bottom:20px; display:block;'>💬 اضغط هنا لاستلام الرمز عبر واتساب</a>"
-                      
+                      "<h2>📱 أدخل رمز التحقق المرسل</h2>"
+                      "<div class='sub-title'>" + (sent ? "تم إرسال رسالة رمز التحقق بنجاح إلى رقم الواتساب: <b>" + phone + "</b>" : "جاري إرسال الرمز أو تأكد من صحة رقم الهاتف.") + "<br>أدخل الرمز المكون من 6 أرقام أدناه لتفعيل الحساب نهائياً:</div>"
                       "<form action='/api/verify-otp' method='post'>"
                       "<input type='hidden' name='username' value='" + username + "'>"
-                      "<div class='f-group'><label>🔢 أدخل رمز التحقق المكون من 6 أرقام:</label><input type='text' name='otp' required maxlength='6' placeholder='أدخل الرمز هنا'></div>"
+                      "<div class='f-group'><label>🔢 رمز التحقق:</label><input type='number' name='otp' required maxlength='6' placeholder='أدخل الرمز هنا'></div>"
                       "<button type='submit'>✅ تأكيد وتفعيل الحساب</button>"
                       "</form>"
                       "</div></div>"
@@ -1044,7 +1052,7 @@ int main() {
                           + get_navbar_html() +
                           "<div class='container' style='max-width:500px; text-align:center;'><div class='card' style='border-color:#ef4444;'>"
                           "<h2 style='color:#ef4444;'>❌ رمز التحقق غير صحيح</h2>"
-                          "<p style='color:var(--text-muted); margin-bottom:20px;'>الرمز الذي أدخلته خطأ، يرجى التأكد وإعادة المحاولة.</p>"
+                          "<p style='color:var(--text-muted); margin-bottom:20px;'>الرمز الذي أدخلته غير مطابق، يرجى إعادة المحاولة.</p>"
                           "<a class='btn-secondary' href='/register'>🔄 العودة للوراء</a>"
                           "</div></div></body></html>";
             res.set_content(html, "text/html; charset=utf-8");
@@ -1091,7 +1099,7 @@ int main() {
                               + get_navbar_html() +
                               "<div class='container' style='max-width:500px; text-align:center;'><div class='card' style='border-color:#f59e0b;'>"
                               "<h2 style='color:#f59e0b;'>⚠️ الحساب غير مفعل</h2>"
-                              "<p style='color:var(--text-muted); margin-bottom:20px;'>يرجى تفعيل حسابك برمز الواتساب أولاً.</p>"
+                              "<p style='color:var(--text-muted); margin-bottom:20px;'>يرجى تفعيل حسابك أولاً برمز التحقق.</p>"
                               "<a class='btn-secondary' href='/login'>🔄 العودة لتسجيل الدخول</a>"
                               "</div></div></body></html>";
                 res.set_content(html, "text/html; charset=utf-8");
