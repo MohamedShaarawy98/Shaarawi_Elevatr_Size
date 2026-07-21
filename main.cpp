@@ -22,19 +22,17 @@
 using namespace std;
 
 // ============================================================================
-// متغيرات التحكم في جاهزية أنواع المصاعد (اجعل القيمة false لإغلاق النوع وإظهار رسالة التعديل)
+// متغيرات التحكم في جاهزية أنواع المصاعد
 // ============================================================================
-const bool IS_MR_READY        = true;   // المصعد القياسي (غرفة)
-const bool IS_MRL_READY       = false;  // المصعد الجيرليس (بدون غرفة)
-const bool IS_HYDRAULIC_READY = false;  // المصعد الهيدروليك
+const bool IS_MR_READY        = true;   
+const bool IS_MRL_READY       = false;  
+const bool IS_HYDRAULIC_READY = false;  
 
-// بنية بيانات لتحديد معدل الطلبات لحماية السيرفر من هجمات الحرمان من الخدمة (Rate Limiting)
 struct RateLimitInfo {
     int count = 0;
     chrono::steady_clock::time_point reset_time;
 };
 
-// قاموس لتتبع معدل طلبات المستخدمين وحماية موارد الخادم
 static map<string, RateLimitInfo> ip_tracker;
 static mutex rate_limit_mtx; 
 const int MAX_REQUESTS_PER_MINUTE = 20; 
@@ -42,7 +40,50 @@ const int MAX_REQUESTS_PER_MINUTE = 20;
 static string CF_VERIFY_SECRET = getenv("CF_VERIFY_SECRET") ? getenv("CF_VERIFY_SECRET") : "";
 static string SECURE_HEADER_NAME = "X-Verify-Secret"; 
 
-// دوال مساعدة آمنة لتحويل النصوص وتطهير البيانات لمنع ثغرات الالتفاف الرقمي والـ Crash
+// هيكل بيانات الشركاء والخدمات
+struct Partner {
+    string name;        
+    string type;        // company, contractor, supplier, cabins, transport, labor
+    string phone;       
+    string website;     // موقع الشركة الإلكتروني
+    string map_link;    // رابط الخريطة (اللوكيشن)
+    string location;    // المكان / المدينة
+    string details;     
+    string rating;      
+    bool is_featured;   
+    bool is_ad;         
+};
+
+// قائمة الشركاء والخدمات المحدثة
+static vector<Partner> get_partners() {
+    return {
+        // 1. الشركات والمؤسسات
+        { "   شركة اتحاد الجزيرة العربية المحدودة", "company", "0561269547", "https://uaj.sa/", "https://maps.app.goo.gl/taidnqUMC85uGkFo6?g_st=awb", "جدة", "متخصصة في توريد وتركيب وصيانة المصاعد الكهربائية والسلالم المتحركة + قسم فاير متكامل.", "", true, false },
+        { "شركة نور الفردوس", "company", "0569041073", "", "", "الرياض", "متخصصة في تركيب جميع  براندات المصاعد والسلالم المتحركة.", "", false, false },
+        
+        // 2. المقاولين
+        { "م/ أبو أسامة", "contractor", "0562936595", "", "", "جدة", "مقاول تركيبات .", "⭐⭐⭐⭐⭐", false, false },
+        { "م/ أبو عبده", "contractor", "0556345642", "", "", "جدة", "مقاول تركيبات .", "⭐⭐⭐⭐⭐", false, false },
+        { "م/ علاء الطوخي", "contractor", "056532176", "", "", "جدة", "مقاول تركيبات .", "⭐⭐⭐⭐⭐", false, false },
+        { "م/ ضياء البخمي", "contractor", "0562417042", "", "", "جدة", "مقاول تركيبات .", "⭐⭐⭐⭐⭐", false, false },
+        { "اضف اسمك هنا", "contractor", "00966564406565", "", "", "جدة", "احجز مكانك في قائمة المقاولين المتميزين.", "", false, true },
+
+        // 4. مصانع الكباين
+        { "اضف اسم مصنع الكباين هنا", "cabins", "00966564406565", "", "", "", "مكان مخصص لمصانع الكباين.", "", false, true },
+
+        // 5. دباب وديانا
+        { "محمد جان (دباب)", "transport", "0563446438", "", "", "جدة - عسفان", "خدمات النقل والتوصيل (دباب).", "", false, false },
+        { "خدمات دباب وديانا", "transport", "0557128719", "", "", "الرياض", "خدمات النقل والتوصيل.", "", false, false },
+        { "اضف اسمك هنا (دباب / ديانا)", "transport", "00966564406565", "", "", "جدة", "موقع مخصص لخدمات النقل.", "", false, true },
+
+        // 6. العمالة اليومية والخدمات الميدانية
+        { "عمال باليومية", "labor", "0563032163", "", "", "جدة", "عمالة جاهزة للتركيبات اليومية.", "", false, false },
+        { "تفتيح سقف للويرات", "labor", "0597526747", "", "", "جدة", "متخصصون في تفتيح وتجهيز أسقف البئر للويرات.", "", false, false },
+        { "عمال لجميع الأعمال", "labor", "0540972304", "", "", "الرياض", "عمالة مدربة لكافة الأعمال الميدانية.", "", false, false },
+        { "اضف اسمك هنا (عمالة يومية)", "labor", "00966564406565", "", "", "السعودية", "موقع مخصص لإعلانات العمالة.", "", false, true }
+    };
+}
+
 static int safe_stoi(const string& s, int default_val = 0) {
     try { if (s.empty()) return default_val; return stoi(s); } catch (...) { return default_val; }
 }
@@ -56,7 +97,7 @@ static string html_escape(const string& data) {
     for (size_t pos = 0; pos != data.size(); ++pos) {
         switch (data[pos]) {
             case '&':  buffer.append("&amp;");       break;
-            case '\"': buffer.append("&quot;");      break;
+            case '"': buffer.append("&quot;");      break;
             case '\'': buffer.append("&apos;");      break;
             case '<':  buffer.append("&lt;");        break;
             case '>':  buffer.append("&gt;");        break;
@@ -79,7 +120,7 @@ static void set_security_headers(httplib::Response& res) {
     res.set_header("X-XSS-Protection", "1; mode=block");
     res.set_header("Strict-Transport-Security", "max-age=31536000; includeSubDomains");
     res.set_header("Referrer-Policy", "strict-origin-when-cross-origin");
-    res.set_header("Server", "Hammer-Engine/1.2");
+    res.set_header("Server", "Hammer-Engine/2.8");
 }
 
 static void set_csp(httplib::Response& res, const string& script_nonce = "") {
@@ -113,110 +154,56 @@ static bool is_rate_limited(const string& ip) {
     return ip_tracker[ip].count > MAX_REQUESTS_PER_MINUTE;
 }
 
-// ============================================================================
-// الكلاس الهندسي للمصعد - تم الفحص والتدقيق الكامل لجميع المتغيرات والدوال
-// ============================================================================
-class Elevator {
-private:
-    // 🔒 [قسم خاص - Private]: أسماء مسميات البضاعة الثابتة الخاصة بك
-    const string name_door_auto     = " الابواب";
-    const string name_door_semi     = "باب نصف اتوماتيك";
-    const string name_rail_16       = "سكة كابينة 16 مللي";
-    const string name_rail_9        = "سكة كابينة 9 مللي";
-    const string name_rail_5        = "سكة تقل 5 مللي";
-    const string name_bracket_cab   = "كوابيل كابينة";
-    const string name_bracket_cwt   = "كوابيل التقل ";
-    const string name_scaffolding   = "سقالة";
-    const string name_plumb_lines   = " خيط ميزانية";
-    const string name_balance_tube  = "تيوب او خشب للميزانية";
-    const string name_hilti_bolt    = "مسمار هلتي 12 مللي ";
-    const string name_assem_bolt    = "مسمار تجميع 12 مللي ";
-    const string name_bolt_8mm      = "مسمار 8 مللي  ";
-    const string name_washer_spring = "وردة سوسته 12 مللي ";
-    const string name_nut_12mm      = "صامولة 12 مللي ";
-    const string name_washer_flat   = "وردة صاج 12 مللي ";
-    const string name_spring_8mm    = "وردة سوستة وصامولة 8 مللي للثقل";
-    const string name_sub_cab       = "سبورتينات كابينة ";
-    const string name_sub_cwt       = "سبورتينات ثقل ";
-    const string name_door_casing   = "تلبيس حلوق الأبواب الخارجية";
-    const string name_ceiling_cut   = "تفتيح وتجهيز فتحات سقف البئر";
-    const string name_rubber_pads   = "طقم ربر كراسي الماكينة ";
-    const string name_wire_6_5mm    = "ويرات  6.50 مللي";
-    const string name_wire_11mm     = "ويرات  11 مللي متينة";
-    const string name_rope_hitch    = "شداد مقاس الحبل";
-    const string name_rope_clamp    = "زرجينة حبل حديد";
-    const string name_parachute     = "جهاز براشوت الأمان السفلي";
-    const string name_governor_rope = "حبل براشوت منظم السرعة";
-    const string name_buffer_set    = "طقم بفر الهيدروليكي / الزيت";
-    const string name_counterweight = "بلوكات زهر حديد للثقل";
-    const string name_shoes_cab     = "كراسي وتزليق الكابينة (لقم)";
-    const string name_shoes_cwt     = "كراسي وتزليق الثقل (لقم)";
-    const string name_control_panel = "لوحة تحكم (كنترول) ذكية";
-    const string name_ard_system    = "كنترول طوارئ إنقاذ آلي (ARD)";
-    const string name_ctrl_fischer  = "مسامير وفيشر 12 مللي لتثبيت الكنترول";
-    const string name_inspect_box   = "علبة صيانة فوق ظهر الكابينة";
-    const string name_charger_batt  = "شاحن وبطارية طوارئ الكنترول";
-    const string name_emerg_alarm   = "جرس وسارينة طوارئ دائرية";
-    const string name_flex_cable    = "كيبل مرن متكامل (Traveling Cable)";
-    const string name_flex_holder   = "حامل ومثبت الكيبل المرن";
-    const string name_trunk_4cm     = "ترنكات بلاستيك 4 سم للتمديد";
-    const string name_trunk_10cm    = "ترنكات بلاستيك 10 سم رئيسية";
-    const string name_trunk_screws  = "مسامير وفيشر 8 مللي لتثبيت الترنكات";
-    const string name_oiler_set     = "طقم مزايت سكك أوتوماتيك";
-    const string name_wire_6mm      = "سلك كهرباء 6 مللي رئيسي";
-    const string name_wire_11mm_c   = "سلك 11 مللي في حالة الجيربوكس";
-    const string name_wire_1rem     = "سلك طعام";
-    const string name_wire_1mm      = "سلك إشارة وتوصيل 1 مللي لفة";
-    const string name_net_cable     = "سلك نت مجدول شاشات وانتركم";
-    const string name_cop_panel     = "لوحة طلبات داخلية الكابينة (COP)";
-    const string name_lop_buttons   = "طلبات خارجية للأدوار (LOP)";
-    const string name_intercom      = "جهاز انتركم اتصال داخلي";
-    const string name_safety_door   = "باب داخلي سلامة لحماية الركاب";
-    const string name_photocell     = "جهاز فوتوسيل (ستارة سحرية) للأمان";
-    const string name_stop_magnet   = "مغناطيس توقف نهائي لفل";
-    const string name_count_magnet  = "مغناطيس عداد حساب الأدوار";
-    const string name_limit_sw      = "ليميت سويتش ميكانيكي مجدول";
-    const string name_limit_sensors = "حساسات مغناطيسية عيارية";
-    const string name_floor_poles   = "بولات المغناطيس لحديد السكك";
+vector<string> split_string(const string& s, const string& delimiter) {
+    vector<string> tokens;
+    size_t start = 0, end = 0;
+    while ((end = s.find(delimiter, start)) != string::npos) {
+        tokens.push_back(s.substr(start, end - start));
+        start = end + delimiter.length();
+    }
+    tokens.push_back(s.substr(start));
+    return tokens;
+}
 
+string trim(const string& str) {
+    size_t first = str.find_first_not_of(' ');
+    if (string::npos == first) return str;
+    size_t last = str.find_last_not_of(' ');
+    return str.substr(first, (last - first + 1));
+}
+
+class Elevator {
 public:
     string get_door_type(int sa) {
         if (sa >= 210 && sa <= 250)      return "Auto 80 CO || Auto 90 CO || Auto 100 CO";
-        else if (sa >= 190 && sa < 210)  return "Auto 80 CO || Auto 90 CO || Auto 100 SI";
-        else if (sa >= 175 && sa < 190)  return "Auto 80 CO || Auto 100 SI || Auto 90 SI";
-        else if (sa >= 167 && sa < 175)  return "Auto 90 SI || Auto 80 CO";
-        else if (sa >= 160 && sa < 167)  return "Auto 90 SI || Auto 70 CO";
-        else if (sa >= 155 && sa < 160)  return "Auto 80 SI || Auto 70 CO";
-        else if (sa >= 145 && sa < 155)  return "Auto 80 SI || S";
-        else if (sa >= 128 && sa < 145)  return "Auto 70 SI";
+        else if (sa >= 190 && sa < 210)  return "Auto 80 CO || Auto 90 CO || Auto 100 SO";
+        else if (sa >= 175 && sa < 190)  return "Auto 80 CO || Auto 100 SO || Auto 90 SO";
+        else if (sa >= 167 && sa < 175)  return "Auto 90 SO || Auto 80 CO";
+        else if (sa >= 160 && sa < 167)  return "Auto 90 SO || Auto 70 CO";
+        else if (sa >= 155 && sa < 160)  return "Auto 80 SO || Auto 70 CO";
+        else if (sa >= 145 && sa < 155)  return "Auto 80 SO || Semi Auto 80";
+        else if (sa >= 128 && sa < 145)  return "Auto 70 SO || Semi Auto 80";
         else if (sa >= 120 && sa < 128)  return "Semi Auto 80";
         else if (sa >= 110 && sa < 120)  return "Semi Auto 70";
         return "تصفية خاصة - مراجعة يدوية";
     }
-    int get_cabin_width(int cw) { return cw - 40; }
+
+    int get_cabin_width(int cw, bool is_side_cwt) { return (is_side_cwt ? (cw - 30) : cw) - 40; }
     int get_cabin_depth(int cd) { return cd - 60; }
+    int get_cabin_dbg(int w, bool is_side_cwt) { return (is_side_cwt ? (w - 30) : w) - 30; }
     
-    int get_cabin_dbg(int w) { return w - 30; }
-    
-    int get_cwt_dbg(int w) {
-        if (w >= 100 && w <= 110) return 72;
-        if (w > 110 && w <= 120) return 82;
-        if (w > 120 && w <= 125) return 92;
-        if (w > 125 && w <= 210) return 102;
+    int get_cwt_dbg(int w, bool is_side_cwt) {
+        int effective_w = is_side_cwt ? (w - 30) : w;
+        if (effective_w >= 100 && effective_w <= 110) return 72;
+        if (effective_w > 110 && effective_w <= 120) return 82;
+        if (effective_w > 120 && effective_w <= 125) return 92;
+        if (effective_w > 125 && effective_w <= 210) return 102;
         return 0;
     }
     
-    float get_shaft_height(float f, float pit_m, float overhead_m, string t) {
-        float h = (f - 1) * 3.2f + pit_m + overhead_m;
-        if (t == "MRL") return h + 1.5f;
-        else if (t == "Hydraulic") return h - 0.5f;
-        return h;
+    float get_shaft_height(float f, float pit_m, float overhead_m) {
+        return (f * 3.5f) + pit_m + overhead_m;
     }
-
-    string get_welding_rods() { return "باكيت سلك لحام"; }
-    string get_grinding_discs() { return "باكيت اسطوانات صاروخ قطعية"; }
-    string get_cabin_type(int width, int depth) { (void)width; (void)depth; return "كابينة"; }
-    string get_cwt_position(int width, int depth) { (void)width; (void)depth; return "تقل"; }
 
     int get_deflector_sheaves(const string& type) {
         if (type == "MRL") return 3; 
@@ -237,19 +224,20 @@ public:
     }
 
     struct FullSpecificationReport {
-        // المرحلة الأولى
         string door_exterior_name;
         int total_exterior_doors;
         string cabin_rails_name;
-        string cabin_rails_type; 
         int cabin_rails_count;
         string cwt_rails_name;
-        string cwt_rails_type;  
         int cwt_rails_count;
         string cabin_brackets_name;
         int cabin_brackets_count;
         string cwt_brackets_name;
         int cwt_brackets_count;
+        string cwt_belt_name;       
+        int cwt_belt_count;
+        string platat_name;
+        int platat_count;         
         string hilti_bolts_name;
         int hilti_bolts_12mm;
         string assembly_bolts_name;
@@ -268,7 +256,6 @@ public:
         int sub_cabin_count;
         string sub_cwt_name;
         int sub_cwt_count;
-        string door_casing_note;
         string scaffolding_name;
         int scaffolding_count = 1;
         string plumb_name;
@@ -276,7 +263,6 @@ public:
         string balance_name;
         int balance_count = 1;
 
-        // المرحلة الثانية
         string ceiling_cut_name;
         int ceiling_cut_count = 1;
         string parachute_name;
@@ -290,22 +276,20 @@ public:
         int machine_bolts_24mm = 6;
         string machine_rubber_note;
         int rated_load_kg;
-        string cabin_design_type;
         string cwt_design_type;
         float cabin_wires_meters;
         string cabin_wires_name;
-        int rope_hitches_count;
-        int rope_clamps_count;
+        string rope_hitches_desc;
+        string rope_clamps_desc;
         int counterweight_blocks;
 
-        // المرحلة الثالثة
         float flex_cable_meters;
         int flex_holders_count = 4;
         float static_trunk_10cm = 6;
         float trunk_4cm_meters;
         int trunk_screws_8mm;
         int wire_1mm_coils; 
-        string wire_1mm_count_desc;
+        string wire_1mm_count_desc; 
         float net_cable_meters;
         int lop_buttons_count;
         string photocell_note;
@@ -352,73 +336,131 @@ public:
         string limit_sw_name;
         string limit_sensors_name;
         string floor_poles_name;
+        string machine_bed_name;
+        
+        bool has_ard;
+        bool is_hydraulic;
     };
 
-    FullSpecificationReport compile_full_specification(int w, int d, int floors, const string& type) {
+    FullSpecificationReport compile_full_specification(int w, int d, int floors, const string& type, const string& door_choice, const string& rails_origin, const string& door_origin, const string& has_ard) {
         FullSpecificationReport r;
+        r.has_ard = (has_ard == "yes");
+        r.is_hydraulic = (type == "Hydraulic");
         
-        int cab_w = get_cabin_width(w);
+        bool is_side_cwt = (w >= d + 20);
+
+        int cab_w = get_cabin_width(w, is_side_cwt);
         int cab_d = get_cabin_depth(d);
-        int cwt_dbg = get_cwt_dbg(w); 
+        int cwt_dbg = get_cwt_dbg(w, is_side_cwt); 
         
         r.rated_load_kg = calculate_rated_load(cab_w, cab_d);
-        r.ceiling_cut_name    = name_ceiling_cut;
-        r.parachute_name      = name_parachute;
-        r.governor_rope_name  = name_governor_rope;
-        r.buffer_set_name     = name_buffer_set;
-
-        r.scaffolding_name = name_scaffolding;
-        r.plumb_name       = name_plumb_lines;
-        r.balance_name     = name_balance_tube;
         
-        r.total_exterior_doors = floors * 1;
-        if (w >= 128) {
-            r.door_exterior_name = name_door_auto;
-            r.door_casing_note   = name_door_casing + " (يلزم تركيب علب التلبيس لحماية الابواب الخارجية)";
-        } else {
-            r.door_exterior_name = name_door_semi;
-            r.door_casing_note   = "لا يحتاج تلبيس الأبواب النصف أوتوماتيكية)";
-        }
+        r.ceiling_cut_name    = "تفتيح وتجهيز فتحات سقف البئر";
+        r.parachute_name      = "جهاز براشوت";
+        r.governor_rope_name  = "حبل براشوت";
+        r.buffer_set_name     = "طقم بفر";
+        r.machine_bed_name    = "فرش ماكينة";
+        r.scaffolding_name = "سقالة";
+        r.plumb_name       = "خيط ميزانية";
+        r.balance_name     = "تيوب او خشب ميزانية";
+        r.door_exterior_name = door_choice + " (" + door_origin + ")";
+        r.total_exterior_doors = floors;
 
         float travel_path = ((floors - 1) * 3.2f) + 5.0f;
         int single_side_rails = static_cast<int>(travel_path / 5.0f) + 1;
         
-        if (cab_d >= 150) {
-            r.cabin_rails_type = name_rail_16;
-        } else {
-            r.cabin_rails_type = name_rail_9;
-        }
+        r.cabin_rails_name = (cab_d >= 150 ? "سكة كابينة 16 مللي" : "سكة كابينة 9 مللي") + string(" (") + rails_origin + ")";
         r.cabin_rails_count = single_side_rails * 2;
-        r.cabin_rails_name  = r.cabin_rails_type;
 
         r.cabin_brackets_count = floors * 8; 
-        r.cabin_brackets_name  = name_bracket_cab;
+        r.cabin_brackets_name  = "كوابيل كابينة";
         r.sub_cabin_count      = r.cabin_brackets_count; 
-        r.sub_cabin_name       = name_sub_cab;
+        r.sub_cabin_name       = "سبورتينات كابينة";
+        
+        r.platat_name = "بلتات";
+        r.platat_count = 0;
+        r.cwt_belt_name = "حزام";
+        r.cwt_belt_count = 0;
 
         if (type == "Hydraulic") {
-            r.cwt_rails_name       = "لا يوجد (نظام هيدروليك)";
+            r.cwt_rails_name       = "لا يوجد";
             r.cwt_rails_count      = 0;
             r.cwt_brackets_count   = 0;
-            r.cwt_brackets_name    = "لا يوجد (نظام هيدروليك)";
+            r.cwt_brackets_name    = "لا يوجد";
             r.sub_cwt_count        = 0;
-            r.sub_cwt_name         = "لا يوجد (نظام هيدروليك)";
+            r.sub_cwt_name         = "لا يوجد";
+            
+            r.machine_type_desc   = "بستم ومجموعة ضخ هيدروليكية";
+            r.machine_rubber_note = "لا يوجد";
+            r.cwt_design_type     = "بدون ثقل";
+            r.cabin_wires_name    = "لا يوجد";
+            r.cabin_wires_meters  = 0;
+            r.rope_hitches_desc   = "0";
+            r.rope_clamps_desc    = "0";
+            r.counterweight_blocks = 0;
         } else {
-            r.cwt_rails_name       = name_rail_5;
+            r.cwt_rails_name       = "سكة تقل 5 مللي (" + rails_origin + ")";
             r.cwt_rails_count      = single_side_rails * 2;
             r.cwt_brackets_count   = floors * 8; 
-            r.cwt_brackets_name    = name_bracket_cwt;
+            r.cwt_brackets_name    = "كوابيل تقل";
             r.sub_cwt_count        = r.cwt_brackets_count; 
-            r.sub_cwt_name         = name_sub_cwt;
+            r.sub_cwt_name         = "سبورتينات تقل";
+            
+            if (is_side_cwt) {
+                r.cwt_belt_count = (floors * 2) + 2; 
+                int removed_cwt_brackets = r.cwt_brackets_count / 2;
+                int removed_cab_brackets = r.cabin_brackets_count / 4;
+                r.cwt_brackets_count -= removed_cwt_brackets;
+                r.cabin_brackets_count -= removed_cab_brackets;
+                r.platat_count = removed_cwt_brackets + removed_cab_brackets;
+            }
+            
+            if (type == "MRL") {
+                r.machine_type_desc   = "ماكينة جيرليس";
+                r.machine_rubber_note = "لا يوجد";
+                r.cwt_design_type     = is_side_cwt ? "تقل جانبي" : "تقل خلفي";
+                
+                r.cabin_wires_name   = (r.rated_load_kg <= 800) ? "حبل 6.5 مللي" : "حسب طارة الماكينة";
+                r.cabin_wires_meters = (floors * 4.5f) * 2.0f;
+                
+                if (r.rated_load_kg <= 450) {
+                    r.rope_hitches_desc = "14 شداد";
+                    r.rope_clamps_desc  = "حسب عدد الحبال";
+                } else if (r.rated_load_kg <= 630) {
+                    r.rope_hitches_desc = "16 شداد";
+                    r.rope_clamps_desc  = "حسب عدد الحبال";
+                } else {
+                    r.rope_hitches_desc = "حسب الماكينة";
+                    r.rope_clamps_desc  = "حسب عدد الحبال";
+                }
+                
+                r.counterweight_blocks = (r.rated_load_kg / 50) + 10; 
+                r.control_panel_name = "كنترول جيرليس";
+            } 
+            else { 
+                r.machine_type_desc   = "ماكينة جيربوكس";
+                r.machine_rubber_note = "طقم ربر";
+                r.cwt_design_type     = is_side_cwt ? "تقل جانبي" : "تقل خلفي";
+                
+                r.cabin_wires_name   = "حبل 11 مللي";
+                r.cabin_wires_meters = static_cast<float>(floors * 4);
+                
+                int hitches = (r.rated_load_kg >= 800) ? 5 : 4;
+                r.rope_hitches_desc = to_string(hitches) + " شداد";
+                r.rope_clamps_desc  = "حسب عدد الحبال";
+                
+                r.counterweight_blocks = (r.rated_load_kg / 40) + 8;
+                r.control_panel_name = "لوحة تحكم";
+            }
         }
 
-        r.hilti_bolts_name         = name_hilti_bolt;
-        r.assembly_bolts_name      = name_assem_bolt;
-        r.bolts_8mm_name           = name_bolt_8mm;
-        r.spring_washers_8mm_name  = name_spring_8mm;
-        r.spring_washers_12mm_name = name_washer_spring;
-        r.nuts_12mm_name           = name_nut_12mm;
-        r.flat_washers_12mm_name   = name_washer_flat;
+        r.hilti_bolts_name         = "مسمار هلتي 12 مللي";
+        r.assembly_bolts_name      = "مسمار تجميع 12 مللي";
+        r.bolts_8mm_name           = "مسمار 8 مللي";
+        r.spring_washers_8mm_name  = "وردة سوستة وصامولة 8 مللي";
+        r.spring_washers_12mm_name = "وردة سوستة 12 مللي";
+        r.nuts_12mm_name           = "صامولة 12 مللي";
+        r.flat_washers_12mm_name   = "وردة صاج 12 مللي";
 
         r.hilti_bolts_12mm    = (floors * 2) + (r.total_exterior_doors * 8);
         r.assembly_bolts_12mm = (r.cabin_brackets_count / 2) + 30 + ((r.cabin_rails_count - 2) * 8);
@@ -429,79 +471,40 @@ public:
         r.nuts_12mm           = r.assembly_bolts_12mm; 
         r.flat_washers_12mm   = (r.assembly_bolts_12mm * 2) + r.hilti_bolts_12mm + r.sub_cabin_count;
 
-        if (type == "Hydraulic") {
-            r.machine_type_desc   = "بستم ومجموعة ضخ هيدروليكية بالكامل (Hydraulic Pump Pack)";
-            r.machine_rubber_note = "لا يحتاج ربر (قواعد تثبيت هيدروليك أرضية بسلندر)";
-            r.cabin_design_type   = get_cabin_type(w, d) + " هيدروليك جانبية";
-            r.cwt_design_type     = "بدون ثقل (نظام دفع سلندر)";
-            r.cabin_wires_name    = "لا يحتاج حبال جر ميكانيكي";
-            r.cabin_wires_meters  = 0;
-            r.rope_hitches_count  = 0;
-            r.rope_clamps_count   = 0;
-            r.counterweight_blocks = 0;
-        } 
-        else if (type == "MRL") {
-            r.machine_type_desc   = "ماكينة بدون غرف جيرليس متطورة (Gearless MRL)";
-            r.machine_rubber_note = "لا يوجد  ربر  (الماكينة تثبت داخل البئر )";
-            r.cabin_design_type   = get_cabin_type(w, d) + " نظام تعليق جيرليس عياري";
-            r.cwt_design_type     = get_cwt_position(w, d) + " جانبي / خلفي موفر للمساحة";
-            
-            r.cabin_wires_name   = name_wire_6_5mm;
-            r.cabin_wires_meters = floors * 4.5f * 2.0f;
-            
-            r.rope_hitches_count = (r.rated_load_kg >= 800) ? 6 : 4; 
-            r.rope_clamps_count  = r.rope_hitches_count * 2;
-            r.counterweight_blocks = (r.rated_load_kg / 50) + 10; 
-        } 
-        else { 
-            r.machine_type_desc   = "ماكينة بصندوق تروس جيربوكس قياسية (Geared Traction Machine)";
-            r.machine_rubber_note = name_rubber_pads + " (يلزم تركيب طقم الربر لامتصاص الاهتزازات)";
-            r.cabin_design_type   = get_cabin_type(w, d) + " نظام تعليق عادي قياسي 1:1";
-            r.cwt_design_type     = get_cwt_position(w, d) + " خلفي قياسي عمق البئر متناسق";
-            
-            r.cabin_wires_name   = name_wire_11mm;
-            r.cabin_wires_meters = (floors * 5.0f) + 2.0f;
-            
-            r.rope_hitches_count = (r.rated_load_kg >= 800) ? 5 : 4;
-            r.rope_clamps_count  = r.rope_hitches_count * 2;
-            r.counterweight_blocks = (r.rated_load_kg / 40) + 8;
-        }
-
         r.governor_rope_meters = (travel_path * 2.0f) + 4.0f; 
         
         if (type != "Hydraulic" && cwt_dbg > 6) {
-            r.cwt_blocks_weight_desc = "مقاس شواكيل عرض قالب الزهر = " + to_string(cwt_dbg - 6) + " CM صفي";
+            r.cwt_blocks_weight_desc = to_string(cwt_dbg - 6) + " سم";
         } else {
-            r.cwt_blocks_weight_desc = "لا يحتاج قالب زهر (نظام تشغيل هيدروليكي)";
+            r.cwt_blocks_weight_desc = "لا يوجد";
         }
 
-        r.control_panel_name = name_control_panel;
-        r.ard_system_name    = name_ard_system;
-        r.ctrl_fischer_name  = name_ctrl_fischer;
-        r.inspect_box_name   = name_inspect_box;
-        r.charger_batt_name  = name_charger_batt;
-        r.emerg_alarm_name   = name_emerg_alarm;
-        r.flex_holder_name   = name_flex_holder;
-        r.trunk_10cm_name    = name_trunk_10cm;
-        r.oiler_set_name     = name_oiler_set;
-        r.wire_6mm_name      = name_wire_6mm;
-        r.cop_panel_name     = name_cop_panel;
-        r.intercom_name      = name_intercom;
-        r.stop_magnet_name   = name_stop_magnet;
-        r.count_magnet_name  = name_count_magnet;
-        r.limit_sw_name      = name_limit_sw;
-        r.limit_sensors_name = name_limit_sensors;
-        r.floor_poles_name   = name_floor_poles;
+        r.ard_system_name    = "جهاز ARD";
+        r.ctrl_fischer_name  = "مسامير وفيشر 12 مللي";
+        r.inspect_box_name   = "علبة صيانة";
+        r.charger_batt_name  = "شاحن وبطارية طوارئ";
+        r.emerg_alarm_name   = "جرس وسارينة";
+        r.flex_holder_name   = "حامل كبل مرن";
+        r.trunk_10cm_name    = "ترنك 10 سم";
+        r.oiler_set_name     = "طقم مزايت";
+        r.wire_6mm_name      = "سلك 6 مللي";
+        r.cop_panel_name     = "لوحة طلبات داخلية";
+        r.intercom_name      = "جهاز انتركم";
+        r.stop_magnet_name   = "مغناطيس توقف";
+        r.count_magnet_name  = "مغناطيس عداد";
+        r.limit_sw_name      = "ليميت سويتش";
+        r.limit_sensors_name = "حساسات مغناطيسية";
+        r.floor_poles_name   = "بولات مغناطيس";
         
-        r.flex_cable_name   = name_flex_cable;
+        r.flex_cable_name   = "كبل مرن";
         r.flex_cable_meters = (floors * 4.0f) + 7.0f;
         
-        r.trunk_4cm_name     = name_trunk_4cm;
+        r.trunk_4cm_name     = "ترنك 4 سم";
         r.trunk_4cm_meters   = travel_path; 
-        r.trunk_screws_name  = name_trunk_screws;
+        r.trunk_screws_name  = "مسامير وفيشر 8 مللي";
         r.trunk_screws_8mm   = floors * 4;  
         
-        r.wire_1mm_name = name_wire_1mm;
+        r.wire_1mm_name = "سلك 1 مللي";
         int temp_coils = 0;
         if (floors >= 2 && floors <= 4)       temp_coils = 4;
         else if (floors >= 5 && floors <= 7)  temp_coils = 5;
@@ -512,21 +515,19 @@ public:
 
         r.wire_1mm_coils = temp_coils;
         r.wire_1mm_count_desc = to_string(temp_coils) + " لفة"; 
-
-        r.net_cable_name   = name_net_cable;
+        
+        r.net_cable_name   = "سلك نت";
         r.net_cable_meters = travel_path + (floors * 2.0f) + 5.0f;
         
-        r.lop_buttons_name  = name_lop_buttons;
+        r.lop_buttons_name  = "طلبات خارجية";
         r.lop_buttons_count = r.total_exterior_doors; 
 
-        if (w >= 128) {
-            r.photocell_name = name_photocell;
-            r.photocell_note = "(نظام أوتوماتيكي بالكامل: يتضمن  الشعاع الضوئي (الفوتوسيل).";
-            r.safety_door_name = "ازرار الداخلية   للفتح والغلق اليدوي";
+        if (door_choice.find("Semi") == string::npos) {
+            r.photocell_name = "ستارة ضوئية";
+            r.safety_door_name = "ازرار فتح وغلق";
         } else {
-            r.photocell_name = "غير مطلوب للنظام النص أوتوماتيك";
-            r.photocell_note = "المصعد نصف أوتوماتيك : يتم فتح الكالون الخارجي بكامة الكابينة. ";
-            r.safety_door_name = name_safety_door + " (يلزم تركيب باب سلامة  او فوتو سيل لحماية الراكب داخل الكابينة)";
+            r.photocell_name = "غير مطلوب";
+            r.safety_door_name = "باب داخلي";
         }
 
         r.floor_poles_count = floors * 6; 
@@ -535,7 +536,6 @@ public:
     }
 };
 
-// الهياكل الثابتة لبيانات المقالات والمسارات التعليمية بالمنصة
 struct Lesson {
     string slug;          
     string track_slug;    
@@ -558,22 +558,13 @@ static vector<Track> get_tracks() {
     return {
         { "basics", "🧱", "مسار الأساسات الهندسية", "المفاهيم الأولى لتصفية أبعاد بئر المصعد ومكوناته الرئيسية وقراءة المخططات الفنية." },
         { "doors",  "🚪", "مسار أبواب المصاعد", "أنواع الأبواب وأكواد الفتح المختلفة وإزاي تختار النوع المناسب للمساحة المتوفرة لبئر المصعد." },
-        { "darbat" , "🔨" , "كورس كهرباء المصاعد الشامل"  , "كورس تطبيقية متخصص في تعليم كل شيء يخص كهرباء الدوائر، الكنترولات، وتوصيل كوابل الأمان."}
+        { "darbat" , "🔨" , "كورس كهرباء المصاعد الشامل"  , "كورس تطبيقي متخصص في تعليم كل شيء يخص كهرباء الدوائر، الكنترولات، وتوصيل كوابل الأمان."},
+        { "robotics", "🤖", "مسار الروبوتات والمتحكمات", "مسار تطبيقي لتعلم أسس الذكاء الاصطناعي والمتحكمات الدقيقة. من أول فهم وربط الحساسات، لحد بناء وبرمجة روبوت ذكي ومتكامل بنفسك." }
     }; 
 }
 
-// تم تفريغ المقالات وترك القالب كما طلبت لسهولة الإضافة مستقبلاً
 static vector<Lesson> get_lessons() {
-    return {
-        /*
-        // قالب إضافة مقال أو درس:
-        { "رابط-الدرس", "رابط-المسار", "video او article",
-          "عنوان الدرس",
-          "وصف مختصر للدرس يظهر في الكارت",
-          "<p>محتوى الدرس بصيغة HTML (اختياري)</p>",
-          "رابط يوتيوب (اختياري)", 1}
-        */
-    };
+    return {};
 }
 
 static vector<Lesson> get_lessons_by_track(const string& track_slug) {
@@ -584,7 +575,6 @@ static vector<Lesson> get_lessons_by_track(const string& track_slug) {
     return filtered;
 }
 
-// دالة التنسيق والـ CSS الشاملة للموبايل والكروت
 static string get_modern_blue_css() {
     return "<style>"
            "*{box-sizing:border-box;}"
@@ -647,7 +637,7 @@ static string get_modern_blue_css() {
            ".mobile-panel a:hover{background:rgba(56,189,248,0.1); color:var(--accent);}"
            ".mobile-divider{height:1px; background:var(--border); margin:8px 2px;}"
 
-           ".container{max-width:900px; margin:0 auto; padding:50px 20px; flex:1; width:100%;}"
+           ".container{max-width:1100px; margin:0 auto; padding:50px 20px; flex:1; width:100%;}"
            ".card{position:relative; background:var(--surface); border:1px solid var(--border); padding:40px; border-radius:12px; box-shadow:0 20px 25px -5px rgba(0,0,0,0.3); text-align:right; transition: background-color 0.3s;}"
            ".card::before, .nav-card::before{content:''; position:absolute; top:-1px; right:-1px; width:18px; height:18px; border-top:2px solid var(--accent); border-right:2px solid var(--accent); border-top-right-radius:6px; opacity:0.6;}"
            ".card::after, .nav-card::after{content:''; position:absolute; bottom:-1px; left:-1px; width:18px; height:18px; border-bottom:2px solid var(--accent); border-left:2px solid var(--accent); border-bottom-left-radius:6px; opacity:0.6;}"
@@ -660,7 +650,6 @@ static string get_modern_blue_css() {
            "button, .btn-action{background:linear-gradient(135deg, #0284c7, #0369a1); color:#ffffff; border:none; padding:16px; border-radius:8px; width:100%; font-size:1.1rem; font-weight:700; cursor:pointer; transition:0.3s; text-decoration:none; display:inline-block; text-align:center; box-shadow: 0 4px 6px rgba(0,0,0,0.1);}"
            "button:hover, .btn-action:hover{background:linear-gradient(135deg, #0369a1, #075985); transform:translateY(-1px);}"
 
-           /* التنسيق الجديد الجذاب للجداول والكروت */
            ".table-container{position:relative; width:100%; overflow-x:auto; background:var(--bg); border-radius:8px; border:1px solid var(--border); margin-top:10px;}"
            ".tbl{width:100%; border-collapse:collapse; text-align:right; margin-bottom: 20px;}"
            ".tbl th{background:var(--surface); padding:15px; color:var(--text); font-weight:600; border-bottom:1px solid var(--border); font-size:1rem; text-align:right; width:45%;}"
@@ -677,6 +666,10 @@ static string get_modern_blue_css() {
            ".btn-secondary{background:linear-gradient(135deg, #4f46e5, #4338ca); color:white; padding:15px 25px; border-radius:8px; font-weight:700; text-align:center; flex:1; transition:0.3s; display:inline-block; text-decoration:none; font-family:var(--font-display); box-shadow: 0 4px 6px rgba(0,0,0,0.1);}"
            ".btn-secondary:hover{background:linear-gradient(135deg, #4338ca, #3730a3);}"
            
+           // تعديل الشبكة لتكون كل كارتين جنب بعض في الشاشات العريضة، وكل كارت لوحده في الموبايل
+           ".grid-cards { display: grid; grid-template-columns: repeat(2, 1fr); gap: 25px; width: 100%; }"
+           "@media (max-width: 768px) { .grid-cards { grid-template-columns: 1fr; } }"
+
            ".grid-nav{display:grid; grid-template-columns:repeat(auto-fit, minmax(280px, 1fr)); gap:25px; width:100%;}"
            ".nav-card{position:relative; background:var(--surface); border:1px solid var(--border); padding:30px; border-radius:12px; text-decoration:none; color:var(--text); transition:0.3s; display:flex; flex-direction:column; text-align:right;}"
            ".nav-card:hover{border-color:var(--accent); transform:translateY(-3px); box-shadow:0 10px 20px rgba(0,0,0,0.2);}"
@@ -701,7 +694,6 @@ static string get_modern_blue_css() {
 
            ".footer{margin-top:auto; padding:25px 0; font-size:15px; color:var(--text-muted); text-align:center; border-top:1px solid var(--border); background-color:var(--surface); font-weight:600;}"
            
-           /* تحويل الجداول لنظام كروت ذكية على الموبايل */
            "@media (max-width: 600px) {"
            "  .container { padding: 15px 10px !important; }"
            "  .card { padding: 20px 15px !important; border:none; box-shadow:none; }"
@@ -754,7 +746,7 @@ static string get_navbar_html() {
     const string logo_url = "https://media.darbat-shakosh.com/channels4_profile%20(1).jpg"; 
     const string chevron_svg = "<svg class='chevron' viewBox='0 0 24 24'><path d='M7 10l5 5 5-5z'/></svg>";
     const string moon_icon = "<svg class='theme-moon' viewBox='0 0 24 24'><path d='M12.3 22h-.1c-5.5 0-10-4.5-10-10 0-4.8 3.5-8.9 8.2-9.8.6-.1 1.2.3 1.3.9.1.6-.2 1.2-.8 1.4-3.3 1-5.7 4-5.7 7.5 0 4.4 3.6 8 8 8 3.5 0 6.5-2.4 7.5-5.7.2-.6.8-.9 1.4-.8.6.1 1 .7.9 1.3-.9 4.7-5 8.2-9.8 8.2z'/></svg>";
-    const string sun_icon = "<svg class='theme-sun' viewBox='0 0 24 24'><path d='M12 7c-2.8 0-5 2.2-5 5s2.2 5 5 5 5-2.2 5-5-2.2-5-5-5zm0-5c.6 0 1 .4 1 1v2c0 .6-.4 1-1 1s-1-.4-1-1V3c0-.6.4-1 1-1zm0 14c.6 0 1 .4 1 1v2c0 .6-.4 1-1 1s-1-.4-1-1v-2c0-.6.4-1 1-1zM4 11h2c.6 0 1 .4 1 1s-.4 1-1 1H4c-.6 0-1-.4-1-1s.4-1 1-1zm14 0h2c.6 0 1 .4 1 1s-.4 1-1 1h-2c-.6 0-1-.4-1-1s.4-1 1-1zM5.2 5.2c.4-.4 1-.4 1.4 0l1.4 1.4c.4.4.4 1 0 1.4s-1 .4-1.4 0L5.2 6.6c-.4-.4-.4-1 0-1.4zm12 12c.4-.4 1-.4 1.4 0l1.4 1.4c.4.4.4 1 0 1.4s-1 .4-1.4 0l-1.4-1.4c-.4-.4-.4-1 0-1.4zM7.6 16.4c.4-.4 1-.4 1.4 0l1.4 1.4c.4.4.4 1 0 1.4s-1 .4-1.4 0l-1.4-1.4c-.4-.4-.4-1 0-1.4zm12-12c.4-.4 1-.4 1.4 0l1.4 1.4c.4.4.4 1 0 1.4s-1 .4-1.4 0l-1.4-1.4c-.4-.4-.4-1 0-1.4z'/></svg>";
+    const string sun_icon = "<svg class='theme-sun' viewBox='0 0 24 24'><path d='M12 7c-2.8 0-5 2.2-5 5s2.2 5 5 5 5-2.2 5-5-2.2-5-5-5zm0-5c.6 0 1 .4 1 1v2c0 .6-.4 1-1 1s-1-.4-1-1V3c0-.6.4-1 1-1zm0 14c.6 0 1 .4 1 1v2c0 .6-.4 1-1 1s-1-.4-1-1v-2c0-.6.4-1 1-1zM4 11h2c.6 0 1 .4 1 1s-.4 1-1 1H4c-.6 0-1-.4-1-1s-1-.4-1-1zm14 0h2c.6 0 1 .4 1 1s-.4 1-1 1h-2c-.6 0-1-.4-1-1s-1-.4-1-1zM5.2 5.2c.4-.4 1-.4 1.4 0l1.4 1.4c.4.4.4 1 0 1.4s-1 .4-1.4 0L5.2 6.6c-.4-.4-.4-1 0-1.4zm12 12c.4-.4 1-.4 1.4 0l1.4 1.4c.4.4.4 1 0 1.4s-1 .4-1.4 0l-1.4-1.4c-.4-.4-.4-1 0-1.4zM7.6 16.4c.4-.4 1-.4 1.4 0l1.4 1.4c.4.4.4 1 0 1.4s-1 .4-1.4 0l-1.4-1.4c-.4-.4-.4-1 0-1.4zm12-12c.4-.4 1-.4 1.4 0l1.4 1.4c.4.4.4 1 0 1.4s-1 .4-1.4 0l-1.4-1.4c-.4-.4-.4-1 0-1.4z'/></svg>";
 
     return "<nav class='navbar'>"
            "  <div class='nav-right'>"
@@ -765,12 +757,24 @@ static string get_navbar_html() {
            "      <a href='/blog' class='nav-link'>الشروحات والمقالات</a>"
            "      <a href='/calculator' class='nav-link'>الحاسبة الهندسية</a>"
            "      <details class='nav-dropdown'>"
+           "        <summary>🤝 دليل الشركاء " + chevron_svg + "</summary>"
+           "        <div class='dropdown-panel'>"
+           "          <div class='dropdown-col'>"
+           "            <a href='/companies'>الشركات والمؤسسات</a>"
+           "            <a href='/contractors'>المقاولين</a>"
+           "            <a href='/suppliers'>الموردين</a>"
+           "            <a href='/cabins'>مصانع الكباين</a>"
+           "            <a href='/transport'>دباب وديانا</a>"
+           "            <a href='/labor'>العمالة اليومية</a>"
+           "          </div>"
+           "        </div>"
+           "      </details>"
+           "      <details class='nav-dropdown'>"
            "        <summary>المزيد " + chevron_svg + "</summary>"
            "        <div class='dropdown-panel'>"
            "          <div class='dropdown-col'>"
            "            <a href='/contact'>اتصل بنا</a>"
            "            <a href='/support'>مركز الدعم</a>"
-           "            <a href='/donate'>دعم المنصة</a>"
            "          </div>"
            "        </div>"
            "      </details>"
@@ -787,10 +791,15 @@ static string get_navbar_html() {
            "        <a href='/paths'>مسارات التعلّم</a>"
            "        <a href='/blog'>الشروحات والمقالات</a>"
            "        <a href='/calculator'>الحاسبة الهندسية</a>"
+           "        <a href='/companies'>الشركات</a>"
+           "        <a href='/contractors'>المقاولين</a>"
+           "        <a href='/suppliers'>الموردين</a>"
+           "        <a href='/cabins'>مصانع الكباين</a>"
+           "        <a href='/transport'>دباب وديانا</a>"
+           "        <a href='/labor'>العمالة اليومية</a>"
            "        <div class='mobile-divider'></div>"
            "        <a href='/contact'>اتصل بنا</a>"
            "        <a href='/support'>مركز الدعم</a>"
-           "        <a href='/donate'>دعم المنصة</a>"
            "      </div>"
            "    </details>"
            "  </div>"
@@ -843,7 +852,6 @@ int main() {
         return httplib::Server::HandlerResponse::Unhandled;
     });
 
-    // 1️⃣ الصفحة الرئيسية
     svr.Get("/", [](const httplib::Request&, httplib::Response& res) {
         string nonce = generate_nonce(); set_csp(res, nonce);
         string meta = get_seo_meta("المنصة التعليمية والهندسية للمصاعد والروبوتات", "شروحات فنية متخصصة في ميكانيكا وكهرباء المصاعد وحساب أبعاد الصاعدة فنياً.");
@@ -854,13 +862,13 @@ int main() {
                       + get_navbar_html() +
                       "<div class='container'>"
                       "<div class='section-intro' style='text-align: center; margin-bottom: 40px;'>"
-                      "  <h1 style='font-size: 2.2rem;'>مرحباً بك في منصة ضربة شاكوش للمصاعد</h1>"
-                      "  <p style='color: var(--text-muted); font-size: 1.1rem;'> الأدوات الهندسية الذكية والكورسات التطبيقية المتخصصة في مجال تركيب وصيانة المصاعدوالروبوتات</p>"
+                      "  <h1 style='font-size: 2.2rem;'>مرحباً بك في منصة ضربة شاكوش</h1>"
+                      "  <p style='color: var(--text-muted); font-size: 1.1rem;'> الأدوات الهندسية الذكية والكورسات التطبيقية المتخصصة في مجال تركيب وصيانة المصاعد والروبوتات</p>"
                       "</div>"
                       "<div class='grid-nav'>"
-                      "  <a href='/calculator' class='nav-card'><h3>🛗 حاسبة المقاسات الفنية والبضاعة</h3><p>ابدأ تصفية أبعاد البئر وحساب المقاسات الصافية للكابينة والبضاعة.</p></a>"
-                      "  <a href='/paths' class='nav-card'><h3>📖 مسارات الكورسات والتعلم</h3><p>اكتشف مسار التأسيس ميكانيكياً، وكورس كهرباء المصاعد الشامل لتوصيل اللوحات والكنترولات خطوة بخطوة.</p></a>"
-                      "  <a href='/robotics' class='nav-card'><h3>🦾 الروبوتات والمتحكمات الدقيقة/h3><p>شرح وتسهيل برمجة المتحكمات الدقيقة </p></a>"
+                      "  <a href='/calculator' class='nav-card'><h3>🛗 حاسبة المقاسات الفنية والبضاعة</h3><p>ابدأ تصفية أبعاد بئر المصعد وحساب المقاسات الصافية للكابينة.</p></a>"
+                      "  <a href='/paths' class='nav-card'><h3>📖 مسارات الكورسات والتعلم</h3><p>اكتشف مسار التأسيس ميكانيكياً، وكورس كهرباء المصاعد الشامل.</p></a>"
+                      "  <a href='/companies' class='nav-card'><h3>🏢 الشركات والمؤسسات</h3><p>تعرف على الشركات والمؤسسات الكبرى المعتمدة في قطاع المصاعد.</p></a>"
                       "</div>"
                       "</div>"
                       "<div class='footer'>منصة ضربة شاكوش الفنية © 2026 - إنشاء محمد الشعراوي</div>"
@@ -869,7 +877,110 @@ int main() {
         res.set_content(html, "text/html; charset=utf-8");
     });
 
-    // 2️⃣ واجهة الحاسبة
+    // دالة إنشاء الصفحات المستقلة بتصميم راقي (كل كارتين بجانب بعضهما في الشاشات العريضة)
+    auto render_page = [](const string& title, const string& target_type, const string& nonce) {
+        auto partners = get_partners();
+        ostringstream content;
+        ostringstream featured_content;
+
+        for (auto& p : partners) {
+            if (p.type != target_type) continue;
+
+            if (p.is_ad) {
+                content << "<div class='nav-card' style='border: 2px dashed var(--accent); background: rgba(56,189,248,0.04); text-align: center; justify-content: center;'>"
+                        << "<h3 style='color: var(--accent);'>📢 اكتب اسمك هنا</h3>"
+                        << "<p>" << html_escape(p.details) << "</p>"
+                        << "<a class='btn-action' href='https://wa.me/" << p.phone << "' target='_blank' style='margin-top:15px; padding:10px;'>💬 احجز مكانك الآن</a>"
+                        << "</div>";
+                continue;
+            }
+
+            if (p.type == "company" && p.is_featured) {
+                // الشركة الراعية المميزة تأخذ العرض بالكامل بشكل استثنائي وفخم
+                featured_content << "<div style='background:linear-gradient(135deg, #0284c7, #0369a1); color:white; padding:30px; border-radius:12px; box-shadow:0 10px 25px rgba(2,132,199,0.3); border:2px solid #38bdf8; margin-bottom:25px; text-align:right; width:100%;'>"
+                                 << "<span style='background:#f5a524; color:#000; font-size:0.8rem; font-weight:800; padding:4px 12px; border-radius:20px;'>⭐ الشركة الرئيسية والراعية</span>"
+                                 << "<h2 style='margin:12px 0 8px 0; font-size:1.5rem; color:#fff; border:none; padding:0;'>" << html_escape(p.name) << "</h2>"
+                                 << "<p style='font-size:1.05rem; margin-bottom:12px; color:#e0f2fe;'>" << html_escape(p.details) << "</p>"
+                                 << "<div style='display:flex; gap:20px; flex-wrap:wrap; font-weight:bold;'>"
+                                 << "<span>📞 الجوال: " << html_escape(p.phone) << "</span>"
+                                 << (!p.location.empty() ? "<span>📍 المكان: " + html_escape(p.location) + "</span>" : "")
+                                 << (!p.map_link.empty() ? "<span>📍 <a href='" + p.map_link + "' target='_blank' style='color:#fde047; text-decoration:underline;'> العنوان </a></span>" : "")
+                                 << (!p.website.empty() ? "<span>🌐 <a href='" + p.website + "' target='_blank' style='color:#fde047; text-decoration:underline;'> زيارة موقع الشركة </a></span>" : "")
+                                 << "</div>"
+                                 << "<div style='margin-top:15px; display:flex; gap:10px; flex-wrap:wrap;'>"
+                                 << "<a class='btn-action' href='https://wa.me/" << p.phone << "' target='_blank' style='background:#25D366; width:auto; display:inline-block; padding:10px 25px;'>💬 تواصل مباشر واتساب</a>"
+                                 << (!p.website.empty() ? "<a class='btn-action' href='" + p.website + "' target='_blank' style='background:linear-gradient(135deg, #0284c7, #0369a1); width:auto; display:inline-block; padding:10px 25px;'>🌐 زيارة موقع الشركة</a>" : "")
+                                 << "</div>"
+                                 << "</div>";
+            } else {
+                // باقي الكروت تترتب (كل كارتين جنب بعض)
+                content << "<div style='background:var(--surface); border:1px solid var(--border); padding:25px; border-radius:12px; box-shadow:0 10px 20px rgba(0,0,0,0.2); text-align:right; display:flex; flex-direction:column; justify-content:space-between; transition:0.3s;'>"
+                        << "<div>"
+                        << (p.type == "company" ? "<span style='background:rgba(56,189,248,0.15); color:var(--accent); font-size:0.75rem; font-weight:700; padding:3px 10px; border-radius:20px;'>🏢 شركة معتمدة</span>" : "")
+                        << (!p.rating.empty() ? "<p style='font-size:1.05rem; color:var(--accent-2); margin-bottom:6px;'>التقييم: " + p.rating + "</p>" : "")
+                        << "<h3 style='margin:10px 0 8px 0; font-size:1.25rem; color:var(--text);'>" << html_escape(p.name) << "</h3>"
+                        << "<p style='font-size:0.95rem; margin-bottom:12px; color:var(--text-muted); line-height:1.6;'>" << html_escape(p.details) << "</p>"
+                        << "<div style='display:flex; gap:15px; flex-wrap:wrap; font-weight:bold; font-size:0.9rem; margin-bottom:15px;'>"
+                        << "<span style='color:var(--text);'>📞 " << html_escape(p.phone) << "</span>"
+                        << (!p.location.empty() ? "<span style='color:var(--text);'>📍 " + html_escape(p.location) + "</span>" : "")
+                        << (!p.map_link.empty() ? "<span>📍 <a href='" + p.map_link + "' target='_blank' style='color:var(--accent); text-decoration:underline;'>رابط الخريطة</a></span>" : "")
+                        << (!p.website.empty() ? "<span>🌐 <a href='" + p.website + "' target='_blank' style='color:var(--accent); text-decoration:underline;'>الموقع</a></span>" : "")
+                        << "</div>"
+                        << "</div>"
+                        << "<div style='display:flex; gap:8px; flex-wrap:wrap; margin-top:auto;'>"
+                        << "<a class='btn-action' href='https://wa.me/" << p.phone << "' target='_blank' style='padding:8px 15px; font-size:0.9rem; background:#25D366; width:auto; flex:1;'>💬 واتساب</a>"
+                        << (!p.website.empty() ? "<a class='btn-action' href='" + p.website + "' target='_blank' style='padding:8px 15px; font-size:0.9rem; background:linear-gradient(135deg, #0284c7, #0369a1); width:auto; flex:1;'>🌐 الموقع</a>" : "")
+                        << "</div>"
+                        << "</div>";
+            }
+        }
+
+        string meta = get_seo_meta(title, "دليل المصاعد المتخصص عبر منصة ضربة شاكوش.");
+        return "<html><head><meta charset='UTF-8'><meta name='viewport' content='width=device-width, initial-scale=1.0'>"
+               "<link href='https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&family=JetBrains+Mono:wght@500;600&display=swap' rel='stylesheet'>"
+               + meta + get_modern_blue_css() + "</head><body>"
+               + get_navbar_html() +
+               "<div class='container'>"
+               "<div class='section-intro'><h1>" + title + "</h1><p>قائمة معتمدة ومحدثة خصيصاً لخدمة مهندسي وفنيي ومقاولين قطاع المصاعد.</p></div>"
+               + featured_content.str() +
+               "<div class='grid-cards'>" + content.str() + "</div>"
+               "<div class='actions' style='margin-top:40px;'><a class='btn-secondary' href='/contact'>➕ اطلب إدراج اسمك أو شركتك معنا</a></div>"
+               "</div>"
+               "<div class='footer'>منصة ضربة شاكوش الفنية © 2026 - إنشاء محمد الشعراوي</div>"
+               + get_theme_script(nonce) +
+               "</body></html>";
+    };
+
+    svr.Get("/companies", [&render_page](const httplib::Request&, httplib::Response& res) {
+        string nonce = generate_nonce(); set_csp(res, nonce);
+        res.set_content(render_page("🏢 الشركات والمؤسسات", "company", nonce), "text/html; charset=utf-8");
+    });
+
+    svr.Get("/contractors", [&render_page](const httplib::Request&, httplib::Response& res) {
+        string nonce = generate_nonce(); set_csp(res, nonce);
+        res.set_content(render_page("👷 المقاولين المعتمدين", "contractor", nonce), "text/html; charset=utf-8");
+    });
+
+    svr.Get("/suppliers", [&render_page](const httplib::Request&, httplib::Response& res) {
+        string nonce = generate_nonce(); set_csp(res, nonce);
+        res.set_content(render_page("📦 الموردين", "supplier", nonce), "text/html; charset=utf-8");
+    });
+
+    svr.Get("/cabins", [&render_page](const httplib::Request&, httplib::Response& res) {
+        string nonce = generate_nonce(); set_csp(res, nonce);
+        res.set_content(render_page("🛗 مصانع الكباين", "cabins", nonce), "text/html; charset=utf-8");
+    });
+
+    svr.Get("/transport", [&render_page](const httplib::Request&, httplib::Response& res) {
+        string nonce = generate_nonce(); set_csp(res, nonce);
+        res.set_content(render_page("🚚 خدمات النقل (دباب وديانا)", "transport", nonce), "text/html; charset=utf-8");
+    });
+
+    svr.Get("/labor", [&render_page](const httplib::Request&, httplib::Response& res) {
+        string nonce = generate_nonce(); set_csp(res, nonce);
+        res.set_content(render_page("👷 العمالة اليومية والخدمات الميدانية", "labor", nonce), "text/html; charset=utf-8");
+    });
+
     svr.Get("/calculator", [](const httplib::Request&, httplib::Response& res) {
         string nonce = generate_nonce(); set_csp(res, nonce);
         string meta = get_seo_meta("حاسبة مقاسات بئر وكبينة المصاعد", "أداة هندسية لحساب وتصفية مقاسات كابينة المصعد وأبعاد الثقل ونوع الأبواب المتاحة أوتوماتيكياً.");
@@ -881,7 +992,7 @@ int main() {
                       "<div class='container' style='max-width:650px;'>"
                       "<div class='card'><h2>🛗 حاسبة مقاسات بئر المصعد الفنية</h2>"
                       "<div class='sub-title'>الرجاء إدخال القياسات الصافية المأخوذة من الموقع للبدء في الحساب والتصفية التلقائية :</div>"
-                      "<form action='/calculate' method='post'>"
+                      "<form action='/calculator-step2' method='post'>"
                       "<div class='f-group'><label>👑 نوع نظام تشغيل المصعد:</label>"
                       "<select name='m_type'>"
                       "<option value='MR'>غرفة محرك أعلى البئر (MR)</option>"
@@ -892,9 +1003,8 @@ int main() {
                       "<div class='f-group'><label>📏 عمق بئر المصعد الصافي (CM):</label><input type='number' name='depth' required min='80' max='250' placeholder='مثال لعمق البئر الحُر: 160'></div>"
                       "<div class='f-group'><label>🏢 إجمالي عدد الوقفات (الأدوار الإنشائية):</label><input type='number' name='floors' required min='1' max='60' placeholder='أدخل عدد طوابق المبنى'></div>"
                       "<div class='f-group'><label>🕳️عمق حفرة المصعد Pit (CM):</label><input type='number' name='depth_pit' required min='10' max='500' value='100'></div>"
-                      "<div class='f-group'><label>🏠 ارتفاع من ارضية الدور الاخير الي سقف البئرOverhead (CM):</label><input type='number' name='overhead' required min='100' max='800' value='400'></div>"
-                      "<div class='f-group'><label>⛓️ حساب الخامات والبضاعة التقريبية:</label><select name='calc_mat'><option value='yes'>نعم، أظهر جدول البضاعة والسكك المطلوبة كاملة</option><option value='no'>لا، أريد مقاسات البئر فقط</option></select></div>"
-                      "<button type='submit'>🏛️استخراج مقاسات الصاعدة الهندسية </button></form>"
+                      "<div class='f-group'><label>🏠 ارتفاع من ارضية الدور الاخير الي سقف البئر Overhead (CM):</label><input type='number' name='overhead' required min='100' max='800' value='400'></div>"
+                      "<button type='submit'>➡️ الخطوة التالية: تخصيص البضاعة</button></form>"
                       "</div></div>"
                       "<div class='footer'>منصة ضربة شاكوش الفنية © 2026 - إنشاء محمد الشعراوي</div>"
                       + get_theme_script(nonce) +
@@ -902,8 +1012,7 @@ int main() {
         res.set_content(html, "text/html; charset=utf-8");
     });
 
-    // 3️⃣ معالجة الحسابات وتوليد الجداول/الكروت الشاملة المفككة بالكامل
-    svr.Post("/calculate", [&elevator](const httplib::Request& req, httplib::Response& res) {
+    svr.Post("/calculator-step2", [&elevator](const httplib::Request& req, httplib::Response& res) {
         string m_type = html_escape(req.get_param_value("m_type"));
         if (m_type != "MR" && m_type != "MRL" && m_type != "Hydraulic") m_type = "MR";
 
@@ -946,15 +1055,13 @@ int main() {
             res.set_content(html, "text/html; charset=utf-8"); return;
         }
 
-        string calc_mat = html_escape(req.get_param_value("calc_mat"));
-
         int w = safe_stoi(req.get_param_value("width"), 0);
         int d = safe_stoi(req.get_param_value("depth"), 0);
-        float f = safe_stof(req.get_param_value("floors"), 0.0f);
-        int p = safe_stoi(req.get_param_value("depth_pit"), 100);
-        int oh = safe_stoi(req.get_param_value("overhead"), 400);
+        string f = req.get_param_value("floors");
+        string p = req.get_param_value("depth_pit");
+        string oh = req.get_param_value("overhead");
 
-        if (w < 110 || d < 100 || f <= 0 || p <= 0 || oh <= 0 || w > 250 || d > 250) {
+        if (w < 110 || d < 100 || safe_stof(f) <= 0 || safe_stoi(p) <= 0 || safe_stoi(oh) <= 0 || w > 250 || d > 250) {
             string err = "<html><head><meta charset='UTF-8'><meta name='viewport' content='width=device-width, initial-scale=1.0'>"
                          "<link href='https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&family=JetBrains+Mono:wght@500;600&display=swap' rel='stylesheet'>"
                          + get_modern_blue_css() + "</head><body>"
@@ -968,14 +1075,119 @@ int main() {
             res.set_content(err, "text/html; charset=utf-8"); return;
         }
 
-        string door = elevator.get_door_type(w);
-        int cabin_dbg = elevator.get_cabin_dbg(w);
-        int cwt_dbg = elevator.get_cwt_dbg(w);
-        int cab_w = elevator.get_cabin_width(w);
-        int cab_d = elevator.get_cabin_depth(d);
-        float h = elevator.get_shaft_height(f, p/100.0f, oh/100.0f, m_type);
+        string raw_door_options = elevator.get_door_type(w);
+        vector<string> door_options = split_string(raw_door_options, "||");
 
-        Elevator::FullSpecificationReport specs = elevator.compile_full_specification(w, d, static_cast<int>(f), m_type);
+        ostringstream door_select;
+        door_select << "<select name='door_choice'>";
+        for (const auto& opt : door_options) {
+            string clean_opt = trim(opt);
+            door_select << "<option value='" << clean_opt << "'>" << clean_opt << "</option>";
+        }
+        door_select << "</select>";
+
+        string nonce = generate_nonce(); set_csp(res, nonce);
+        ostringstream os;
+        os << "<html><head><meta charset='UTF-8'><meta name='viewport' content='width=device-width, initial-scale=1.0'>"
+           "<link href='https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&family=JetBrains+Mono:wght@500;600&display=swap' rel='stylesheet'>"
+           + get_modern_blue_css() +
+           "<script nonce='" + nonce + "'>"
+           "function updateDoorOrigin() {"
+           "  var doorSelect = document.querySelector(\"select[name='door_choice']\");"
+           "  var originSelect = document.querySelector(\"select[name='door_origin']\");"
+           "  var selectedDoor = doorSelect.value;"
+           "  var isSemi = selectedDoor.includes('Semi');"
+           "  var hasTurki = false;"
+           "  for(var i=0; i<originSelect.options.length; i++) {"
+           "    if(originSelect.options[i].value === 'تركي') { hasTurki = true; break; }"
+           "  }"
+           "  if(isSemi && !hasTurki) {"
+           "    var opt = document.createElement('option');"
+           "    opt.value = 'تركي';"
+           "    opt.innerHTML = 'تركي';"
+           "    originSelect.appendChild(opt);"
+           "  } else if(!isSemi && hasTurki) {"
+           "    for(var i=0; i<originSelect.options.length; i++) {"
+           "      if(originSelect.options[i].value === 'تركي') {"
+           "        originSelect.removeChild(originSelect.options[i]);"
+           "        break;"
+           "      }"
+           "    }"
+           "  }"
+           "}"
+           "</script>"
+           "</head><body onload='updateDoorOrigin()'>"
+           + get_navbar_html() +
+           "<div class='container' style='max-width:650px;'>"
+           "<div class='card'><h2>⚙️ تخصيص البضاعة للمقايسة</h2>"
+           "<div class='sub-title'>حدد تفضيلاتك لعرض البضاعة في التقرير النهائي:</div>"
+           "<form action='/calculate' method='post'>"
+           "<input type='hidden' name='m_type' value='" << m_type << "'>"
+           "<input type='hidden' name='width' value='" << w << "'>"
+           "<input type='hidden' name='depth' value='" << d << "'>"
+           "<input type='hidden' name='floors' value='" << f << "'>"
+           "<input type='hidden' name='depth_pit' value='" << p << "'>"
+           "<input type='hidden' name='overhead' value='" << oh << "'>"
+           
+           "<div class='f-group'><label>🚪 اختر مقاس الأبواب (المناسبة لعرض البئر):</label>"
+           << door_select.str() << "</div>"
+           
+           "<div class='f-group'><label>🛠️ منشأ السكك:</label>"
+           "<select name='rails_origin'>"
+           "<option value='صيني'>صيني</option>"
+           "<option value='إيطالي'>إيطالي</option>"
+           "</select></div>"
+
+           "<div class='f-group'><label>🚪 منشأ الأبواب:</label>"
+           "<select name='door_origin'>"
+           "<option value='صيني'>صيني</option>"
+           "<option value='إيطالي'>إيطالي</option>"
+           "</select></div>"
+           
+           "<div class='f-group'><label>⚡ هل تحتاج جهاز طوارئ (ARD)؟</label>"
+           "<select name='has_ard'>"
+           "<option value='yes'>نعم، أضف ARD</option>"
+           "<option value='no'>لا أحتاج</option>"
+           "</select></div>"
+
+           "<div class='f-group'><label>⛓️ عرض تفاصيل البضاعة؟</label>"
+           "<select name='calc_mat'><option value='yes'>نعم، أظهر جدول البضاعة</option><option value='no'>لا، أريد المقاسات فقط</option></select></div>"
+
+           "<button type='submit'>🏛️ استخراج التقرير النهائي</button>"
+           "</form>"
+           "</div></div>"
+           "<div class='footer'>منصة ضربة شاكوش الفنية © 2026 - إنشاء محمد الشعراوي</div>"
+           + get_theme_script(nonce) +
+           "<script nonce='" + nonce + "'>"
+           "document.querySelector(\"select[name='door_choice']\").addEventListener('change', updateDoorOrigin);"
+           "</script>"
+           "</body></html>";
+        res.set_content(os.str(), "text/html; charset=utf-8");
+    });
+
+    svr.Post("/calculate", [&elevator](const httplib::Request& req, httplib::Response& res) {
+        string m_type = html_escape(req.get_param_value("m_type"));
+        int w = safe_stoi(req.get_param_value("width"), 0);
+        int d = safe_stoi(req.get_param_value("depth"), 0);
+        float f = safe_stof(req.get_param_value("floors"), 0.0f);
+        int p = safe_stoi(req.get_param_value("depth_pit"), 100);
+        int oh = safe_stoi(req.get_param_value("overhead"), 400);
+        
+        string calc_mat = html_escape(req.get_param_value("calc_mat"));
+        string door_choice = html_escape(req.get_param_value("door_choice"));
+        string rails_origin = html_escape(req.get_param_value("rails_origin"));
+        string door_origin = html_escape(req.get_param_value("door_origin"));
+        string has_ard = html_escape(req.get_param_value("has_ard"));
+
+        bool is_side_cwt = (w >= d + 20);
+
+        int cabin_dbg = elevator.get_cabin_dbg(w, is_side_cwt);
+        int cwt_dbg = elevator.get_cwt_dbg(w, is_side_cwt);
+        int cab_w = elevator.get_cabin_width(w, is_side_cwt);
+        int cab_d = elevator.get_cabin_depth(d);
+        float h = elevator.get_shaft_height(f, p/100.0f, oh/100.0f);
+
+        Elevator::FullSpecificationReport specs = elevator.compile_full_specification(w, d, static_cast<int>(f), m_type, door_choice, rails_origin, door_origin, has_ard);
 
         string nonce = generate_nonce(); set_csp(res, nonce);
         ostringstream os;
@@ -986,100 +1198,96 @@ int main() {
            << get_navbar_html()
            << "<div class='container' style='max-width:780px;'>"
            << "<div class='card' id='pdf-area'><h2>📋 تقرير المقايسة وتصفية المقاسات الفنية</h2>"
-           << "<div class='sub-title' style='margin-bottom:20px;'>الموقع تحت التجربة </div>"
            
            << "<div class='stage-header stage-1'>📌 أولاً: المقاسات الإنشائية وأبعاد الصاعدة:</div>"
            << "<div class='table-container'><table class='tbl'>"
-           << "<tr><th>نوع ونظام التشغيل:</th><td>" << (m_type == "MR" ? "غرفة محرك علوية القياسي" : (m_type == "MRL" ? "بدون غرفة محرك جيرليس MRL" : "نظام بستم هيدروليك Hydraulic 🛠️")) << "</td></tr>"
-           << "<tr><th>أبعاد البئر الحرة المأخوذة:</th><td>العرض: " << w << " سم || العمق: " << d << " سم</td></tr>"
-           << "<tr><th>نوع وعرض الأبواب المتاحة للبئر:</th><td style='color:#38bdf8; font-weight:700;'>[" << door << "]</td></tr>"
-           << "<tr><th>مقاس شاسيه DBG الكابينة الصافي:</th><td>" << cabin_dbg << " CM</td></tr>"
-           << "<tr><th>مقاس شاسيه DBG ثقل الموازنة:</th><td>" << (m_type == "Hydraulic" ? "بدون ثقل" : to_string(cwt_dbg) + " CM") << "</td></tr>"
-           << "<tr><th>صافي الأبعاد الداخلية لمقصورة الركاب:</th><td style='color:#f5a524;'>العرض: " << cab_w << " سم × العمق: " << cab_d << " سم</td></tr>"
-           << "<tr><th>حمولة الماكينة المقدرة والمقترحة هندسياً:</th><td style='color:#16a34a; font-weight:800;'>" << specs.rated_load_kg << " كجم (المطابقة لجدول EN 81-20)</td></tr>"
-           << "<tr><th>إجمالي مشوار البئر والارتفاع الرأسي:</th><td>" << h << " متر طولي</td></tr>"
+           << "<tr><th>نظام التشغيل:</th><td>" << (m_type == "MR" ? "غرفة محرك (MR)" : (m_type == "MRL" ? "بدون غرفة (MRL)" : "هيدروليك Hydraulic 🛠️")) << "</td></tr>"
+           << "<tr><th>أبعاد البئر الحرة:</th><td>العرض: " << w << " سم || العمق: " << d << " سم</td></tr>"
+           << "<tr><th>نوع الأبواب المحددة:</th><td style='color:#38bdf8; font-weight:700;'>[" << door_choice << "]</td></tr>"
+           << "<tr><th>شاسيه الكابينة (DBG):</th><td>" << cabin_dbg << " سم</td></tr>"
+           << "<tr><th>شاسيه الثقل (DBG):</th><td>" << (m_type == "Hydraulic" ? "بدون ثقل" : to_string(cwt_dbg) + " سم") << "</td></tr>"
+           << "<tr><th>صافي الكابينة من الداخل:</th><td style='color:#f5a524;'>العرض: " << cab_w << " سم × العمق: " << cab_d << " سم</td></tr>"
+           << "<tr><th>الحمولة المقدرة:</th><td style='color:#16a34a; font-weight:800;'>" << specs.rated_load_kg << " كجم</td></tr>"
+           << "<tr><th>مشوار البئر (الارتفاع):</th><td>" << h << " متر طولي</td></tr>"
            << "</table></div>";
 
         if (calc_mat == "yes") {
-            os << "<div class='stage-header stage-2'>⚙️ ثانياً: بضاعة المرحلة الأولى (السكك والأبواب ):</div>"
+            os << "<div class='stage-header stage-2'>⚙️ ثانياً: بضاعة المرحلة الأولى:</div>"
                << "<div class='table-container'><table class='tbl'>"
-               << "<thead><tr><th>اسم الصنف  </th><th>الكمية المطلوبة للموقع</th></tr></thead>"
+               << "<thead><tr><th>اسم الصنف  </th><th>الكمية</th></tr></thead>"
                << "<tbody>"
-               << "<tr><td>" << specs.scaffolding_name << "</td><td>" << specs.scaffolding_count << " طقم متكامل</td></tr>"
+               << "<tr><td>" << specs.scaffolding_name << "</td><td>" << specs.scaffolding_count << " طقم</td></tr>"
                << "<tr><td>" << specs.plumb_name << "</td><td>" << specs.plumb_count << " لفة </td></tr>"
                << "<tr><td>" << specs.balance_name << "</td><td>" << specs.balance_count << " قطعة </td></tr>"
-               << "<tr><td>" << specs.door_exterior_name << "</td><td>" << specs.total_exterior_doors << " باب خارجي</td></tr>"
-               << "<tr><td>" << specs.cabin_rails_name << "</td><td>" << specs.cabin_rails_count << " عمود </td></tr>"
-               << "<tr><td>" << specs.cwt_rails_name << "</td><td>" << specs.cwt_rails_count << " عمود </td></tr>"
-               << "<tr><td>" << specs.cabin_brackets_name << "</td><td>" << specs.cabin_brackets_count << " كابولي </td></tr>"
-               << "<tr><td>" << specs.cwt_brackets_name << "</td><td>" << specs.cwt_brackets_count << " كابولي </td></tr>"
-               << "<tr><td>" << specs.sub_cabin_name << "</td><td>" << specs.sub_cabin_count << " قطعة </td></tr>"
+               << "<tr><td>" << specs.door_exterior_name << "</td><td>" << specs.total_exterior_doors << " باب</td></tr>"
+               << "<tr><td>" << specs.cabin_rails_name << "</td><td>" << specs.cabin_rails_count << " عود </td></tr>"
+               << "<tr><td>" << specs.cwt_rails_name << "</td><td>" << specs.cwt_rails_count << " عود </td></tr>"
+               << "<tr><td>" << specs.cabin_brackets_name << "</td><td>" << specs.cabin_brackets_count << " كابولي</td></tr>"
+               << "<tr><td>" << specs.cwt_brackets_name << "</td><td>" << specs.cwt_brackets_count << " كابولي</td></tr>";
+               
+            if (specs.cwt_belt_count > 0) {
+                os << "<tr><td style='color:#f5a524;'>" << specs.cwt_belt_name << "</td><td style='color:#f5a524;'>" << specs.cwt_belt_count << " حزام</td></tr>";
+            }
+            if (specs.platat_count > 0) {
+                os << "<tr><td style='color:#38bdf8;'>" << specs.platat_name << "</td><td style='color:#38bdf8;'>" << specs.platat_count << " قطعة</td></tr>";
+            }
+
+            os << "<tr><td>" << specs.sub_cabin_name << "</td><td>" << specs.sub_cabin_count << " قطعة </td></tr>"
                << "<tr><td>" << specs.sub_cwt_name << "</td><td>" << specs.sub_cwt_count << " قطعة </td></tr>"
                << "<tr><td>" << specs.hilti_bolts_name << "</td><td>" << specs.hilti_bolts_12mm << " مسمار </td></tr>"
                << "<tr><td>" << specs.assembly_bolts_name << "</td><td>" << specs.assembly_bolts_12mm << " مسمار </td></tr>"
-               << "<tr><td>" << specs.bolts_8mm_name << "</td><td>" << specs.bolts_8mm << " مسمار تجميع ثقل</td></tr>"
-               << "<tr><td>" << specs.spring_washers_8mm_name << "</td><td>" << specs.spring_washers_8mm << " طقم صامولة ووردة</td></tr>"
-               << "<tr><td>" << specs.spring_washers_12mm_name << "</td><td>" << specs.spring_washers_12mm << " وردة سوستة أمان</td></tr>"
-               << "<tr><td>" << specs.nuts_12mm_name << "</td><td>" << specs.nuts_12mm << " صامولة 12 </td></tr>"
-               << "<tr><td>" << specs.flat_washers_12mm_name << "</td><td>" << specs.flat_washers_12mm << " وردة صاج </td></tr>"
-               << "<tr><td>" << elevator.get_welding_rods() << "</td><td>حسب الاستهلاك الدوري</td></tr>"
-               << "<tr><td>" << elevator.get_grinding_discs() << "</td><td>حسب الاستهلاك الدوري</td></tr>"
-               << "<tr><td>📌 ملاحظات التركيب وحلوق الأبواب:</td><td style='font-size:0.9rem; color:var(--text-muted);'>" << specs.door_casing_note << "</td></tr>"
+               << "<tr><td>" << specs.bolts_8mm_name << "</td><td>" << specs.bolts_8mm << " مسمار </td></tr>"
+               << "<tr><td>" << specs.spring_washers_8mm_name << "</td><td>" << specs.spring_washers_8mm << " طقم</td></tr>"
+               << "<tr><td>" << specs.spring_washers_12mm_name << "</td><td>" << specs.spring_washers_12mm << " وردة</td></tr>"
+               << "<tr><td>" << specs.nuts_12mm_name << "</td><td>" << specs.nuts_12mm << " صامولة </td></tr>"
+               << "<tr><td>" << specs.flat_washers_12mm_name << "</td><td>" << specs.flat_washers_12mm << " وردة</td></tr>"
                << "</tbody></table></div>";
 
-            os << "<div class='stage-header stage-3'>⚡ ثالثاً: بضاعة المرحلة الثانية والثالثة (المحرك والكابينة والكهرباء):</div>"
+            os << "<div class='stage-header stage-3'>⚡ ثالثاً: المرحلة الثانية والثالثة:</div>"
                << "<div class='table-container'><table class='tbl'>"
-               << "<thead><tr><th>اسم الصنف   </th><th>الكمية المطلوبة للموقع</th></tr></thead>"
-               << "<tbody>"
-               << "<tr><td>" << specs.ceiling_cut_name << "</td><td>" << specs.ceiling_cut_count << " فتحة هندسية</td></tr>"
-               << "<tr><td>مسامير 24 مللي لتثبيت المحرك</td><td>" << specs.machine_bolts_24mm << " مسامير  </td></tr>"
-               << "<tr><td>نوع المحرك والمقاس  </td><td>" << specs.machine_type_desc << "</td></tr>"
-               << "<tr><td>قواعد امتصاص الاهتزازات الفنية</td><td>" << specs.machine_rubber_note << "</td></tr>"
-               << "<tr><td>نوع وتصميم  الكامينة </td><td>" << specs.cabin_design_type << "</td></tr>"
-               << "<tr><th>موضع ونظام تعليق ثقل الموازنة </th><td>" << specs.cwt_design_type << "</td></tr>"
-               << "<tr><td> حبال الجر (الويرات) </td><td>" << specs.cabin_wires_meters << " متر  [ " << specs.cabin_wires_name << " ]</td></tr>"
-               << "<tr><td>شدادات حبل   </td><td>" << specs.rope_hitches_count << " شداد (تيش) </td></tr>"
-               << "<tr><td>زراجين</td><td>" << specs.rope_clamps_count << " زرجينة </td></tr>"
-               << "<tr><td>" << specs.parachute_name << "</td><td>" << specs.parachute_count << " جهاز براشوت </td></tr>"
-               << "<tr><td>" << specs.governor_rope_name << "</td><td>" << specs.governor_rope_meters << " متر طولي حبل</td></tr>"
-               << "<tr><td>" << specs.buffer_set_name << "</td><td>" << specs.buffer_set_count << " طقم هيدروليكي </td></tr>"
-               << "<tr><td>طارات المناول </td><td>" << elevator.get_deflector_sheaves(m_type) << " طارة  </td></tr>"
-               << "<tr><td>" << specs.cwt_blocks_weight_desc << "</td><td>" << specs.counterweight_blocks << " بلوك زهر</td></tr>"
-               << "<tr><td>" << specs.control_panel_name << "</td><td>" << specs.control_panel_count << " لوحة تحكم رئيسية</td></tr>"
-               << "<tr><td>" << specs.ard_system_name << "</td><td>" << specs.ard_system_count << " ARD </td></tr>"
-               << "<tr><td>" << specs.ctrl_fischer_name << "</td><td>" << specs.ctrl_fischer_count << " طقم مسامير فيشر</td></tr>"
-               << "<tr><td>" << specs.inspect_box_name << "</td><td>" << specs.inspect_box_count << " علبة صيانة اعلي الكابينة</td></tr>"
-               << "<tr><td>" << specs.charger_batt_name << "</td><td>" << specs.charger_batt_count << " لمبة طوارئ</td></tr>"
-               << "<tr><td>" << specs.emerg_alarm_name << "</td><td>" << specs.emerg_alarm_count << " جرس وبطارية طوارئ</td></tr>"
-               << "<tr><td>" << specs.flex_cable_name << "</td><td>" << specs.flex_cable_meters << " متر كيبل مرن </td></tr>"
-               << "<tr><td>" << specs.flex_holder_name << "</td><td>" << specs.flex_holders_count << " حوامل تثبيت كبل مرن</td></tr>"
+               << "<thead><tr><th>اسم الصنف   </th><th>الكمية</th></tr></thead>"
+               << "<tbody>";
+
+            if (m_type == "MRL") {
+                os << "<tr><td style='color:#38bdf8;'>" << specs.machine_bed_name << "</td><td style='color:#38bdf8;'>1 طقم</td></tr>";
+            } else if (m_type == "MR") {
+                os << "<tr><td>" << specs.ceiling_cut_name << "</td><td>" << specs.ceiling_cut_count << " فتحة</td></tr>";
+            }
+
+            os << "<tr><td>نوع الماكينة</td><td>" << specs.machine_type_desc << "</td></tr>"
+               << "<tr><td>تعليق الثقل </td><td>" << specs.cwt_design_type << "</td></tr>";
+               
+            if (!specs.is_hydraulic) {
+                os << "<tr><td>" << specs.cabin_wires_name << "</td><td>" << specs.cabin_wires_meters << " متر</td></tr>"
+                   << "<tr><td>شدادات </td><td>" << specs.rope_hitches_desc << "</td></tr>"
+                   << "<tr><td>زراجين</td><td>" << specs.rope_clamps_desc << "</td></tr>"
+                   << "<tr><td>" << specs.cwt_blocks_weight_desc << "</td><td>" << specs.counterweight_blocks << " بلوك</td></tr>";
+            }
+
+            os << "<tr><td>" << specs.parachute_name << "</td><td>" << specs.parachute_count << " جهاز </td></tr>"
+               << "<tr><td>" << specs.governor_rope_name << "</td><td>" << specs.governor_rope_meters << " متر</td></tr>"
+               << "<tr><td>" << specs.buffer_set_name << "</td><td>" << specs.buffer_set_count << " طقم </td></tr>"
+               << "<tr><td>" << specs.control_panel_name << "</td><td>" << specs.control_panel_count << " لوحة</td></tr>";
+               
+            if (specs.has_ard) {
+                os << "<tr><td style='color:#16a34a;'>" << specs.ard_system_name << "</td><td style='color:#16a34a;'>" << specs.ard_system_count << " جهاز</td></tr>";
+            }
+               
+            os << "<tr><td>" << specs.flex_cable_name << "</td><td>" << specs.flex_cable_meters << " متر </td></tr>"
                << "<tr><td>" << specs.trunk_4cm_name << "</td><td>" << specs.trunk_4cm_meters << " متر  </td></tr>"
                << "<tr><td>" << specs.trunk_10cm_name << "</td><td>" << specs.static_trunk_10cm << " متر  </td></tr>"
-               << "<tr><td>" << specs.trunk_screws_name << "</td><td>" << specs.trunk_screws_8mm << " مسمار وفيشر 8 مللي</td></tr>"
-               << "<tr><td>" << specs.oiler_set_name << "</td><td>" << specs.oiler_set_count << " طقم مزايت </td></tr>"
-               << "<tr><td>" << specs.wire_6mm_name << "</td><td>" << specs.wire_6mm_count << " لفة للباور</td></tr>"
-               << "<tr><td>" << specs.wire_1mm_name << "</td><td>" << specs.wire_1mm_count_desc << " لإشارات الدوائر</td></tr>"
-               << "<tr><td>" << specs.net_cable_name << "</td><td>" << specs.net_cable_meters << " متر تمديد شاشات</td></tr>"
-               << "<tr><td>" << specs.cop_panel_name << "</td><td>" << specs.cop_panel_count << " لوحة طلبات داخلية</td></tr>"
-               << "<tr><td>" << specs.lop_buttons_name << "</td><td>" << specs.lop_buttons_count << " طلبات خارجية</td></tr>"
-               << "<tr><td>" << specs.intercom_name << "</td><td>" << specs.intercom_count << " جهاز انتركم</td></tr>"
-               << "<tr><td>" << specs.safety_door_name << "</td><td>" << specs.safety_door_count << " بوابة حماية داخلية</td></tr>"
-               << "<tr><td>" << specs.photocell_name << "</td><td>" << specs.photocell_count << " فوتو سيل طولي</td></tr>"
-               << "<tr><td>" << specs.stop_magnet_name << "</td><td>" << specs.stop_magnet_count << "  مغناطيس توقف</td></tr>"
-               << "<tr><td>" << specs.count_magnet_name << "</td><td>" << specs.count_magnet_count << "  مغناطيس عداد</td></tr>"
-               << "<tr><td>3 ليميت سويتش ميكانيكي بالبئر</td><td>ثابتة (3 قطع ليميت أمان)</td></tr>"
-               << "<tr><td>3 حساسات مغناطيسية عيارية</td><td>ثابتة (3 قطع حساس لفل)</td></tr>"
-               << "<tr><td>" << specs.floor_poles_name << "</td><td>" << specs.floor_poles_count << "  بوله مغناطيس </td></tr>"
-               << "<tr><td>لقم وكراسي تزليق المقصورة (لقم)</td><td>4 كراسي وتزليق كامل للكابينة</td></tr>"
-               << "<tr><td> كراسي الثقل </td><td>" << (m_type == "Hydraulic" ? "0 كراسي" : "4 كراسي للوزن") << "</td></tr>"
-               << "<tr><td>📝 تأمين الستارة والأمان الضوئي:</td><td style='font-size:0.88rem; color:var(--text-muted);'>" << specs.photocell_note << "</td></tr>"
+               << "<tr><td>" << specs.wire_1mm_name << "</td><td>" << specs.wire_1mm_count_desc << "</td></tr>"
+               << "<tr><td>" << specs.cop_panel_name << "</td><td>" << specs.cop_panel_count << " لوحة</td></tr>"
+               << "<tr><td>" << specs.lop_buttons_name << "</td><td>" << specs.lop_buttons_count << " طلبات</td></tr>"
+               << "<tr><td>" << specs.safety_door_name << "</td><td>" << specs.safety_door_count << " بوابة</td></tr>"
+               << "<tr><td>" << specs.photocell_name << "</td><td>" << specs.photocell_count << " ستارة</td></tr>"
                << "</tbody></table></div>";
         }
 
         os << "</div>" 
            << "<div class='actions' style='max-width:750px; margin: 20px auto 0 auto; padding:0 40px;'>"
-           << "  <button class='btn-print' id='pBtn'>📥 تحميل التقرير والمقايسة كملف PDF</button>"
-           << "  <a class='btn-secondary' href='/calculator'>🔄 تصفية مقاسات بئر جديد</a>"
+           << "  <button class='btn-print' id='pBtn'>📥 تحميل التقرير PDF</button>"
+           << "  <a class='btn-secondary' href='/calculator'>🔄 تصفية بئر جديد</a>"
            << "</div></div>"
            << "<div class='footer'>منصة ضربة شاكوش الفنية © 2026 - إنشاء محمد الشعراوي</div>"
            << "<script nonce='" << nonce << "'>"
@@ -1110,7 +1318,6 @@ int main() {
         res.set_content(os.str(), "text/html; charset=utf-8");
     });
 
-    // 4️⃣ صفحة مكتبة المقالات والدروس
     svr.Get("/blog", [](const httplib::Request&, httplib::Response& res) {
         string nonce = generate_nonce(); set_csp(res, nonce);
         auto lessons = get_lessons();
@@ -1140,7 +1347,6 @@ int main() {
         res.set_content(html, "text/html; charset=utf-8");
     });
 
-    // 4.1️⃣ تفاصيل مقال أو فيديو واحد بالتفصيل
     svr.Get(R"(/lesson/([a-zA-Z0-9\-]+))", [](const httplib::Request& req, httplib::Response& res) {
         string nonce = generate_nonce(); set_csp(res, nonce);
         string slug = req.matches[1].str();
@@ -1194,7 +1400,6 @@ int main() {
         res.set_content(html, "text/html; charset=utf-8");
     });
 
-    // 4.2️⃣ صفحة المسارات التعلّمية
     svr.Get("/paths", [](const httplib::Request&, httplib::Response& res) {
         string nonce = generate_nonce(); set_csp(res, nonce);
         auto tracks = get_tracks();
@@ -1221,7 +1426,6 @@ int main() {
         res.set_content(html, "text/html; charset=utf-8");
     });
 
-    // 4.3️⃣ صفحة محتويات مسار واحد
     svr.Get(R"(/track/([a-zA-Z0-9\-]+))", [](const httplib::Request& req, httplib::Response& res) {
         string nonce = generate_nonce(); set_csp(res, nonce);
         string slug = req.matches[1].str();
@@ -1275,7 +1479,6 @@ int main() {
         res.set_content(html, "text/html; charset=utf-8");
     });
 
-    // 5️⃣ صفحة اتصل بنا (تم تحديث الإيميل وإضافة أزرار التواصل المباشرة والواتساب)
     svr.Get("/contact", [](const httplib::Request&, httplib::Response& res) {
         string nonce = generate_nonce(); set_csp(res, nonce);
         string meta = get_seo_meta("اتصل بنا | الدعم الفني", "تواصل مباشرة مع إدارة منصة ضربة شاكوش لطرح الأسئلة الفنية أو الإبلاغ عن مشكلة برمجية.");
@@ -1284,13 +1487,13 @@ int main() {
                       + meta + get_modern_blue_css() + "</head><body>"
                       + get_navbar_html() +
                       "<div class='container' style='max-width:650px;'>"
-                      "<div class='card'><h2>📩 تواصل مع الدعم الفني 2</h2>"
+                      "<div class='card'><h2>📩 تواصل مع الدعم الفني </h2>"
                       "<div class='sub-title'>لديك أي استفسار فني خاص بالمقاسات، اقتراح لتطوير الموقع، أو واجهتك مشكلة بالحاسبة؟ تواصل معنا فوراً.</div>"
                       
                       "<div style='display:flex; flex-direction:column; gap:15px; margin-bottom:20px;'>"
                       "<a class='btn-action' href='mailto:darbatshakush98@gmail.com' style='display:block;'>📧 البريد الإلكتروني: darbatshakush98@gmail.com</a>"
                       "<a class='btn-action' href='https://wa.me/966564406565' target='_blank' style='display:block; background:linear-gradient(135deg, #25D366, #128C7E); box-shadow:0 4px 6px rgba(37,211,102,0.3);'>💬 تواصل واتساب: 00966564406565</a>"
-                      "<a class='btn-secondary' href='tel:00966564406565' style='display:block;'>📞 اتصال هاتفي مباشر</a>"
+                      "<a class='btn-secondary' href='tel:00966564406565' style='display:block;'>📞 اتصال هاتفي مباشر: 00966564406565</a>"
                       "</div>"
                       
                       "<p style='color:#8b96ab; font-size:0.9rem; text-align:center;'>المراسلات يتم الرد عليها ومراجعتها من المهندس المختص خلال 24 ساعة.</p>"
@@ -1301,7 +1504,6 @@ int main() {
         res.set_content(html, "text/html; charset=utf-8");
     });
 
-    // 6️⃣ مركز المساعدة
     svr.Get("/support", [](const httplib::Request&, httplib::Response& res) {
         string nonce = generate_nonce(); set_csp(res, nonce);
         string meta = get_seo_meta("مركز المساعدة والأسئلة الشائعة الفنية للمصاعد.", "محتاج مساعدة في فهم كيفية حساب أبعاد الـ DBG الصافي وتصفية البير؟");
@@ -1317,25 +1519,6 @@ int main() {
                       "  <a class='btn-print' href='/blog'>❓ تصفح الشروحات</a>"
                       "  <a class='btn-secondary' href='/contact'>📩 فتح تذكرة دعم</a>"
                       "</div></div></div>"
-                      "<div class='footer'>منصة ضربة شاكوش الفنية © 2026 - إنشاء محمد الشعراوي</div>"
-                      + get_theme_script(nonce) +
-                      "</body></html>";
-        res.set_content(html, "text/html; charset=utf-8");
-    });
-
-    // 7️⃣ صفحة دعم واستمرارية المنصة
-    svr.Get("/donate", [](const httplib::Request&, httplib::Response& res) {
-        string nonce = generate_nonce(); set_csp(res, nonce);
-        string meta = get_seo_meta("الموقع وحاسبة مقاسات بئر المصاعد مجاني تماماً لخدمة الوطن العربي.", "الموقع وحاسبة مقاسات بئر المصاعد مجاني تماماً لخدمة فنيي ومندوبي ومهندسي الوطن العربي.");
-        string html = "<html><head><meta charset='UTF-8'><meta name='viewport' content='width=device-width, initial-scale=1.0'>"
-                      "<link href='https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&family=JetBrains+Mono:wght@500;600&display=swap' rel='stylesheet'>"
-                      + meta + get_modern_blue_css() + "</head><body>"
-                      + get_navbar_html() +
-                      "<div class='container' style='max-width:650px;'>"
-                      "<div class='card'><h2>❤️ المساهمة في دعم واستمرارية المنصة</h2>"
-                      "<div class='sub-title'>الموقع وحاسبة مقاسات بئر المصاعد مجاني تماماً لخدمة فنيي ومندوبي ومهندسي الوطن العربي، مساهمتك تساعد في تطوير الخوادم وزيادة جودة الشروحات الميكانيكية.</div>"
-                      "<a class='btn-action' href='/contact' style='display:block;'>💳 استعراض وسائل وطرق المساهمة المتاحة</a>"
-                      "</div></div>"
                       "<div class='footer'>منصة ضربة شاكوش الفنية © 2026 - إنشاء محمد الشعراوي</div>"
                       + get_theme_script(nonce) +
                       "</body></html>";
