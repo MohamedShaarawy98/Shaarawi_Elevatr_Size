@@ -44,13 +44,11 @@ struct UserAccount {
     string email;
     string password;
     string city;
-    string otp_code;
-    bool is_verified = false;
+    bool is_verified = true; // تفعيل فوري للحساب
     vector<string> saved_reports;
 };
 
 static map<string, UserAccount> users_db;
-static map<string, string> pending_otps;
 
 static string get_session_user(const httplib::Request& req) {
     if (req.has_header("Cookie")) {
@@ -131,12 +129,6 @@ static string generate_nonce() {
     uint64_t a = gen(), b = gen();
     ostringstream oss; oss << hex << a << b;
     return oss.str();
-}
-
-static string generate_otp() {
-    random_device rd; mt19937 gen(rd());
-    uniform_int_distribution<> dis(100000, 999999);
-    return to_string(dis(gen));
 }
 
 static void set_security_headers(httplib::Response& res) {
@@ -905,7 +897,7 @@ int main() {
     });
 
     // ========================================================================
-    // نظام التسجيل المؤَمَّن (التحقق الداخلي السري عبر جلسة السيرفر)
+    // نظام التسجيل والتحقق الفوري السريع (بدون مشاكل إيميل خارجية)
     // ========================================================================
     svr.Get("/register", [](const httplib::Request& req, httplib::Response& res) {
         string user = get_session_user(req);
@@ -918,13 +910,13 @@ int main() {
                       + get_navbar_html() +
                       "<div class='container' style='max-width:500px;'>"
                       "<div class='card'><h2>📝 إنشاء حساب جديد</h2>"
-                      "<div class='sub-title'>أنشئ حسابك الآن (اسم المستخدم بدون مسافات أو رموز خاصة):</div>"
+                      "<div class='sub-title'>أنشئ حسابك الآن وسجل دخولك مباشرة (اسم المستخدم بدون مسافات أو رموز خاصة):</div>"
                       "<form action='/api/register' method='post'>"
                       "<div class='f-group'><label>👤 اسم المستخدم (حروف وأرقام فقط):</label><input type='text' name='username' required pattern='[a-zA-Z0-9_]+' placeholder='مثال: mohamed_shaarawy'></div>"
-                      "<div class='f-group'><label>📧 البريد الإلكتروني الحقيقي:</label><input type='email' name='email' required placeholder='example@domain.com'></div>"
+                      "<div class='f-group'><label>📧 البريد الإلكتروني:</label><input type='email' name='email' required placeholder='example@domain.com'></div>"
                       "<div class='f-group'><label>🏙️ المدينة:</label><input type='text' name='city' required placeholder='مثال: جدة، الرياض'></div>"
                       "<div class='f-group'><label>🔒 كلمة المرور:</label><input type='password' name='password' required placeholder='اكتب كلمة مرور قوية'></div>"
-                      "<button type='submit'>✨ إنشاء الحساب وإرسال الرمز الآمن</button>"
+                      "<button type='submit'>🚀 إنشاء الحساب والدخول المباشر</button>"
                       "</form>"
                       "<div style='text-align:center; margin-top:20px;'><a href='/login' style='color:var(--accent); font-weight:600;'>لديك حساب بالفعل؟ تسجيل الدخول</a></div>"
                       "</div></div>"
@@ -987,76 +979,17 @@ int main() {
             }
         }
 
-        string otp = generate_otp();
-        pending_otps[email] = otp;
-
         UserAccount new_acc;
         new_acc.username = username;
         new_acc.email = email;
         new_acc.city = city;
         new_acc.password = password;
-        new_acc.otp_code = otp;
-        new_acc.is_verified = false;
+        new_acc.is_verified = true;
         users_db[username] = new_acc;
 
-        // توليد رمز الجلسة الآمن وإخفائه عن الشاشة تماماً لضمان الأمان
-        string nonce = generate_nonce(); set_csp(res, nonce);
-        string html = "<html><head><meta charset='UTF-8'><meta name='viewport' content='width=device-width, initial-scale=1.0'>"
-                      "<link href='https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap' rel='stylesheet'>"
-                      + get_modern_blue_css() + "</head><body>"
-                      + get_navbar_html() +
-                      "<div class='container' style='max-width:500px;'>"
-                      "<div class='card' style='border-color:var(--accent);'>"
-                      "<h2>🔐 تأكيد جلسة الحساب الآمنة</h2>"
-                      "<div class='sub-title'>تم إنشاء رمز التحقق المشفر الخاص ببريدك: <b>" + email + "</b><br>يرجى إدخال رمز التحقق المعتمد لتفعيل حسابك (ملاحظة: الرمز السري مسجل في قاعدة بيانات الجلسة المؤقتة للسيرفر بأمان):</div>"
-                      "<form action='/api/verify-otp' method='post'>"
-                      "<input type='hidden' name='username' value='" + username + "'>"
-                      "<div class='f-group'><label>🔢 رمز التحقق (6 أرقام):</label><input type='text' name='otp' required maxlength='6' placeholder='أدخل الرمز هنا'></div>"
-                      "<button type='submit'>✅ تفعيل الحساب وتأكيد الجلسة</button>"
-                      "</form>"
-                      "</div></div>"
-                      "<div class='footer'>منصة ضربة شاكوش الفنية © 2026 - إنشاء محمد الشعراوي</div>"
-                      + get_theme_script(nonce) +
-                      "</body></html>";
-        res.set_content(html, "text/html; charset=utf-8");
-    });
-
-    svr.Post("/api/verify-otp", [](const httplib::Request& req, httplib::Response& res) {
-        string username = html_escape(req.get_param_value("username"));
-        string otp = html_escape(req.get_param_value("otp"));
-
-        if (users_db.find(username) != users_db.end() && users_db[username].otp_code == otp) {
-            users_db[username].is_verified = true;
-            res.set_header("Set-Cookie", "session=" + username + "; Path=/; HttpOnly");
-            
-            string nonce = generate_nonce(); set_csp(res, nonce);
-            string html = "<html><head><meta charset='UTF-8'><meta name='viewport' content='width=device-width, initial-scale=1.0'>"
-                          "<link href='https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap' rel='stylesheet'>"
-                          + get_modern_blue_css() + "</head><body>"
-                          + get_navbar_html(username) +
-                          "<div class='container' style='max-width:500px; text-align:center;'>"
-                          "<div class='card' style='border-color:#16a34a;'>"
-                          "<h2 style='color:#16a34a;'>🎉 تم تفعيل الحساب بنجاح!</h2>"
-                          "<p style='color:var(--text); font-size:1.1rem; margin-bottom:20px;'>أهلاً بك يا بشمهندس <b>" + username + "</b>، تم تفعيل حسابك وحفظ بياناتك بنجاح.</p>"
-                          "<a class='btn-secondary' href='/calculator'>🚀 ابدأ استخدام الحاسبة الهندسية</a>"
-                          "</div></div>"
-                          "<div class='footer'>منصة ضربة شاكوش الفنية © 2026 - إنشاء محمد الشعراوي</div>"
-                          + get_theme_script(nonce) +
-                          "</body></html>";
-            res.set_content(html, "text/html; charset=utf-8");
-        } else {
-            string nonce = generate_nonce(); set_csp(res, nonce);
-            string html = "<html><head><meta charset='UTF-8'><meta name='viewport' content='width=device-width, initial-scale=1.0'>"
-                          "<link href='https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap' rel='stylesheet'>"
-                          + get_modern_blue_css() + "</head><body>"
-                          + get_navbar_html() +
-                          "<div class='container' style='max-width:500px; text-align:center;'><div class='card' style='border-color:#ef4444;'>"
-                          "<h2 style='color:#ef4444;'>❌ رمز التحقق غير صحيح</h2>"
-                          "<p style='color:var(--text-muted); margin-bottom:20px;'>الرمز الذي أدخلته خطأ، يرجى إعادة المحاولة.</p>"
-                          "<a class='btn-secondary' href='/register'>🔄 العودة للوراء</a>"
-                          "</div></div></body></html>";
-            res.set_content(html, "text/html; charset=utf-8");
-        }
+        // تسجيل الدخول التلقائي وتوجيه المستخدم للرئيسية أو الحاسبة فوراً
+        res.set_header("Set-Cookie", "session=" + username + "; Path=/; HttpOnly");
+        res.set_redirect("/");
     });
 
     svr.Get("/login", [](const httplib::Request& req, httplib::Response& res) {
@@ -1091,20 +1024,6 @@ int main() {
         string password = html_escape(req.get_param_value("password"));
 
         if (users_db.find(username) != users_db.end() && users_db[username].password == password) {
-            if (!users_db[username].is_verified) {
-                string nonce = generate_nonce(); set_csp(res, nonce);
-                string html = "<html><head><meta charset='UTF-8'><meta name='viewport' content='width=device-width, initial-scale=1.0'>"
-                              "<link href='https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap' rel='stylesheet'>"
-                              + get_modern_blue_css() + "</head><body>"
-                              + get_navbar_html() +
-                              "<div class='container' style='max-width:500px; text-align:center;'><div class='card' style='border-color:#f59e0b;'>"
-                              "<h2 style='color:#f59e0b;'>⚠️ الحساب غير مفعل</h2>"
-                              "<p style='color:var(--text-muted); margin-bottom:20px;'>يرجى تفعيل حسابك أولاً.</p>"
-                              "<a class='btn-secondary' href='/login'>🔄 العودة لتسجيل الدخول</a>"
-                              "</div></div></body></html>";
-                res.set_content(html, "text/html; charset=utf-8");
-                return;
-            }
             res.set_header("Set-Cookie", "session=" + username + "; Path=/; HttpOnly");
             res.set_redirect("/");
         } else {
@@ -1224,7 +1143,7 @@ int main() {
                         << "<span style='color:var(--text);'>📞 " << html_escape(p.phone) << "</span>"
                         << (!p.location.empty() ? "<span style='color:var(--text);'>📍 " + html_escape(p.location) + "</span>" : "")
                         << (!p.map_link.empty() ? "<span>📍 <a href='" + p.map_link + "' target='_blank' style='color:var(--accent); text-decoration:underline;'>رابط الخريطة</a></span>" : "")
-                        << (!p.website.empty() ? "<span>🌐 <a href='" + p.website + "' target='_blank' style='color:var(--accent); text-decoration:underline;'>الموقع</a></span>" : "")
+                        << (!p.website.empty() ? "<span>🌐 <a href='" + p.website + "' target='_blank' style='color:#38bdf8; text-decoration:underline;'>الموقع</a></span>" : "")
                         << "</div>"
                         << "</div>"
                         << "<div style='display:flex; gap:8px; flex-wrap:wrap; margin-top:auto;'>"
