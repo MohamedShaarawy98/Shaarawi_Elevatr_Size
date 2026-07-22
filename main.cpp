@@ -38,9 +38,9 @@ const int MAX_REQUESTS_PER_MINUTE = 30;
 static string CF_VERIFY_SECRET = getenv("CF_VERIFY_SECRET") ? getenv("CF_VERIFY_SECRET") : "";
 static string SECURE_HEADER_NAME = "X-Verify-Secret"; 
 
-// === مفتاح API لخدمة إرسال الإيميلات المجانية Brevo ===
+// === مفتاح API لخدمة إرسال الإيميلات المجانية Resend ===
 // سيتم استبدال هذا النص بمفتاح الـ API الحقيقي الخاص بك لاحقاً
-static string BREVO_API_KEY = "YOUR_BREVO_API_KEY_HERE"; 
+static string RESEND_API_KEY = "YOUR_RESEND_API_KEY_HERE"; 
 
 struct UserAccount {
     string first_name;
@@ -55,21 +55,20 @@ struct UserAccount {
 
 static map<string, UserAccount> users_db;
 
-// دالة إرسال رمز التحقق عبر البريد الإلكتروني
+// دالة إرسال رمز التحقق عبر البريد الإلكتروني باستخدام خدمة Resend
 static bool send_email_otp(const string& email, const string& first_name, const string& otp_code) {
-    if (BREVO_API_KEY == "YOUR_BREVO_API_KEY_HERE") {
+    if (RESEND_API_KEY == "YOUR_RESEND_API_KEY_HERE") {
         // إذا لم يتم وضع مفتاح الـ API، سيطبع الرمز في شاشة السيرفر فقط للمطور
-        cout << "\n[تنبيه أمان] لم يتم إعداد مفتاح Brevo. الرمز السري للإيميل " << email << " هو: " << otp_code << "\n" << endl;
+        cout << "\n[تنبيه أمان] لم يتم إعداد مفتاح Resend. الرمز السري للإيميل " << email << " هو: " << otp_code << "\n" << endl;
         return true; 
     }
 
-    httplib::Client cli("https://api.brevo.com");
+    httplib::Client cli("https://api.resend.com");
     cli.set_connection_timeout(10);
     
     httplib::Headers headers = {
-        {"accept", "application/json"},
-        {"api-key", BREVO_API_KEY},
-        {"content-type", "application/json"}
+        {"Authorization", "Bearer " + RESEND_API_KEY},
+        {"Content-Type", "application/json"}
     };
     
     string html_content = "<div dir='rtl' style='font-family: Arial, sans-serif; text-align: right; color: #333;'>"
@@ -79,14 +78,18 @@ static bool send_email_otp(const string& email, const string& first_name, const 
                           "<p style='font-size: 28px; font-weight: bold; letter-spacing: 5px; color: #16a34a; background: #f3f4f6; padding: 15px; display: inline-block; border-radius: 8px;'>" + otp_code + "</p>"
                           "<p>يرجى إدخال هذا الرمز في الموقع لتفعيل حسابك نهائياً.</p></div>";
 
-    // تنظيف البيانات لضمان توافق الـ JSON
     string safe_email = email;
-    string safe_name = first_name;
     
-    string body = "{\"sender\":{\"name\":\"Darbat Shakosh\",\"email\":\"noreply@darbat-shakosh.com\"},\"to\":[{\"email\":\"" + safe_email + "\",\"name\":\"" + safe_name + "\"}],\"subject\":\"رمز تفعيل حسابك - منصة ضربة شاكوش\",\"htmlContent\":\"" + html_content + "\"}";
+    // ملاحظة هامة: Resend في الوضع التجريبي (بدون توثيق دومين) تستخدم إيميل onboarding@resend.dev للإرسال
+    string body = "{\"from\":\"Darbat Shakosh <onboarding@resend.dev>\",\"to\":[\"" + safe_email + "\"],\"subject\":\"رمز تفعيل حسابك - منصة ضربة شاكوش\",\"html\":\"" + html_content + "\"}";
 
-    auto res = cli.Post("/v3/smtp/email", headers, body, "application/json");
-    return (res && (res->status == 201 || res->status == 200));
+    auto res = cli.Post("/emails", headers, body, "application/json");
+    
+    if (res) {
+        if (res->status == 200 || res->status == 201) return true;
+        else { cout << "[Resend Error] Status: " << res->status << " Body: " << res->body << endl; return false; }
+    }
+    return false;
 }
 
 static string get_session_user(const httplib::Request& req) {
@@ -1045,7 +1048,7 @@ int main() {
         new_acc.is_verified = false;
         users_db[username] = new_acc;
 
-        // إرسال الرمز للبريد الإلكتروني
+        // إرسال الرمز للبريد الإلكتروني باستخدام Resend
         send_email_otp(email, first_name, otp);
 
         string nonce = generate_nonce(); set_csp(res, nonce);
@@ -1246,7 +1249,7 @@ int main() {
 
         string meta = get_seo_meta("التقارير المحفوظة", "سجل المقايسات الهندسية المحفوظة.");
         string html = "<html><head><meta charset='UTF-8'><meta name='viewport' content='width=device-width, initial-scale=1.0'>"
-                      "<link href='https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap' rel='stylesheet'>"
+                      "<link href='https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&family=JetBrains+Mono:wght@500;600&display=swap' rel='stylesheet'>"
                       + meta + get_modern_blue_css() + "</head><body>"
                       + get_navbar_html(user) +
                       "<div class='container' style='max-width:700px;'>"
@@ -1665,7 +1668,7 @@ int main() {
             }
 
             os << "<tr><td>" << specs.parachute_name << "</td><td>" << specs.parachute_count << " جهاز </td></tr>"
-              << "<tr><td>" << specs.governor_rope_name << "</td><td>" << specs.governor_rope_meters << " متر</td></tr>"
+               << "<tr><td>" << specs.governor_rope_name << "</td><td>" << specs.governor_rope_meters << " متر</td></tr>"
                << "<tr><td>" << specs.buffer_set_name << "</td><td>" << specs.buffer_set_count << " طقم </td></tr>"
                << "<tr><td>" << specs.control_panel_name << "</td><td>" << specs.control_panel_count << " لوحة</td></tr>";
                
