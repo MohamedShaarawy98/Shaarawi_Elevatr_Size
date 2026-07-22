@@ -625,6 +625,7 @@ static string get_modern_blue_css() {
            ".nav-dropdown{position:relative;}"
            ".nav-dropdown summary{cursor:pointer; list-style:none; display:flex; align-items:center; gap:6px; color:var(--text); font-weight:600; font-size:1rem; user-select:none;}"
            ".nav-dropdown summary::-webkit-details-marker{display:none;}"
+           ".nav-dropdown summary:hover{color:var(--accent);}"
            ".nav-dropdown .chevron{width:13px; height:13px; fill:currentColor; transition:transform 0.2s;}"
            ".nav-dropdown[open] .chevron{transform:rotate(180deg);}"
            ".dropdown-panel{position:absolute; inset-inline-start:0; top:calc(100% + 16px); display:flex; gap:30px; background:var(--surface-2); border:1px solid var(--border); border-radius:12px; padding:18px 22px; min-width:190px; box-shadow:0 20px 25px -5px rgba(0,0,0,0.45); z-index:60;}"
@@ -796,8 +797,8 @@ int main() {
         string last_name = html_escape(req.get_param_value("last_name"));
         string username = html_escape(req.get_param_value("username"));
         string email = html_escape(req.get_param_value("email"));
-        string password = req.get_param_value("password");
-        string confirm_password = req.get_param_value("confirm_password");
+        string password = html_escape(req.get_param_value("password"));
+        string confirm_password = html_escape(req.get_param_value("confirm_password"));
 
         if (password != confirm_password) {
             render_register_page(res, first_name, last_name, username, email, "⚠️ كلمتا المرور غير متطابقتين.");
@@ -894,7 +895,6 @@ int main() {
         }
     });
 
-    // تفعيل صفحة استعادة كلمة المرور
     svr.Get("/forgot-password", [](const httplib::Request& req, httplib::Response& res) {
         string nonce = generate_nonce(); set_csp(res, nonce);
         string html = "<html><head><meta charset='UTF-8'><link href='https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap' rel='stylesheet'>"
@@ -1044,23 +1044,45 @@ int main() {
                << "<div class='table-container'><table class='tbl'>"
                << "<tr><td>" << specs.scaffolding_name << "</td><td>" << specs.scaffolding_count << " طقم</td></tr>"
                << "<tr><td>" << specs.plumb_name << "</td><td>" << specs.plumb_count << " لفة</td></tr>"
+               << "<tr><td>" << specs.balance_name << "</td><td>" << specs.balance_count << " قطعة</td></tr>"
                << "<tr><td>" << specs.door_exterior_name << "</td><td>" << specs.total_exterior_doors << " باب</td></tr>"
                << "<tr><td>" << specs.cabin_rails_name << "</td><td>" << specs.cabin_rails_count << " عود</td></tr>"
                << "<tr><td>" << specs.cwt_rails_name << "</td><td>" << specs.cwt_rails_count << " عود</td></tr>"
                << "<tr><td>" << specs.cabin_brackets_name << "</td><td>" << specs.cabin_brackets_count << " كابولي</td></tr>"
                << "<tr><td>" << specs.cwt_brackets_name << "</td><td>" << specs.cwt_brackets_count << " كابولي</td></tr>"
+               << (specs.cwt_belt_count > 0 ? "<tr><td>" + specs.cwt_belt_name + "</td><td>" + to_string(specs.cwt_belt_count) + " حزام</td></tr>" : "")
+               << (specs.platat_count > 0 ? "<tr><td>" + specs.platat_name + "</td><td>" + to_string(specs.platat_count) + " قطعة</td></tr>" : "")
+               << "<tr><td>" << specs.sub_cabin_name << "</td><td>" << specs.sub_cabin_count << " قطعة</td></tr>"
+               << "<tr><td>" << specs.sub_cwt_name << "</td><td>" << specs.sub_cwt_count << " قطعة</td></tr>"
+               << "<tr><td>" << specs.hilti_bolts_name << "</td><td>" << specs.hilti_bolts_12mm << " مسمار</td></tr>"
+               << "<tr><td>" << specs.assembly_bolts_name << "</td><td>" << specs.assembly_bolts_12mm << " مسمار</td></tr>"
+               << "<tr><td>" << specs.bolts_8mm_name << "</td><td>" << specs.bolts_8mm << " مسمار</td></tr>"
+               << "<tr><td>" << specs.spring_washers_8mm_name << "</td><td>" << specs.spring_washers_8mm << " طقم</td></tr>"
+               << "<tr><td>" << specs.spring_washers_12mm_name << "</td><td>" << specs.spring_washers_12mm << " وردة</td></tr>"
+               << "<tr><td>" << specs.nuts_12mm_name << "</td><td>" << specs.nuts_12mm << " صامولة</td></tr>"
+               << "<tr><td>" << specs.flat_washers_12mm_name << "</td><td>" << specs.flat_washers_12mm << " وردة</td></tr>"
                << "</table></div>"
 
                << "<div class='stage-header stage-3'>⚡ ثالثاً: المرحلة الثانية والثالثة:</div>"
                << "<div class='table-container'><table class='tbl'>"
                << "<tr><td>" << specs.machine_type_desc << "</td><td>1 وحدة</td></tr>"
+               << "<tr><td>" << specs.machine_bed_name << "</td><td>1 طقم</td></tr>"
+               << (!specs.is_hydraulic ? "<tr><td>" + specs.cabin_wires_name + "</td><td>" + to_string(specs.cabin_wires_meters) + " متر</td></tr>" : "")
+               << (!specs.is_hydraulic ? "<tr><td>شدادات ومطواة</td><td>" + specs.rope_hitches_desc + "</td></tr>" : "")
+               << (!specs.is_hydraulic ? "<tr><td>بلوكات الثقل</td><td>" + to_string(specs.counterweight_blocks) + " بلوك</td></tr>" : "")
                << "<tr><td>" << specs.parachute_name << "</td><td>" << specs.parachute_count << " جهاز</td></tr>"
                << "<tr><td>" << specs.governor_rope_name << "</td><td>" << specs.governor_rope_meters << " متر</td></tr>"
                << "<tr><td>" << specs.buffer_set_name << "</td><td>" << specs.buffer_set_count << " طقم</td></tr>"
                << "<tr><td>" << specs.control_panel_name << "</td><td>" << specs.control_panel_count << " لوحة</td></tr>"
+               << (specs.has_ard ? "<tr><td>" + specs.ard_system_name + "</td><td>" + to_string(specs.ard_system_count) + " جهاز</td></tr>" : "")
                << "<tr><td>" << specs.flex_cable_name << "</td><td>" << specs.flex_cable_meters << " متر</td></tr>"
+               << "<tr><td>" << specs.trunk_4cm_name << "</td><td>" << specs.trunk_4cm_meters << " متر</td></tr>"
+               << "<tr><td>" << specs.trunk_10cm_name << "</td><td>" << specs.static_trunk_10cm << " متر</td></tr>"
+               << "<tr><td>" << specs.wire_1mm_name << "</td><td>" << specs.wire_1mm_count_desc << "</td></tr>"
                << "<tr><td>" << specs.cop_panel_name << "</td><td>" << specs.cop_panel_count << " لوحة</td></tr>"
                << "<tr><td>" << specs.lop_buttons_name << "</td><td>" << specs.lop_buttons_count << " طلبات</td></tr>"
+               << "<tr><td>" << specs.safety_door_name << "</td><td>" << specs.safety_door_count << " بوابة</td></tr>"
+               << "<tr><td>" << specs.photocell_name << "</td><td>" << specs.photocell_count << " ستارة</td></tr>"
                << "</table></div>";
         }
 
@@ -1093,7 +1115,6 @@ int main() {
         res.set_content(os.str(), "text/html; charset=utf-8");
     });
 
-    // معالجة مسار حفظ التقرير باسم العميل
     svr.Post("/api/save-report", [](const httplib::Request& req, httplib::Response& res) {
         string user = get_session_user(req);
         if (user.empty()) { res.set_redirect("/login"); return; }
