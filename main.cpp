@@ -58,9 +58,51 @@ static map<string, UserAccount> users_db;
 // دالة إرسال رمز التحقق عبر البريد الإلكتروني باستخدام خدمة Resend
 static bool send_email_otp(const string& email, const string& first_name, const string& otp_code) {
     if (RESEND_API_KEY == "YOUR_RESEND_API_KEY_HERE" || RESEND_API_KEY.empty()) {
-        cout << "\n[تنبيه أمان] مفتاح Resend غير متوفر. الرمز السري للإيميل " << email << " هو: " << otp_code << "\n" << endl;
-        return true; 
+        // في حال لم يتم ضبط المفتاح، نكتفي بمنع التسجيل الوهمي أو تسجيل الخطأ في السجلات بصمت
+        cout << "[Security Log] Email service key is missing." << endl;
+        return false; 
     }
+
+    try {
+        // ضبط العميل مع مهلة زمنية قصيرة وحماية كاملة ضد الانهيار
+        httplib::Client cli("https://api.resend.com");
+        cli.set_connection_timeout(4); // 4 ثوانٍ كحد أقصى للاتصال
+        cli.set_read_timeout(4);
+        
+        httplib::Headers headers = {
+            {"Authorization", "Bearer " + RESEND_API_KEY},
+            {"Content-Type", "application/json"}
+        };
+        
+        string html_content = "<div dir='rtl' style='font-family: Arial, sans-serif; text-align: right; color: #333;'>"
+                              "<h2 style='color: #0ea5e9;'>مرحباً يا " + first_name + "</h2>"
+                              "<p>شكراً لتسجيلك في منصة ضربة شاكوش.</p>"
+                              "<p>رمز التفعيل الآمن لحسابك هو:</p>"
+                              "<p style='font-size: 28px; font-weight: bold; letter-spacing: 5px; color: #16a34a; background: #f3f4f6; padding: 15px; display: inline-block; border-radius: 8px;'>" + otp_code + "</p>"
+                              "<p>يرجى إدخال هذا الرمز في الموقع لتفعيل حسابك نهائياً.</p></div>";
+
+        string body = "{\"from\":\"Darbat Shakosh <onboarding@resend.dev>\",\"to\":[\"" + email + "\"],\"subject\":\"رمز تفعيل حسابك - منصة ضربة شاكوش\",\"html\":\"" + html_content + "\"}";
+
+        auto res = cli.Post("/emails", headers, body, "application/json");
+        
+        if (res && (res->status == 200 || res->status == 201)) {
+            return true; // تم إرسال الإيميل بنجاح لصندوق الوارد
+        } else {
+            if (res) {
+                cout << "[Resend API Error] Status Code: " << res->status << " Body: " << res->body << endl;
+            } else {
+                cout << "[Resend Network Error] No response from API server." << endl;
+            }
+            return false;
+        }
+    } catch (const exception& e) {
+        cout << "[Exception] Error in send_email_otp: " << e.what() << endl;
+        return false;
+    } catch (...) {
+        cout << "[Unknown Exception] Failed to send email." << endl;
+        return false;
+    }
+
 
     try {
         httplib::Client cli("https://api.resend.com");
