@@ -40,7 +40,7 @@ static string SECURE_HEADER_NAME = "X-Verify-Secret";
 
 // === مفتاح API لخدمة إرسال الإيميلات المجانية Resend ===
 // سيتم استبدال هذا النص بمفتاح الـ API الحقيقي الخاص بك لاحقاً
-static string RESEND_API_KEY = "YOUR_RESEND_API_KEY_HERE"; 
+static string RESEND_API_KEY = "re_cMArayMQ_7fENAG4Rxbbetvf8ATwewtJi"; 
 
 struct UserAccount {
     string first_name;
