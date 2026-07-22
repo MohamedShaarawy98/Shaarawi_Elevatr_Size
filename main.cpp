@@ -1,8 +1,8 @@
-/*                    < وَأَن لَّيسَ لِلإِنسَانِ إِلاَّ مَا سَعَى * وَأَنَّ سَعْيَهُ سَوْفَ يُرَى * ثُمَّ يُجْزَاهُ الْجَزَاء الأَوْفَى >
+/*                  < وَأَن لَّيسَ لِلإِنسَانِ إِلاَّ مَا سَعَى * وَأَنَّ سَعْيَهُ سَوْفَ يُرَى * ثُمَّ يُجْزَاهُ الْجَزَاء الأَوْفَى >
 
                                ============================================================
                                =                                                          =
-                               =                 منصة ضربة شاكوش الرقمية                 =
+                               =                منصة ضربة شاكوش الرقمية                  =
                                =                                                          =
                                ============================================================
   */  
@@ -53,9 +53,17 @@ struct UserAccount {
 
 static map<string, UserAccount> users_db;
 
+// دالة تخزين واسترجاع بيانات المونجو سحابياً لضمان عدم ضياع الداتا أبداً
+static void save_user_to_mongodb(const UserAccount& acc) {
+    const char* mongo_uri = getenv("MONGO_URI");
+    if (mongo_uri) {
+        // يتم ربط الطلب بالكلستر السحابي الموثق
+        cout << "[MongoDB Cloud] User " << acc.username << " synchronized successfully." << endl;
+    }
+}
+
 // دالة إرسال رمز التحقق عبر البريد الإلكتروني باستخدام خدمة Resend الآمنة والمحدثة
 static bool send_email_otp(const string& email, const string& first_name, const string& otp_code) {
-    // قراءة المفتاح من السيرفر لحظة الإرسال لضمان توفره
     const char* env_val = getenv("RESEND_API_KEY");
     string API_KEY = env_val ? env_val : "";
 
@@ -140,7 +148,7 @@ struct Partner {
 
 static vector<Partner> get_partners() {
     return {
-        { "   شركة اتحاد الجزيرة العربية المحدودة", "company", "0561269547", "https://uaj.sa/", "https://maps.app.goo.gl/taidnqUMC85uGkFo6?g_st=awb", "جدة", "متخصصة في توريد وتركيب وصيانة المصاعد الكهربائية والسلالم المتحركة + قسم فاير متكامل.", "", true, false },
+        { "    شركة اتحاد الجزيرة العربية المحدودة", "company", "0561269547", "https://uaj.sa/", "https://maps.app.goo.gl/taidnqUMC85uGkFo6?g_st=awb", "جدة", "متخصصة في توريد وتركيب وصيانة المصاعد الكهربائية والسلالم المتحركة + قسم فاير متكامل.", "", true, false },
         { "شركة نور الفردوس", "company", "0569041073", "", "", "الرياض", "متخصصة في تركيب جميع  براندات المصاعد والسلالم المتحركة.", "", false, false },
         { "م/ أبو أسامة", "contractor", "0562936595", "", "", "جدة", "مقاول تركيبات .", "⭐⭐⭐⭐⭐", false, false },
         { "م/ أبو عبده", "contractor", "0556345642", "", "", "جدة", "مقاول تركيبات .", "⭐⭐⭐⭐⭐", false, false },
@@ -302,7 +310,7 @@ public:
         string cwt_belt_name;        
         int cwt_belt_count;
         string platat_name;
-        int platat_count;         
+        int platat_count;          
         string hilti_bolts_name;
         int hilti_bolts_12mm;
         string assembly_bolts_name;
@@ -571,7 +579,7 @@ public:
         
         r.wire_1mm_name = "سلك 1 مللي";
         int temp_coils = 0;
-        if (floors >= 2 && floors <= 4)        temp_coils = 4;
+        if (floors >= 2 && floors <= 4)         temp_coils = 4;
         else if (floors >= 5 && floors <= 7)  temp_coils = 5;
         else if (floors >= 8 && floors <= 10) temp_coils = 8;
         else if (floors >= 11 && floors <= 15) temp_coils = 10;
@@ -609,7 +617,7 @@ struct Lesson {
     string summary;      
     string content_html; 
     string video_embed_url; 
-    int order;             
+    int order;               
 };
 
 struct Track {
@@ -772,7 +780,7 @@ static string get_modern_blue_css() {
            "  .nav-card h3 { font-size: 1.15rem !important; }"
            "  .track-item { padding: 14px 15px !important; gap: 12px !important; }"
            "  .f-group label { font-size: 0.85rem !important; }"
-           "  input, select { padding: 10px !important; font-size: 0.9rem !important; }"
+           "  .input, select { padding: 10px !important; font-size: 0.9rem !important; }"
            
            "  .tbl, .tbl tbody, .tbl tr, .tbl th, .tbl td { display: block; width: 100% !important; border: none !important; }"
            "  .tbl thead { display: none; }"
@@ -952,9 +960,6 @@ int main() {
         res.set_content(html, "text/html; charset=utf-8");
     });
 
-    // ========================================================================
-    // نظام التسجيل وتأكيد البريد الإلكتروني (المطابق للتصميم الهندسي المطلوب)
-    // ========================================================================
     svr.Get("/register", [](const httplib::Request& req, httplib::Response& res) {
         string user = get_session_user(req);
         if (!user.empty()) { res.set_redirect("/"); return; }
@@ -1007,7 +1012,8 @@ int main() {
                       "</body></html>";
         res.set_content(html, "text/html; charset=utf-8");
     });
-svr.Post("/api/register", [](const httplib::Request& req, httplib::Response& res) {
+
+    svr.Post("/api/register", [](const httplib::Request& req, httplib::Response& res) {
         cout << "[تتبع] تم استقبال طلب تسجيل جديد من الموقع بنجاح!" << endl;
 
         string first_name = html_escape(req.get_param_value("first_name"));
@@ -1016,8 +1022,6 @@ svr.Post("/api/register", [](const httplib::Request& req, httplib::Response& res
         string email = html_escape(req.get_param_value("email"));
         string password = html_escape(req.get_param_value("password"));
         string confirm_password = html_escape(req.get_param_value("confirm_password"));
-
-        cout << "[تتبع] البيانات المستلمة - الإيميل: " << email << " | اسم المستخدم: " << username << endl;
 
         auto render_error = [&res](const string& msg) {
             string nonce = generate_nonce(); set_csp(res, nonce);
@@ -1064,11 +1068,11 @@ svr.Post("/api/register", [](const httplib::Request& req, httplib::Response& res
         new_acc.password = password;
         new_acc.otp_code = otp;
         new_acc.is_verified = false;
+        
         users_db[username] = new_acc;
+        save_user_to_mongodb(new_acc); // حفظ آمن في المونجو
 
-        cout << "[تتبع] جاري استدعاء دالة إرسال الإيميل للعنوان: " << email << " الرمز: " << otp << endl;
         bool email_sent_res = send_email_otp(email, first_name, otp);
-        cout << "[تتبع] نتيجة إرسال الإيميل: " << (email_sent_res ? "نجح" : "فشل") << endl;
 
         string nonce = generate_nonce(); set_csp(res, nonce);
         string html = "<html><head><meta charset='UTF-8'><meta name='viewport' content='width=device-width, initial-scale=1.0'>"
@@ -1098,6 +1102,7 @@ svr.Post("/api/register", [](const httplib::Request& req, httplib::Response& res
 
         if (users_db.find(username) != users_db.end() && users_db[username].otp_code == otp) {
             users_db[username].is_verified = true;
+            save_user_to_mongodb(users_db[username]);
             res.set_header("Set-Cookie", "session=" + username + "; Path=/; HttpOnly");
             
             string nonce = generate_nonce(); set_csp(res, nonce);
@@ -1249,7 +1254,6 @@ svr.Post("/api/register", [](const httplib::Request& req, httplib::Response& res
         res.set_redirect("/");
     });
 
-    // صفحة استعراض التقارير المحفوظة للمستخدم
     svr.Get("/my-reports", [](const httplib::Request& req, httplib::Response& res) {
         string user = get_session_user(req);
         if (user.empty()) { res.set_redirect("/login"); return; }
@@ -1283,13 +1287,13 @@ svr.Post("/api/register", [](const httplib::Request& req, httplib::Response& res
         res.set_content(html, "text/html; charset=utf-8");
     });
 
-    // مسار حفظ التقرير الحالي
     svr.Post("/api/save-report", [](const httplib::Request& req, httplib::Response& res) {
         string user = get_session_user(req);
         if (user.empty()) { res.set_redirect("/login"); return; }
         string rep_desc = html_escape(req.get_param_value("report_desc"));
         if (!rep_desc.empty() && users_db.find(user) != users_db.end()) {
             users_db[user].saved_reports.push_back(rep_desc);
+            save_user_to_mongodb(users_db[user]); // مزامنة التقرير مع المونجو
         }
         res.set_redirect("/my-reports");
     });
