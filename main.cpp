@@ -595,45 +595,6 @@ public:
     }
 };
 
-struct Lesson {
-    string slug;         
-    string track_slug;   
-    string type;         
-    string title;
-    string summary;      
-    string content_html; 
-    string video_embed_url; 
-    int order;               
-};
-
-struct Track {
-    string slug;        
-    string emoji;
-    string title;
-    string description;
-};
-
-static vector<Track> get_tracks() {
-    return {
-        { "basics", "🧱", "مسار الأساسات الهندسية", "المفاهيم الأولى لتصفية أبعاد بئر المصعد ومكوناته الرئيسية وقراءة المخططات الفنية." },
-        { "doors",  "🚪", "مسار أبواب المصاعد", "أنواع الأبواب وأكواد الفتح المختلفة وإزاي تختار النوع المناسب للمساحة المتوفرة لبئر المصعد." },
-        { "darbat" , "🔨" , "كورس كهرباء المصاعد الشامل"  , "كورس تطبيقي متخصص في تعليم كل شيء يخص كهرباء الدوائر، الكنترولات، وتوصيل كوابل الأمان."},
-        { "robotics", "🤖", "مسار الروبوتات والمتحكمات", "مسار تطبيقي لتعلم أسس الذكاء الاصطناعي والمتحكمات الدقيقة. من أول فهم وربط الحساسات، لحد بناء وبرمجة روبوت ذكي ومتكامل بنفسك." }
-    }; 
-}
-
-static vector<Lesson> get_lessons() {
-    return {};
-}
-
-static vector<Lesson> get_lessons_by_track(const string& track_slug) {
-    vector<Lesson> all = get_lessons();
-    vector<Lesson> filtered;
-    for (auto& l : all) if (l.track_slug == track_slug) filtered.push_back(l);
-    sort(filtered.begin(), filtered.end(), [](const Lesson& a, const Lesson& b) { return a.order < b.order; });
-    return filtered;
-}
-
 static string get_modern_blue_css() {
     return "<style>"
            "*{box-sizing:border-box;}"
@@ -653,7 +614,7 @@ static string get_modern_blue_css() {
            "a{outline-offset:3px; text-decoration:none; color:inherit;}"
            ":focus-visible{outline:2px solid var(--accent); outline-offset:2px; border-radius:4px;}"
 
-           ".navbar{background-color:var(--surface); border-bottom:1px solid var(--border); padding:14px 28px; display:flex; justify-content:space-between; align-items:center; position:relative; z-index:50; box-shadow:0 4px 6px -1px rgba(0,0,0,0.15); transition: background-color 0.3s;}"
+           ".navbar{background-color:var(--surface); border-bottom:1px solid var(--border); padding:14px 28px; display:flex; justify-content:space-between; align-items:center; position:relative; z-index:50; box-shadow:0 4px 6px -1px rgba(0,0,0,0.15);}"
            ".nav-right{display:flex; align-items:center; gap:20px; flex-wrap:wrap;}"
            ".navbar-brand{display:flex; align-items:center; gap:10px; color:var(--text); font-size:1.25rem; font-weight:800; text-decoration:none; padding-inline-end:22px; border-inline-end:1px solid var(--border);}"
            ".brand-mark{width:34px; height:34px; flex-shrink:0; border-radius:8px; display:flex; align-items:center; justify-content:center; overflow:hidden; border: 1px solid var(--border); background-color: var(--bg);}"
@@ -664,7 +625,6 @@ static string get_modern_blue_css() {
            ".nav-dropdown{position:relative;}"
            ".nav-dropdown summary{cursor:pointer; list-style:none; display:flex; align-items:center; gap:6px; color:var(--text); font-weight:600; font-size:1rem; user-select:none;}"
            ".nav-dropdown summary::-webkit-details-marker{display:none;}"
-           ".nav-dropdown summary:hover{color:var(--accent);}"
            ".nav-dropdown .chevron{width:13px; height:13px; fill:currentColor; transition:transform 0.2s;}"
            ".nav-dropdown[open] .chevron{transform:rotate(180deg);}"
            ".dropdown-panel{position:absolute; inset-inline-start:0; top:calc(100% + 16px); display:flex; gap:30px; background:var(--surface-2); border:1px solid var(--border); border-radius:12px; padding:18px 22px; min-width:190px; box-shadow:0 20px 25px -5px rgba(0,0,0,0.45); z-index:60;}"
@@ -675,11 +635,6 @@ static string get_modern_blue_css() {
            ".mobile-only{display:none;}"
            "@media (max-width:860px){.desktop-only{display:none;} .mobile-only{display:flex;} .navbar-brand span:last-child{font-size:1.05rem;}}"
 
-           ".flags-strip{background:none; border-bottom:none; padding:6px 28px; display:flex; justify-content:flex-end; align-items:center; position:relative; z-index:40;}"
-           ".flags-badge-box{display:flex; align-items:center; gap:12px; background:var(--surface); backdrop-filter:blur(10px); border:1px solid var(--border); padding:5px 14px; border-radius:30px; box-shadow:0 4px 10px rgba(0,0,0,0.3); margin-left:auto;}" 
-           ".flag-img-unit{width:22px; height:15px; border-radius:2px; box-shadow:0 2px 4px rgba(0,0,0,0.4); object-fit:cover; display:block;}"
-           ".flag-img-sep{color:rgba(139,150,171,0.4); font-size:0.8rem; font-weight:300; user-select:none;}"
-
            ".nav-left{display:flex; align-items:center; gap:18px;}"
            ".nav-icon{color:var(--text-muted); cursor:pointer; display:flex; align-items:center; justify-content:center; transition:0.2s; text-decoration:none; list-style:none; background:none; border:none; padding:0;}"
            ".nav-icon::-webkit-details-marker{display:none;}"
@@ -687,14 +642,8 @@ static string get_modern_blue_css() {
            ".nav-icon svg{width:22px; height:22px; fill:currentColor;}"
            "body.light-mode .theme-sun, body:not(.light-mode) .theme-moon { display:none; }"
 
-           ".mobile-menu{position:relative;}"
-           ".mobile-panel{position:absolute; inset-inline-end:0; top:calc(100% + 14px); background:var(--surface-2); border:1px solid var(--border); border-radius:12px; padding:18px 20px; display:flex; flex-direction:column; gap:4px; min-width:230px; box-shadow:0 20px 25px -5px rgba(0,0,0,0.45); z-index:60;}"
-           ".mobile-panel a{padding:9px 6px; border-radius:6px; display:block;}"
-           ".mobile-panel a:hover{background:rgba(56,189,248,0.1); color:var(--accent);}"
-           ".mobile-divider{height:1px; background:var(--border); margin:8px 2px;}"
-
            ".container{max-width:1100px; margin:0 auto; padding:50px 20px; flex:1; width:100%;}"
-           ".card{position:relative; background:var(--surface); border:1px solid var(--border); padding:40px; border-radius:16px; box-shadow:0 20px 25px -5px rgba(0,0,0,0.3); text-align:right; transition: background-color 0.3s;}"
+           ".card{position:relative; background:var(--surface); border:1px solid var(--border); padding:40px; border-radius:16px; box-shadow:0 20px 25px -5px rgba(0,0,0,0.3); text-align:right; transition: background-color 0.3s; margin-bottom:20px;}"
            ".card h2{color:var(--text); font-size:1.6rem; margin-top:0; margin-bottom:15px; font-weight:700; border-bottom:1px solid var(--border); padding-bottom:15px;}"
            ".sub-title{color:var(--text-muted); margin-bottom:35px; font-size:0.95rem; line-height:1.6;}"
            ".f-group{margin-bottom:24px; text-align:right;}"
@@ -730,12 +679,6 @@ static string get_modern_blue_css() {
            ".section-intro{margin-bottom:30px; text-align:right;}"
            ".section-intro h1{color:var(--text); font-size:1.7rem; font-weight:800; margin:0 0 8px 0;}"
            ".section-intro p{color:var(--text-muted); font-size:1rem; line-height:1.7; margin:0;}"
-           ".lesson-tag{display:inline-flex; align-items:center; gap:5px; font-size:0.78rem; font-weight:700; padding:4px 10px; border-radius:20px; margin-bottom:12px; width:fit-content;}"
-           ".tag-article{background:rgba(56,189,248,0.14); color:var(--accent);}"
-           ".tag-video{background:rgba(245,165,36,0.16); color:var(--accent-2);}"
-           ".video-embed{position:relative; width:100%; aspect-ratio:16/9; border-radius:10px; overflow:hidden; background:#000; margin:20px 0; border:1px solid var(--border);}"
-           ".video-embed iframe{position:absolute; inset:0; width:100%; height:100%; border:0;}"
-           ".lesson-body{color:var(--text); font-size:1.02rem; line-height:1.9; background: var(--bg); padding: 20px; border-radius: 8px; border: 1px solid var(--border); margin-top: 15px;}"
            ".footer{margin-top:auto; padding:25px 0; font-size:15px; color:var(--text-muted); text-align:center; border-top:1px solid var(--border); background-color:var(--surface); font-weight:600;}"
            "</style>";
 }
@@ -750,7 +693,6 @@ static string get_seo_meta(const string& title, const string& desc) {
 
 static string get_navbar_html(const string& current_user = "") {
     const string logo_url = "https://media.darbat-shakosh.com/channels4_profile%20(1).jpg"; 
-    const string chevron_svg = "<svg class='chevron' viewBox='0 0 24 24'><path d='M7 10l5 5 5-5z'/></svg>";
     const string moon_icon = "<svg class='theme-moon' viewBox='0 0 24 24'><path d='M12.3 22h-.1c-5.5 0-10-4.5-10-10 0-4.8 3.5-8.9 8.2-9.8.6-.1 1.2.3 1.3.9.1.6-.2 1.2-.8 1.4-3.3 1-5.7 4-5.7 7.5 0 4.4 3.6 8 8 8 3.5 0 6.5-2.4 7.5-5.7.2-.6.8-.9 1.4-.8.6.1 1 .7.9 1.3-.9 4.7-5 8.2-9.8 8.2z'/></svg>";
     const string sun_icon = "<svg class='theme-sun' viewBox='0 0 24 24'><path d='M12 7c-2.8 0-5 2.2-5 5s2.2 5 5 5 5-2.2 5-5-2.2-5-5-5zm0-5c.6 0 1 .4 1 1v2c0 .6-.4 1-1 1s-1-.4-1-1V3c0-.6.4-1 1-1zm0 14c.6 0 1 .4 1 1v2c0 .6-.4 1-1 1s-1-.4-1-1v-2c0-.6.4-1 1-1zM4 11h2c.6 0 1 .4 1 1s-.4 1-1 1H4c-.6 0-1-.4-1-1s-1-.4-1-1zm14 0h2c.6 0 1 .4 1 1s-.4 1-1 1h-2c-.6 0-1-.4-1-1s-1-.4-1-1zM5.2 5.2c.4-.4 1-.4 1.4 0l1.4 1.4c.4.4.4 1 0 1.4s-1 .4-1.4 0L5.2 6.6c-.4-.4-.4-1 0-1.4zm12 12c.4-.4 1-.4 1.4 0l1.4 1.4c.4.4.4 1 0 1.4s-1 .4-1.4 0l-1.4-1.4c-.4-.4-.4-1 0-1.4zM7.6 16.4c.4-.4 1-.4 1.4 0l1.4 1.4c.4.4.4 1 0 1.4s-1 .4-1.4 0l-1.4-1.4c-.4-.4-.4-1 0-1.4zm12-12c.4-.4 1-.4 1.4 0l1.4 1.4c.4.4.4 1 0 1.4s-1 .4-1.4 0l-1.4-1.4c-.4-.4-.4-1 0-1.4z'/></svg>";
 
@@ -814,25 +756,15 @@ int main() {
         res.set_content(html, "text/html; charset=utf-8");
     });
 
-    // 2. تصميم احترافي لصفحة إنشاء الحساب مع ترحيب هندسي ورسالة خطأ تحافظ على البيانات المدخلة
     auto render_register_page = [](httplib::Response& res, const string& fn = "", const string& ln = "", const string& un = "", const string& em = "", const string& err_msg = "") {
         string nonce = generate_nonce(); set_csp(res, nonce);
         string alert_box = err_msg.empty() ? "" : "<div style='background:rgba(239,68,68,0.1); border:1px solid #ef4444; color:#ef4444; padding:12px; border-radius:8px; margin-bottom:20px; font-weight:600; text-align:center;'>" + err_msg + "</div>";
-        string html = "<html><head><meta charset='UTF-8'><meta name='viewport' content='width=device-width, initial-scale=1.0'>"
-                      "<link href='https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap' rel='stylesheet'>"
+        string html = "<html><head><meta charset='UTF-8'><link href='https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap' rel='stylesheet'>"
                       + get_modern_blue_css() + 
-                      "<style>"
-                      ".auth-card{max-width:550px; margin:20px auto; background:var(--surface); border:1px solid var(--border); padding:35px; border-radius:20px; box-shadow:0 15px 35px rgba(0,0,0,0.25);}"
-                      ".auth-title{text-align:center; font-size:1.8rem; font-weight:800; color:var(--accent); margin-bottom:10px;}"
-                      ".auth-desc{text-align:center; color:var(--text-muted); font-size:0.95rem; margin-bottom:25px;}"
-                      ".auth-grid{display:grid; grid-template-columns:1fr 1fr; gap:15px;}"
-                      "@media(max-width:600px){.auth-grid{grid-template-columns:1fr; gap:0;}}"
-                      "</style></head><body>"
-                      + get_navbar_html() +
-                      "<div class='container'>"
-                      "<div class='auth-card'>"
-                      "<div class='auth-title'>✨ انضم إلى نخبة المهندسين</div>"
-                      "<div class='auth-desc'>أنشئ حسابك الآن لتوثيق مقاييسك الهندسية والاحتفاظ بسجل أعمالك بأمان تام.</div>"
+                      "<style>.auth-card{max-width:550px; margin:20px auto; background:var(--surface); border:1px solid var(--border); padding:35px; border-radius:20px; box-shadow:0 15px 35px rgba(0,0,0,0.25);}"
+                      ".auth-grid{display:grid; grid-template-columns:1fr 1fr; gap:15px;}</style></head><body>"
+                      + get_navbar_html() + "<div class='container'><div class='auth-card'>"
+                      "<h2 style='text-align:center; color:var(--accent);'>✨ انضم إلى نخبة المهندسين</h2>"
                       + alert_box +
                       "<form action='/api/register' method='post'>"
                       "<div class='auth-grid'>"
@@ -840,18 +772,15 @@ int main() {
                       "<div class='f-group'><label>اسم العائلة:</label><input type='text' name='last_name' value='" + ln + "' required></div>"
                       "</div>"
                       "<div class='auth-grid'>"
-                      "<div class='f-group'><label>اسم المستخدم (بالإنجليزية):</label><input type='text' name='username' value='" + un + "' required></div>"
+                      "<div class='f-group'><label>اسم المستخدم:</label><input type='text' name='username' value='" + un + "' required></div>"
                       "<div class='f-group'><label>البريد الإلكتروني:</label><input type='email' name='email' value='" + em + "' required></div>"
                       "</div>"
                       "<div class='auth-grid'>"
                       "<div class='f-group'><label>كلمة المرور:</label><input type='password' name='password' required></div>"
                       "<div class='f-group'><label>تأكيد كلمة المرور:</label><input type='password' name='confirm_password' required></div>"
                       "</div>"
-                      "<button type='submit' style='margin-top:10px;'>🚀 إنشاء الحساب البرمجي</button>"
-                      "</form>"
-                      "<div style='text-align:center; margin-top:20px;'><a href='/login' style='color:var(--accent); font-weight:600;'>لديك حساب بالفعل؟ تسجيل الدخول</a></div>"
-                      "</div></div>"
-                      "<div class='footer'>منصة ضربة شاكوش الفنية © 2026 - إنشاء محمد الشعراوي</div>"
+                      "<button type='submit' style='margin-top:10px;'>🚀 إنشاء الحساب</button>"
+                      "</form></div></div><div class='footer'>منصة ضربة شاكوش الفنية © 2026</div>"
                       + get_theme_script(nonce) + "</body></html>";
         res.set_content(html, "text/html; charset=utf-8");
     };
@@ -862,7 +791,6 @@ int main() {
         render_register_page(res);
     });
 
-    // 1. معالجة التسجيل مع الاحتفاظ بالبيانات السليمة عند حدوث أخطاء
     svr.Post("/api/register", [&render_register_page](const httplib::Request& req, httplib::Response& res) {
         string first_name = html_escape(req.get_param_value("first_name"));
         string last_name = html_escape(req.get_param_value("last_name"));
@@ -872,60 +800,47 @@ int main() {
         string confirm_password = req.get_param_value("confirm_password");
 
         if (password != confirm_password) {
-            render_register_page(res, first_name, last_name, username, email, "⚠️ كلمتا المرور غير متطابقتين. يرجى إعادة كتابة كلمة المرور فقط.");
+            render_register_page(res, first_name, last_name, username, email, "⚠️ كلمتا المرور غير متطابقتين.");
             return;
         }
-
         if (!is_valid_username(username)) {
-            render_register_page(res, first_name, last_name, "", email, "⚠️ اسم المستخدم غير صالح. مسموح بالحروف والأرقام الإنجليزية بدون مسافات.");
+            render_register_page(res, first_name, last_name, "", email, "⚠️ اسم المستخدم غير صالح.");
             return;
         }
-
         if (users_db.find(username) != users_db.end()) {
-            render_register_page(res, first_name, last_name, "", email, "⚠️ اسم المستخدم هذا مستخدم مسبقاً، يرجى اختيار اسم آخر.");
+            render_register_page(res, first_name, last_name, "", email, "⚠️ اسم المستخدم مستخدم مسبقاً.");
             return;
         }
-        
         for (auto const& [u, acc] : users_db) {
             if (acc.email == email) {
-                render_register_page(res, first_name, last_name, username, "", "⚠️ البريد الإلكتروني مسجل لدينا مسبقاً.");
+                render_register_page(res, first_name, last_name, username, "", "⚠️ البريد الإلكتروني مسجل مسبقاً.");
                 return;
             }
         }
 
         string otp = generate_otp();
         UserAccount new_acc;
-        new_acc.first_name = first_name;
-        new_acc.last_name = last_name;
-        new_acc.username = username;
-        new_acc.email = email;
-        new_acc.password = password;
-        new_acc.otp_code = otp;
-        new_acc.is_verified = false;
+        new_acc.first_name = first_name; new_acc.last_name = last_name;
+        new_acc.username = username; new_acc.email = email;
+        new_acc.password = password; new_acc.otp_code = otp; new_acc.is_verified = false;
         
         users_db[username] = new_acc;
         save_user_to_mongodb(new_acc);
         send_email_otp(email, first_name, otp);
 
         string nonce = generate_nonce(); set_csp(res, nonce);
-        string html = "<html><head><meta charset='UTF-8'><meta name='viewport' content='width=device-width, initial-scale=1.0'>"
-                      "<link href='https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap' rel='stylesheet'>"
-                      + get_modern_blue_css() + "</head><body>"
-                      + get_navbar_html() +
-                      "<div class='container' style='max-width:500px;'>"
-                      "<div class='card' style='border-color:var(--accent); text-align:center;'>"
+        string html = "<html><head><meta charset='UTF-8'><link href='https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap' rel='stylesheet'>"
+                      + get_modern_blue_css() + "</head><body>" + get_navbar_html() +
+                      "<div class='container' style='max-width:500px;'><div class='card' style='text-align:center;'>"
                       "<h2>🔐 أدخل رمز التفعيل</h2>"
-                      "<div class='sub-title'>تم إرسال رمز التحقق بنجاح إلى: <b>" + email + "</b></div>"
                       "<form action='/api/verify-otp' method='post'>"
                       "<input type='hidden' name='username' value='" + username + "'>"
-                      "<div class='f-group'><input type='text' name='otp' required maxlength='6' placeholder='أدخل الرمز هنا' style='text-align:center; font-size:1.4rem; letter-spacing:4px; font-weight:bold;'></div>"
-                      "<button type='submit'>✅ تأكيد وتفعيل الحساب</button>"
-                      "</form></div></div>"
-                      "<div class='footer'>منصة ضربة شاكوش الفنية © 2026</div></body></html>";
+                      "<div class='f-group'><input type='text' name='otp' required maxlength='6' placeholder='أدخل الرمز' style='text-align:center; font-size:1.4rem; letter-spacing:4px; font-weight:bold;'></div>"
+                      "<button type='submit'>✅ تأكيد وتفعيل الحساب</button></form></div></div>"
+                      "<div class='footer'>منصة ضربة شاكوش الفنية © 2026</div>" + get_theme_script(nonce) + "</body></html>";
         res.set_content(html, "text/html; charset=utf-8");
     });
 
-    // 3. رسالة ترحيبية مخصصة وحارة بعد تفعيل الحساب
     svr.Post("/api/verify-otp", [](const httplib::Request& req, httplib::Response& res) {
         string username = html_escape(req.get_param_value("username"));
         string otp = html_escape(req.get_param_value("otp"));
@@ -936,49 +851,33 @@ int main() {
             res.set_header("Set-Cookie", "session=" + username + "; Path=/; HttpOnly");
             
             string nonce = generate_nonce(); set_csp(res, nonce);
-            string html = "<html><head><meta charset='UTF-8'><meta name='viewport' content='width=device-width, initial-scale=1.0'>"
-                          "<link href='https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap' rel='stylesheet'>"
-                          + get_modern_blue_css() + "</head><body>"
-                          + get_navbar_html(username) +
-                          "<div class='container' style='max-width:550px; text-align:center;'>"
-                          "<div class='card' style='border-color:#16a34a;'>"
+            string html = "<html><head><meta charset='UTF-8'><link href='https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap' rel='stylesheet'>"
+                          + get_modern_blue_css() + "</head><body>" + get_navbar_html(username) +
+                          "<div class='container' style='max-width:550px; text-align:center;'><div class='card' style='border-color:#16a34a;'>"
                           "<h2 style='color:#16a34a;'>🎉 أهلاً وسهلاً بك يا بشمهندس " + users_db[username].first_name + "!</h2>"
-                          "<p style='color:var(--text); font-size:1.1rem; line-height:1.8; margin-bottom:25px;'>نورت منصة ضربة شاكوش الرقمية. تم تفعيل حسابك وتوثيقه بنجاح تام، وأصبحت جاهزاً تماماً لاستخدام الحاسبة الهندسية وحفظ تقاريرك بأمان سحابي.</p>"
-                          "<a class='btn-secondary' href='/calculator' style='background:linear-gradient(135deg, #16a34a, #15803d); display:block; padding:15px;'>🛗 ابدأ العمل على الحاسبة الهندسية الآن</a>"
-                          "</div></div>"
-                          "<div class='footer'>منصة ضربة شاكوش الفنية © 2026</div>"
-                          + get_theme_script(nonce) + "</body></html>";
+                          "<p style='color:var(--text); font-size:1.1rem; line-height:1.8; margin-bottom:25px;'>نورت منصة ضربة شاكوش الرقمية. تم تفعيل حسابك وتوثيقه بنجاح تام.</p>"
+                          "<a class='btn-secondary' href='/calculator' style='background:linear-gradient(135deg, #16a34a, #15803d); display:block; padding:15px;'>🛗 ابدأ العمل على الحاسبة الهندسية</a>"
+                          "</div></div><div class='footer'>منصة ضربة شاكوش الفنية © 2026</div>" + get_theme_script(nonce) + "</body></html>";
             res.set_content(html, "text/html; charset=utf-8");
         } else {
             res.set_content("<html><body dir='rtl'><h3>رمز التحقق غير صحيح، <a href='/register'>أعد المحاولة</a></h3></body></html>", "text/html; charset=utf-8");
         }
     });
 
-    // 5. تصميم احترافي لصفحة تسجيل الدخول
     svr.Get("/login", [](const httplib::Request& req, httplib::Response& res) {
         string user = get_session_user(req);
         if (!user.empty()) { res.set_redirect("/"); return; }
         string nonce = generate_nonce(); set_csp(res, nonce);
-        string html = "<html><head><meta charset='UTF-8'><meta name='viewport' content='width=device-width, initial-scale=1.0'>"
-                      "<link href='https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap' rel='stylesheet'>"
-                      + get_modern_blue_css() + 
-                      "<style>"
-                      ".auth-card{max-width:450px; margin:40px auto; background:var(--surface); border:1px solid var(--border); padding:40px; border-radius:20px; box-shadow:0 15px 35px rgba(0,0,0,0.25);}"
-                      "</style></head><body>"
-                      + get_navbar_html() +
-                      "<div class='container'>"
-                      "<div class='auth-card'>"
+        string html = "<html><head><meta charset='UTF-8'><link href='https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap' rel='stylesheet'>"
+                      + get_modern_blue_css() + "<style>.auth-card{max-width:450px; margin:40px auto; background:var(--surface); border:1px solid var(--border); padding:40px; border-radius:20px; box-shadow:0 15px 35px rgba(0,0,0,0.25);}</style></head><body>"
+                      + get_navbar_html() + "<div class='container'><div class='auth-card'>"
                       "<h2 style='text-align:center; color:var(--accent);'>🔑 تسجيل الدخول</h2>"
-                      "<div class='sub-title' style='text-align:center;'>مرحباً بك مجدداً في بيئتك الهندسية</div>"
                       "<form action='/api/login' method='post'>"
                       "<div class='f-group'><label>اسم المستخدم:</label><input type='text' name='username' required></div>"
                       "<div class='f-group'><label>كلمة المرور:</label><input type='password' name='password' required></div>"
-                      "<button type='submit' style='margin-top:10px;'>دخول آمن ➡️</button>"
-                      "</form>"
-                      "<div style='text-align:center; margin-top:20px;'><a href='/register' style='color:var(--accent); font-weight:600;'>ليس لديك حساب؟ إنشاء حساب جديد</a></div>"
-                      "</div></div>"
-                      "<div class='footer'>منصة ضربة شاكوش الفنية © 2026</div>"
-                      + get_theme_script(nonce) + "</body></html>";
+                      "<button type='submit' style='margin-top:10px;'>دخول آمن ➡️</button></form>"
+                      "<div style='text-align:center; margin-top:20px;'><a href='/register' style='color:var(--accent); font-weight:600;'>إنشاء حساب جديد</a></div>"
+                      "</div></div><div class='footer'>منصة ضربة شاكوش الفنية © 2026</div>" + get_theme_script(nonce) + "</body></html>";
         res.set_content(html, "text/html; charset=utf-8");
     });
 
@@ -999,58 +898,11 @@ int main() {
         res.set_redirect("/");
     });
 
-    // صفحات الشركة ودليل الشركاء
-    auto render_page = [](const string& title, const string& target_type, const string& nonce, const string& current_user) {
-        auto partners = get_partners();
-        ostringstream content;
-        for (auto& p : partners) {
-            if (p.type != target_type) continue;
-            content << "<div style='background:var(--surface); border:1px solid var(--border); padding:25px; border-radius:12px; text-align:right;'>"
-                    << "<h3 style='margin:0 0 10px 0; color:var(--text);'>" << html_escape(p.name) << "</h3>"
-                    << "<p style='color:var(--text-muted); margin-bottom:15px;'>" << html_escape(p.details) << "</p>"
-                    << "<a class='btn-action' href='https://wa.me/" << p.phone << "' target='_blank' style='background:#25D366; padding:10px;'>💬 واتساب: " << p.phone << "</a>"
-                    << "</div>";
-        }
-        return "<html><head><meta charset='UTF-8'><link href='https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap' rel='stylesheet'>"
-               + get_modern_blue_css() + "</head><body>" + get_navbar_html(current_user) +
-               "<div class='container'><div class='section-intro'><h1>" + title + "</h1></div>"
-               "<div class='grid-cards'>" + content.str() + "</div></div>"
-               "<div class='footer'>منصة ضربة شاكوش الفنية © 2026</div>" + get_theme_script(nonce) + "</body></html>";
-    };
-
-    svr.Get("/companies", [&render_page](const httplib::Request& req, httplib::Response& res) {
-        string user = get_session_user(req); string nonce = generate_nonce(); set_csp(res, nonce);
-        res.set_content(render_page("🏢 الشركات والمؤسسات", "company", nonce, user), "text/html; charset=utf-8");
-    });
-    svr.Get("/contractors", [&render_page](const httplib::Request& req, httplib::Response& res) {
-        string user = get_session_user(req); string nonce = generate_nonce(); set_csp(res, nonce);
-        res.set_content(render_page("👷 المقاولين المعتمدين", "contractor", nonce, user), "text/html; charset=utf-8");
-    });
-    svr.Get("/suppliers", [&render_page](const httplib::Request& req, httplib::Response& res) {
-        string user = get_session_user(req); string nonce = generate_nonce(); set_csp(res, nonce);
-        res.set_content(render_page("📦 الموردين", "supplier", nonce, user), "text/html; charset=utf-8");
-    });
-    svr.Get("/cabins", [&render_page](const httplib::Request& req, httplib::Response& res) {
-        string user = get_session_user(req); string nonce = generate_nonce(); set_csp(res, nonce);
-        res.set_content(render_page("🛗 مصانع الكباين", "cabins", nonce, user), "text/html; charset=utf-8");
-    });
-    svr.Get("/transport", [&render_page](const httplib::Request& req, httplib::Response& res) {
-        string user = get_session_user(req); string nonce = generate_nonce(); set_csp(res, nonce);
-        res.set_content(render_page("🚚 خدمات النقل", "transport", nonce, user), "text/html; charset=utf-8");
-    });
-    svr.Get("/labor", [&render_page](const httplib::Request& req, httplib::Response& res) {
-        string user = get_session_user(req); string nonce = generate_nonce(); set_csp(res, nonce);
-        res.set_content(render_page("👷 العمالة اليومية", "labor", nonce, user), "text/html; charset=utf-8");
-    });
-
     svr.Get("/calculator", [](const httplib::Request& req, httplib::Response& res) {
         string user = get_session_user(req); string nonce = generate_nonce(); set_csp(res, nonce);
-        string html = "<html><head><meta charset='UTF-8'><meta name='viewport' content='width=device-width, initial-scale=1.0'>"
-                      "<link href='https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap' rel='stylesheet'>"
-                      + get_modern_blue_css() + "</head><body>"
-                      + get_navbar_html(user) +
-                      "<div class='container' style='max-width:650px;'>"
-                      "<div class='card'><h2>🛗 حاسبة مقاسات بئر المصعد الفنية</h2>"
+        string html = "<html><head><meta charset='UTF-8'><link href='https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap' rel='stylesheet'>"
+                      + get_modern_blue_css() + "</head><body>" + get_navbar_html(user) +
+                      "<div class='container' style='max-width:650px;'><div class='card'><h2>🛗 حاسبة مقاسات بئر المصعد الفنية</h2>"
                       "<form action='/calculator-step2' method='post'>"
                       "<div class='f-group'><label>👑 نوع نظام تشغيل المصعد:</label><select name='m_type'><option value='MR'>غرفة محرك (MR)</option><option value='MRL'>بدون غرفة (MRL)</option></select></div>"
                       "<div class='f-group'><label>📐 عرض بئر المصعد الصافي (CM):</label><input type='number' name='width' required min='110' max='250' value='160'></div>"
@@ -1059,8 +911,7 @@ int main() {
                       "<div class='f-group'><label>🕳️ عمق الحفرة Pit (CM):</label><input type='number' name='depth_pit' required value='140'></div>"
                       "<div class='f-group'><label>🏠 ارتفاع الأوفر هيد Overhead (CM):</label><input type='number' name='overhead' required value='400'></div>"
                       "<button type='submit'>➡️ الخطوة التالية</button></form></div></div>"
-                      "<div class='footer'>منصة ضربة شاكوش الفنية © 2026</div>"
-                      + get_theme_script(nonce) + "</body></html>";
+                      "<div class='footer'>منصة ضربة شاكوش الفنية © 2026</div>" + get_theme_script(nonce) + "</body></html>";
         res.set_content(html, "text/html; charset=utf-8");
     });
 
@@ -1095,13 +946,13 @@ int main() {
                       "<div class='f-group'><label>🛠️ منشأ السكك:</label><select name='rails_origin'><option value='صيني'>صيني</option><option value='إيطالي'>إيطالي</option></select></div>"
                       "<div class='f-group'><label>🚪 منشأ الأبواب:</label><select name='door_origin'><option value='صيني'>صيني</option><option value='إيطالي'>إيطالي</option></select></div>"
                       "<div class='f-group'><label>⚡ جهاز طوارئ ARD؟</label><select name='has_ard'><option value='yes'>نعم</option><option value='no'>لا</option></select></div>"
-                      "<div class='f-group'><label>⛓️ عرض تفاصيل البضاعة؟</label><select name='calc_mat'><option value='yes'>نعم</option><option value='no'>لا</option></select></div>"
+                      "<div class='f-group'><label>⛓️ عرض تفاصيل البضاعة؟</label><select name='calc_mat'><option value='yes' selected>نعم</option><option value='no'>لا</option></select></div>"
                       "<button type='submit'>🏛️ استخراج التقرير النهائي</button></form></div></div>"
                       "<div class='footer'>منصة ضربة شاكوش الفنية © 2026</div>" + get_theme_script(nonce) + "</body></html>";
         res.set_content(html, "text/html; charset=utf-8");
     });
 
-    // 4. التقرير النهائي مع خانات (اسم العميل - ملاحظات) قبل الحفظ والطباعة
+    // التقرير النهائي مع إظهار البضاعة بالكامل وحفظها باسم العميل والملاحظات
     svr.Post("/calculate", [&elevator](const httplib::Request& req, httplib::Response& res) {
         string user = get_session_user(req);
         string m_type = html_escape(req.get_param_value("m_type"));
@@ -1119,8 +970,10 @@ int main() {
 
         bool is_side_cwt = (w >= d + 20);
         int cabin_dbg = elevator.get_cabin_dbg(w, is_side_cwt);
+        int cwt_dbg = elevator.get_cwt_dbg(w, is_side_cwt);
         int cab_w = elevator.get_cabin_width(w, is_side_cwt);
         int cab_d = elevator.get_cabin_depth(d);
+        float h = elevator.get_shaft_height(f, p/100.0f, oh/100.0f);
 
         Elevator::FullSpecificationReport specs = elevator.compile_full_specification(w, d, static_cast<int>(f), m_type, door_choice, rails_origin, door_origin, has_ard);
 
@@ -1134,40 +987,77 @@ int main() {
            << "<div class='container' style='max-width:780px;'>"
            << "<div class='card' id='pdf-area'>"
            << "<h2>📋 تقرير المقايسة والتصفية الهندسية</h2>"
+           
            << "<div style='margin-bottom:20px; background:var(--surface-2); padding:15px; border-radius:10px; border:1px solid var(--border);'>"
            << "<p style='margin:5px 0;'><b>👤 اسم العميل:</b> <span id='lblClient' style='color:var(--accent);'>غير محدد</span></p>"
            << "<p style='margin:5px 0;'><b>📝 ملاحظات الموقع:</b> <span id='lblNotes' style='color:var(--text-muted);'>لا توجد ملاحظات</span></p>"
            << "</div>"
+
+           << "<div class='stage-header stage-1'>📌 أولاً: المقاسات الإنشائية وأبعاد الصاعدة:</div>"
            << "<div class='table-container'><table class='tbl'>"
            << "<tr><th>أبعاد البئر الحرة:</th><td>عرض " << w << " سم × عمق " << d << " سم</td></tr>"
-           << "<tr><th>صافي الكابينة:</th><td>عرض " << cab_w << " سم × عمق " << cab_d << " سم</td></tr>"
-           << "<tr><th>الحمولة:</th><td>" << specs.rated_load_kg << " كجم</td></tr>"
-           << "</table></div></div>";
+           << "<tr><th>نوع الأبواب:</th><td>[" << door_choice << "]</td></tr>"
+           << "<tr><th>شاسيه الكابينة (DBG):</th><td>" << cabin_dbg << " سم</td></tr>"
+           << "<tr><th>شاسيه الثقل (DBG):</th><td>" << cwt_dbg << " سم</td></tr>"
+           << "<tr><th>صافي الكابينة داخلياً:</th><td>عرض " << cab_w << " سم × عمق " << cab_d << " سم</td></tr>"
+           << "<tr><th>الحمولة المقدرة:</th><td style='color:#16a34a; font-weight:bold;'>" << specs.rated_load_kg << " كجم</td></tr>"
+           << "<tr><th>مشوار البئر:</th><td>" << h << " متر</td></tr>"
+           << "</table></div>";
 
-        if (!user.empty()) {
-            os << "<div class='card' style='margin-top:20px; border-color:var(--accent);'>"
-               << "<h3>💾 حفظ التقرير في سجلك الشخصي</h3>"
-               << "<form action='/api/save-report' method='post'>"
-               << "<div class='f-group'><label>👤 اسم العميل:</label><input type='text' name='client_name' required placeholder='أدخل اسم العميل أو المشروع'></div>"
-               << "<div class='f-group'><label>📝 ملاحظات هندسية:</label><input type='text' name='notes' placeholder='ملاحظات خاصة بموقع التركيب'></div>"
-               << "<input type='hidden' name='report_summary' value='مقايسة بئر " << w << "x" << d << " سم - أدوار: " << (int)f << "'>"
-               << "<button type='submit' class='btn-save'>💾 حفظ التقرير ببياناته الكاملة</button>"
-               << "</form></div>";
+        if (calc_mat == "yes") {
+            os << "<div class='stage-header stage-2'>⚙️ ثانياً: بضاعة المرحلة الأولى:</div>"
+               << "<div class='table-container'><table class='tbl'>"
+               << "<tr><td>" << specs.scaffolding_name << "</td><td>" << specs.scaffolding_count << " طقم</td></tr>"
+               << "<tr><td>" << specs.plumb_name << "</td><td>" << specs.plumb_count << " لفة</td></tr>"
+               << "<tr><td>" << specs.door_exterior_name << "</td><td>" << specs.total_exterior_doors << " باب</td></tr>"
+               << "<tr><td>" << specs.cabin_rails_name << "</td><td>" << specs.cabin_rails_count << " عود</td></tr>"
+               << "<tr><td>" << specs.cwt_rails_name << "</td><td>" << specs.cwt_rails_count << " عود</td></tr>"
+               << "<tr><td>" << specs.cabin_brackets_name << "</td><td>" << specs.cabin_brackets_count << " كابولي</td></tr>"
+               << "<tr><td>" << specs.cwt_brackets_name << "</td><td>" << specs.cwt_brackets_count << " كابولي</td></tr>"
+               << "</table></div>"
+
+               << "<div class='stage-header stage-3'>⚡ ثالثاً: المرحلة الثانية والثالثة:</div>"
+               << "<div class='table-container'><table class='tbl'>"
+               << "<tr><td>" << specs.machine_type_desc << "</td><td>1 وحدة</td></tr>"
+               << "<tr><td>" << specs.parachute_name << "</td><td>" << specs.parachute_count << " جهاز</td></tr>"
+               << "<tr><td>" << specs.governor_rope_name << "</td><td>" << specs.governor_rope_meters << " متر</td></tr>"
+               << "<tr><td>" << specs.buffer_set_name << "</td><td>" << specs.buffer_set_count << " طقم</td></tr>"
+               << "<tr><td>" << specs.control_panel_name << "</td><td>" << specs.control_panel_count << " لوحة</td></tr>"
+               << "<tr><td>" << specs.flex_cable_name << "</td><td>" << specs.flex_cable_meters << " متر</td></tr>"
+               << "<tr><td>" << specs.cop_panel_name << "</td><td>" << specs.cop_panel_count << " لوحة</td></tr>"
+               << "<tr><td>" << specs.lop_buttons_name << "</td><td>" << specs.lop_buttons_count << " طلبات</td></tr>"
+               << "</table></div>";
         }
 
-        os << "<div class='actions' style='margin-top:20px;'><button class='btn-print' id='pBtn'>📥 تحميل التقرير PDF</button>"
-           << "<a class='btn-secondary' href='/calculator'>🔄 تصفية بئر جديد</a></div></div>"
+        os << "</div>";
+
+        if (!user.empty()) {
+            os << "<div class='card' style='border-color:var(--accent);'>"
+               << "<h3>💾 حفظ التقرير في سجلك الشخصي باسم العميل</h3>"
+               << "<form action='/api/save-report' method='post'>"
+               << "<div class='f-group'><label>👤 اسم العميل أو المشروع:</label><input type='text' name='client_name' required placeholder='اكتب اسم العميل هنا'></div>"
+               << "<div class='f-group'><label>📝 ملاحظات هندسية:</label><input type='text' name='notes' placeholder='ملاحظات خاصة بالموقع'></div>"
+               << "<input type='hidden' name='report_summary' value='مقايسة بئر " << w << "x" << d << " سم - أدوار: " << (int)f << "'>"
+               << "<button type='submit' class='btn-save'>💾 اعتماد الحفظ باسم العميل</button>"
+               << "</form></div>";
+        } else {
+            os << "<div class='card' style='text-align:center;'><a class='btn-secondary' href='/login' style='background:#f5a524; color:#000; display:block;'>🔒 سجل دخولك لتخزين هذا التقرير باسم العميل</a></div>";
+        }
+
+        os << "<div class='actions'>"
+           << "<button class='btn-print' id='pBtn'>📥 تحميل التقرير PDF</button>"
+           << "<a class='btn-secondary' href='/calculator'>🔄 تصفية بئر جديد</a>"
+           << "</div></div>"
            << "<div class='footer'>منصة ضربة شاكوش الفنية © 2026</div>"
            << "<script nonce='" << nonce << "'>"
            << "document.querySelector(\"input[name='client_name']\")?.addEventListener('input', (e) => { document.getElementById('lblClient').innerText = e.target.value || 'غير محدد'; });"
            << "document.querySelector(\"input[name='notes']\")?.addEventListener('input', (e) => { document.getElementById('lblNotes').innerText = e.target.value || 'لا توجد ملاحظات'; });"
            << "document.getElementById('pBtn').addEventListener('click', function(){"
-           << "  html2pdf().set({margin:0.3, filename:'Report.pdf', image:{type:'jpeg', quality:1}, html2canvas:{scale:2}}).from(document.getElementById('pdf-area')).save();"
+           << "  html2pdf().set({margin:0.3, filename:'Hammer_Report.pdf', image:{type:'jpeg', quality:1}, html2canvas:{scale:2}}).from(document.getElementById('pdf-area')).save();"
            << "});</script></body></html>";
         res.set_content(os.str(), "text/html; charset=utf-8");
     });
 
-    // حفظ التقرير مع بيانات العميل والملاحظات
     svr.Post("/api/save-report", [](const httplib::Request& req, httplib::Response& res) {
         string user = get_session_user(req);
         if (user.empty()) { res.set_redirect("/login"); return; }
@@ -1183,7 +1073,6 @@ int main() {
         res.set_redirect("/my-reports");
     });
 
-    // استعراض التقارير المحفوظة شاملة اسم العميل والملاحظات
     svr.Get("/my-reports", [](const httplib::Request& req, httplib::Response& res) {
         string user = get_session_user(req);
         if (user.empty()) { res.set_redirect("/login"); return; }
@@ -1193,8 +1082,8 @@ int main() {
         if (users_db.find(user) != users_db.end() && !users_db[user].saved_reports.empty()) {
             for (const auto& rep : users_db[user].saved_reports) {
                 r_list << "<div style='background:var(--bg); border:1px solid var(--border); padding:15px; border-radius:10px; margin-bottom:12px;'>"
-                       << "<b>👤 العميل:</b> " << rep.client_name << "<br>"
-                       << "<b>📌 المقايسة:</b> " << rep.summary << "<br>"
+                       << "<b>👤 اسم العميل:</b> <span style='color:var(--accent);'>" << rep.client_name << "</span><br>"
+                       << "<b>📌 تفاصيل المقايسة:</b> " << rep.summary << "<br>"
                        << "<b>📝 الملاحظات:</b> " << (rep.notes.empty() ? "لا توجد" : rep.notes)
                        << "</div>";
             }
@@ -1204,7 +1093,7 @@ int main() {
 
         string html = "<html><head><meta charset='UTF-8'><link href='https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap' rel='stylesheet'>"
                       + get_modern_blue_css() + "</head><body>" + get_navbar_html(user) +
-                      "<div class='container' style='max-width:700px;'><div class='card'><h2>📂 سجل تقاريرك المحفوظة</h2>"
+                      "<div class='container' style='max-width:700px;'><div class='card'><h2>📂 سجل تقارير العُملاء المحفوظة</h2>"
                       + r_list.str() +
                       "<div style='margin-top:20px;'><a class='btn-secondary' href='/calculator' style='display:block; text-align:center;'>🛗 حاسبة مقاسات جديدة</a></div>"
                       "</div></div><div class='footer'>منصة ضربة شاكوش الفنية © 2026</div>" + get_theme_script(nonce) + "</body></html>";
