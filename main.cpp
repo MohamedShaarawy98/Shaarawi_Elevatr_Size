@@ -876,7 +876,8 @@ int main() {
                       "<div class='f-group'><label>اسم المستخدم:</label><input type='text' name='username' required></div>"
                       "<div class='f-group'><label>كلمة المرور:</label><input type='password' name='password' required></div>"
                       "<button type='submit' style='margin-top:10px;'>دخول آمن ➡️</button></form>"
-                      "<div style='text-align:center; margin-top:20px;'><a href='/register' style='color:var(--accent); font-weight:600;'>إنشاء حساب جديد</a></div>"
+                      "<div style='text-align:center; margin-top:15px;'><a href='/forgot-password' style='color:var(--accent-2); font-weight:600;'>نسيت كلمة المرور؟</a></div>"
+                      "<div style='text-align:center; margin-top:10px;'><a href='/register' style='color:var(--accent); font-weight:600;'>إنشاء حساب جديد</a></div>"
                       "</div></div><div class='footer'>منصة ضربة شاكوش الفنية © 2026</div>" + get_theme_script(nonce) + "</body></html>";
         res.set_content(html, "text/html; charset=utf-8");
     });
@@ -891,6 +892,41 @@ int main() {
         } else {
             res.set_content("<html><body dir='rtl'><h3>خطأ في بيانات الدخول، <a href='/login'>أعد المحاولة</a></h3></body></html>", "text/html; charset=utf-8");
         }
+    });
+
+    // تفعيل صفحة استعادة كلمة المرور
+    svr.Get("/forgot-password", [](const httplib::Request& req, httplib::Response& res) {
+        string nonce = generate_nonce(); set_csp(res, nonce);
+        string html = "<html><head><meta charset='UTF-8'><link href='https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap' rel='stylesheet'>"
+                      + get_modern_blue_css() + "<style>.auth-card{max-width:450px; margin:40px auto; background:var(--surface); border:1px solid var(--border); padding:40px; border-radius:20px; box-shadow:0 15px 35px rgba(0,0,0,0.25);}</style></head><body>"
+                      + get_navbar_html() + "<div class='container'><div class='auth-card'>"
+                      "<h2 style='text-align:center; color:var(--accent-2);'>🔓 استعادة كلمة المرور</h2>"
+                      "<div class='sub-title' style='text-align:center;'>أدخل بريدك الإلكتروني المسجل لإرسال رابط الاستعادة</div>"
+                      "<form action='/api/forgot-password' method='post'>"
+                      "<div class='f-group'><label>البريد الإلكتروني:</label><input type='email' name='email' required placeholder='name@domain.com'></div>"
+                      "<button type='submit' style='background:linear-gradient(135deg, #f59e0b, #d97706); margin-top:10px;'>📤 إرسال تعليمات الاستعادة</button></form>"
+                      "<div style='text-align:center; margin-top:20px;'><a href='/login' style='color:var(--text-muted); font-weight:600;'>العودة لتسجيل الدخول</a></div>"
+                      "</div></div><div class='footer'>منصة ضربة شاكوش الفنية © 2026</div>" + get_theme_script(nonce) + "</body></html>";
+        res.set_content(html, "text/html; charset=utf-8");
+    });
+
+    svr.Post("/api/forgot-password", [](const httplib::Request& req, httplib::Response& res) {
+        string email = html_escape(req.get_param_value("email"));
+        string nonce = generate_nonce(); set_csp(res, nonce);
+        bool found = false;
+        for (auto const& [u, acc] : users_db) {
+            if (acc.email == email) { found = true; break; }
+        }
+        string msg = found ? "تم إرسال رابط استعادة كلمة المرور إلى بريدك الإلكتروني بنجاح." : "عفواً، هذا البريد غير مسجل لدينا.";
+        string color = found ? "#16a34a" : "#ef4444";
+        string html = "<html><head><meta charset='UTF-8'><link href='https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap' rel='stylesheet'>"
+                      + get_modern_blue_css() + "</head><body>" + get_navbar_html() +
+                      "<div class='container' style='max-width:500px; text-align:center;'><div class='card' style='border-color:" + color + ";'>"
+                      "<h2 style='color:" + color + ";'>حالة الاستعلام</h2>"
+                      "<p style='font-size:1.1rem; margin-bottom:20px;'>" + msg + "</p>"
+                      "<a class='btn-secondary' href='/login'>➡️ العودة لتسجيل الدخول</a>"
+                      "</div></div><div class='footer'>منصة ضربة شاكوش الفنية © 2026</div>" + get_theme_script(nonce) + "</body></html>";
+        res.set_content(html, "text/html; charset=utf-8");
     });
 
     svr.Get("/logout", [](const httplib::Request&, httplib::Response& res) {
@@ -952,7 +988,6 @@ int main() {
         res.set_content(html, "text/html; charset=utf-8");
     });
 
-    // التقرير النهائي مع إظهار البضاعة بالكامل وحفظها باسم العميل والملاحظات
     svr.Post("/calculate", [&elevator](const httplib::Request& req, httplib::Response& res) {
         string user = get_session_user(req);
         string m_type = html_escape(req.get_param_value("m_type"));
@@ -1058,6 +1093,7 @@ int main() {
         res.set_content(os.str(), "text/html; charset=utf-8");
     });
 
+    // معالجة مسار حفظ التقرير باسم العميل
     svr.Post("/api/save-report", [](const httplib::Request& req, httplib::Response& res) {
         string user = get_session_user(req);
         if (user.empty()) { res.set_redirect("/login"); return; }
