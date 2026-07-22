@@ -1007,14 +1007,17 @@ int main() {
                       "</body></html>";
         res.set_content(html, "text/html; charset=utf-8");
     });
+svr.Post("/api/register", [](const httplib::Request& req, httplib::Response& res) {
+        cout << "[تتبع] تم استقبال طلب تسجيل جديد من الموقع بنجاح!" << endl;
 
-    svr.Post("/api/register", [](const httplib::Request& req, httplib::Response& res) {
         string first_name = html_escape(req.get_param_value("first_name"));
         string last_name = html_escape(req.get_param_value("last_name"));
         string username = html_escape(req.get_param_value("username"));
         string email = html_escape(req.get_param_value("email"));
         string password = html_escape(req.get_param_value("password"));
         string confirm_password = html_escape(req.get_param_value("confirm_password"));
+
+        cout << "[تتبع] البيانات المستلمة - الإيميل: " << email << " | اسم المستخدم: " << username << endl;
 
         auto render_error = [&res](const string& msg) {
             string nonce = generate_nonce(); set_csp(res, nonce);
@@ -1063,8 +1066,9 @@ int main() {
         new_acc.is_verified = false;
         users_db[username] = new_acc;
 
-        // إرسال الرمز للبريد الإلكتروني باستخدام Resend
-        send_email_otp(email, first_name, otp);
+        cout << "[تتبع] جاري استدعاء دالة إرسال الإيميل للعنوان: " << email << " الرمز: " << otp << endl;
+        bool email_sent_res = send_email_otp(email, first_name, otp);
+        cout << "[تتبع] نتيجة إرسال الإيميل: " << (email_sent_res ? "نجح" : "فشل") << endl;
 
         string nonce = generate_nonce(); set_csp(res, nonce);
         string html = "<html><head><meta charset='UTF-8'><meta name='viewport' content='width=device-width, initial-scale=1.0'>"
