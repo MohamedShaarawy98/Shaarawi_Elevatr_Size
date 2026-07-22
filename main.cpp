@@ -40,7 +40,7 @@ static string SECURE_HEADER_NAME = "X-Verify-Secret";
 
 // === مفتاح API لخدمة إرسال الإيميلات المجانية Resend ===
 // سيتم استبدال هذا النص بمفتاح الـ API الحقيقي الخاص بك لاحقاً
-static string RESEND_API_KEY = "re_cMArayMQ_7fENAG4Rxbbetvf8ATwewtJi"; 
+static string RESEND_API_KEY = getenv("RESEND_API_KEY") ? getenv("RESEND_API_KEY") : "";
 
 struct UserAccount {
     string first_name;
@@ -81,8 +81,7 @@ static bool send_email_otp(const string& email, const string& first_name, const 
                               "<p style='font-size: 28px; font-weight: bold; letter-spacing: 5px; color: #16a34a; background: #f3f4f6; padding: 15px; display: inline-block; border-radius: 8px;'>" + otp_code + "</p>"
                               "<p>يرجى إدخال هذا الرمز في الموقع لتفعيل حسابك نهائياً.</p></div>";
 
-        string body = "{\"from\":\"Darbat Shakosh <onboarding@resend.dev>\",\"to\":[\"" + email + "\"],\"subject\":\"رمز تفعيل حسابك - منصة ضربة شاكوش\",\"html\":\"" + html_content + "\"}";
-
+      string body = "{\"from\":\"Darbat Shakosh <noreply@darbat-shakosh.com>\",\"to\":[\"" + email + "\"],\"subject\":\"رمز تفعيل حسابك - منصة ضربة شاكوش\",\"html\":\"" + html_content + "\"}";
         auto res = cli.Post("/emails", headers, body, "application/json");
         
         if (res && (res->status == 200 || res->status == 201)) {
