@@ -2,10 +2,12 @@
 
                                ============================================================
                                =                                                          =
-                               =                  منصة ضربة شاكوش الرقمية                 =
+                               =                 منصة ضربة شاكوش الرقمية                 =
                                =                                                          =
                                ============================================================
-  */        
+  */  
+
+#define CPPHTTPLIB_OPENSSL_SUPPORT // السطر الأهم: تفعيل تشفير HTTPS للاتصال الخارجي
 
 #include "httplib.h"
 #include <iostream>
@@ -38,10 +40,6 @@ const int MAX_REQUESTS_PER_MINUTE = 30;
 static string CF_VERIFY_SECRET = getenv("CF_VERIFY_SECRET") ? getenv("CF_VERIFY_SECRET") : "";
 static string SECURE_HEADER_NAME = "X-Verify-Secret"; 
 
-// === مفتاح API لخدمة إرسال الإيميلات المجانية Resend ===
-// سيتم استبدال هذا النص بمفتاح الـ API الحقيقي الخاص بك لاحقاً
-static string RESEND_API_KEY = getenv("RESEND_API_KEY") ? getenv("RESEND_API_KEY") : "";
-
 struct UserAccount {
     string first_name;
     string last_name;
@@ -55,22 +53,24 @@ struct UserAccount {
 
 static map<string, UserAccount> users_db;
 
-// دالة إرسال رمز التحقق عبر البريد الإلكتروني باستخدام خدمة Resend
+// دالة إرسال رمز التحقق عبر البريد الإلكتروني باستخدام خدمة Resend الآمنة والمحدثة
 static bool send_email_otp(const string& email, const string& first_name, const string& otp_code) {
-    if (RESEND_API_KEY == "YOUR_RESEND_API_KEY_HERE" || RESEND_API_KEY.empty()) {
-        // في حال لم يتم ضبط المفتاح، نكتفي بمنع التسجيل الوهمي أو تسجيل الخطأ في السجلات بصمت
-        cout << "[Security Log] Email service key is missing." << endl;
+    // قراءة المفتاح من السيرفر لحظة الإرسال لضمان توفره
+    const char* env_val = getenv("RESEND_API_KEY");
+    string API_KEY = env_val ? env_val : "";
+
+    if (API_KEY.empty()) {
+        cout << "[Security Log] Email service key is missing in Environment Variables." << endl;
         return false; 
     }
 
     try {
-        // ضبط العميل مع مهلة زمنية قصيرة وحماية كاملة ضد الانهيار
         httplib::Client cli("https://api.resend.com");
-        cli.set_connection_timeout(4); // 4 ثوانٍ كحد أقصى للاتصال
-        cli.set_read_timeout(4);
+        cli.set_connection_timeout(5); 
+        cli.set_read_timeout(5);
         
         httplib::Headers headers = {
-            {"Authorization", "Bearer " + RESEND_API_KEY},
+            {"Authorization", "Bearer " + API_KEY},
             {"Content-Type", "application/json"}
         };
         
@@ -81,17 +81,21 @@ static bool send_email_otp(const string& email, const string& first_name, const 
                               "<p style='font-size: 28px; font-weight: bold; letter-spacing: 5px; color: #16a34a; background: #f3f4f6; padding: 15px; display: inline-block; border-radius: 8px;'>" + otp_code + "</p>"
                               "<p>يرجى إدخال هذا الرمز في الموقع لتفعيل حسابك نهائياً.</p></div>";
 
-      string body = "{\"from\":\"Darbat Shakosh <noreply@darbat-shakosh.com>\",\"to\":[\"" + email + "\"],\"subject\":\"رمز تفعيل حسابك - منصة ضربة شاكوش\",\"html\":\"" + html_content + "\"}";
+        string body = "{\"from\":\"Darbat Shakosh <noreply@darbat-shakosh.com>\",\"to\":[\"" + email + "\"],\"subject\":\"رمز تفعيل حسابك - منصة ضربة شاكوش\",\"html\":\"" + html_content + "\"}";
+        
         auto res = cli.Post("/emails", headers, body, "application/json");
         
-        if (res && (res->status == 200 || res->status == 201)) {
-            return true; // تم إرسال الإيميل بنجاح لصندوق الوارد
-        } else {
-            if (res) {
-                cout << "[Resend API Error] Status Code: " << res->status << " Body: " << res->body << endl;
+        if (res) {
+            if (res->status == 200 || res->status == 201) {
+                cout << "[نجاح] تم إرسال رسالة التفعيل إلى " << email << endl;
+                return true; 
             } else {
-                cout << "[Resend Network Error] No response from API server." << endl;
+                cout << "[Resend API Error] Status Code: " << res->status << " Body: " << res->body << endl;
+                return false;
             }
+        } else {
+            auto err = res.error();
+            cout << "[Resend Network Error] فشل الاتصال. كود الخطأ: " << httplib::to_string(err) << endl;
             return false;
         }
     } catch (const exception& e) {
@@ -101,66 +105,6 @@ static bool send_email_otp(const string& email, const string& first_name, const 
         cout << "[Unknown Exception] Failed to send email." << endl;
         return false;
     }
-
-
-    try {
-        httplib::Client cli("https://api.resend.com");
-        cli.set_connection_timeout(5); // تقليل وقت الانتظار لمنع تعليق السيرفر
-        
-        httplib::Headers headers = {
-            {"Authorization", "Bearer " + RESEND_API_KEY},
-            {"Content-Type", "application/json"}
-        };
-        
-        string html_content = "<div dir='rtl' style='font-family: Arial, sans-serif; text-align: right; color: #333;'>"
-                              "<h2 style='color: #0ea5e9;'>مرحباً يا " + first_name + "</h2>"
-                              "<p>شكراً لتسجيلك في منصة ضربة شاكوش.</p>"
-                              "<p>رمز التفعيل الآمن لحسابك هو:</p>"
-                              "<p style='font-size: 28px; font-weight: bold; letter-spacing: 5px; color: #16a34a; background: #f3f4f6; padding: 15px; display: inline-block; border-radius: 8px;'>" + otp_code + "</p>"
-                              "<p>يرجى إدخال هذا الرمز في الموقع لتفعيل حسابك نهائياً.</p></div>";
-
-        string body = "{\"from\":\"Darbat Shakosh <onboarding@resend.dev>\",\"to\":[\"" + email + "\"],\"subject\":\"رمز تفعيل حسابك - منصة ضربة شاكوش\",\"html\":\"" + html_content + "\"}";
-
-        auto res = cli.Post("/emails", headers, body, "application/json");
-        
-        if (res && (res->status == 200 || res->status == 201)) {
-            return true;
-        } else {
-            cout << "[Resend Error] Failed to send email." << endl;
-            return false;
-        }
-    } catch (...) {
-        cout << "[Exception] Error occurred while connecting to Resend API." << endl;
-        return false;
-    }
-
-    httplib::Client cli("https://api.resend.com");
-    cli.set_connection_timeout(10);
-    
-    httplib::Headers headers = {
-        {"Authorization", "Bearer " + RESEND_API_KEY},
-        {"Content-Type", "application/json"}
-    };
-    
-    string html_content = "<div dir='rtl' style='font-family: Arial, sans-serif; text-align: right; color: #333;'>"
-                          "<h2 style='color: #0ea5e9;'>مرحباً يا " + first_name + "</h2>"
-                          "<p>شكراً لتسجيلك في منصة ضربة شاكوش.</p>"
-                          "<p>رمز التفعيل الآمن لحسابك هو:</p>"
-                          "<p style='font-size: 28px; font-weight: bold; letter-spacing: 5px; color: #16a34a; background: #f3f4f6; padding: 15px; display: inline-block; border-radius: 8px;'>" + otp_code + "</p>"
-                          "<p>يرجى إدخال هذا الرمز في الموقع لتفعيل حسابك نهائياً.</p></div>";
-
-    string safe_email = email;
-    
-    // ملاحظة هامة: Resend في الوضع التجريبي (بدون توثيق دومين) تستخدم إيميل onboarding@resend.dev للإرسال
-    string body = "{\"from\":\"Darbat Shakosh <onboarding@resend.dev>\",\"to\":[\"" + safe_email + "\"],\"subject\":\"رمز تفعيل حسابك - منصة ضربة شاكوش\",\"html\":\"" + html_content + "\"}";
-
-    auto res = cli.Post("/emails", headers, body, "application/json");
-    
-    if (res) {
-        if (res->status == 200 || res->status == 201) return true;
-        else { cout << "[Resend Error] Status: " << res->status << " Body: " << res->body << endl; return false; }
-    }
-    return false;
 }
 
 static string get_session_user(const httplib::Request& req) {
@@ -196,7 +140,7 @@ struct Partner {
 
 static vector<Partner> get_partners() {
     return {
-        { "    شركة اتحاد الجزيرة العربية المحدودة", "company", "0561269547", "https://uaj.sa/", "https://maps.app.goo.gl/taidnqUMC85uGkFo6?g_st=awb", "جدة", "متخصصة في توريد وتركيب وصيانة المصاعد الكهربائية والسلالم المتحركة + قسم فاير متكامل.", "", true, false },
+        { "   شركة اتحاد الجزيرة العربية المحدودة", "company", "0561269547", "https://uaj.sa/", "https://maps.app.goo.gl/taidnqUMC85uGkFo6?g_st=awb", "جدة", "متخصصة في توريد وتركيب وصيانة المصاعد الكهربائية والسلالم المتحركة + قسم فاير متكامل.", "", true, false },
         { "شركة نور الفردوس", "company", "0569041073", "", "", "الرياض", "متخصصة في تركيب جميع  براندات المصاعد والسلالم المتحركة.", "", false, false },
         { "م/ أبو أسامة", "contractor", "0562936595", "", "", "جدة", "مقاول تركيبات .", "⭐⭐⭐⭐⭐", false, false },
         { "م/ أبو عبده", "contractor", "0556345642", "", "", "جدة", "مقاول تركيبات .", "⭐⭐⭐⭐⭐", false, false },
@@ -632,7 +576,7 @@ public:
         else if (floors >= 8 && floors <= 10) temp_coils = 8;
         else if (floors >= 11 && floors <= 15) temp_coils = 10;
         else if (floors >= 16 && floors <= 20) temp_coils = 16;
-        else                                  temp_coils = static_cast<int>(floors * 0.8f);
+        else                                   temp_coils = static_cast<int>(floors * 0.8f);
 
         r.wire_1mm_coils = temp_coils;
         r.wire_1mm_count_desc = to_string(temp_coils) + " لفة"; 
