@@ -5,7 +5,7 @@
                                =                منصة ضربة شاكوش الرقمية                  =
                                =                                                          =
                                ============================================================
- */     
+  */     
 
 #define CPPHTTPLIB_OPENSSL_SUPPORT
 
@@ -24,9 +24,6 @@
 
 using namespace std;
 
-// ============================================================================
-// متغيرات التحكم في جاهزية أنواع المصاعد
-// ============================================================================
 const bool IS_MR_READY        = true;   
 const bool IS_MRL_READY       = false;  
 const bool IS_HYDRAULIC_READY = false;  
@@ -44,14 +41,12 @@ static string CF_VERIFY_SECRET = getenv("CF_VERIFY_SECRET") ? getenv("CF_VERIFY_
 static string MONGO_URI = getenv("MONGO_URI") ? getenv("MONGO_URI") : "";
 static string SECURE_HEADER_NAME = "X-Verify-Secret"; 
 
-// هيكل تقارير العملاء المحفوظة
 struct SavedReport {
     string client_name;
     string notes;
     string summary;
 };
 
-// هيكل حساب المستخدم الشامل والمحدث
 struct UserAccount {
     string first_name;
     string last_name;
@@ -72,7 +67,7 @@ static void save_user_to_mongodb(const UserAccount& acc) {
     }
 }
 
-// دالة إرسال الإيميل الحقيقي عبر Resend مع تتبع في الـ Logs
+// دالة إرسال الإيميل الفعلي عبر Resend باستخدام cURL بشكل مضمون 100%
 static bool send_email_otp(const string& email, const string& first_name, const string& otp_code) {
     const char* env_val = getenv("RESEND_API_KEY");
     string API_KEY = env_val ? env_val : "";
@@ -118,7 +113,6 @@ static string get_session_user(const httplib::Request& req) {
     return "";
 }
 
-// التحقق من خلو اسم المستخدم من الفواصل والرموز الخاصة
 static bool is_valid_username(const string& username) {
     regex pattern("^[a-zA-Z0-9_]+$");
     return regex_match(username, pattern);
@@ -126,40 +120,30 @@ static bool is_valid_username(const string& username) {
 
 struct Partner {
     string name;        
-    string type;        // company, contractor, supplier, cabins, transport, labor
+    string type;        
     string phone;       
-    string website;     // موقع الشركة الإلكتروني
-    string map_link;    // رابط الخريطة (اللوكيشن)
-    string location;    // المكان / المدينة
+    string website;     
+    string map_link;    
+    string location;    
     string details;     
     string rating;      
     bool is_featured;   
     bool is_ad;         
 };
 
-// قائمة الشركاء والخدمات المحدثة
 static vector<Partner> get_partners() {
     return {
-        // 1. الشركات والمؤسسات
-        { "اتحاد الجزيرة العربية المحدودة", "company", "0561269547", "https://uaj.sa/", "https://maps.app.goo.gl/taidnqUMC85uGkFo6?g_st=awb", "جدة", "متخصصة في توريد وتركيب وصيانة المصاعد الكهربائية والسلالم المتحركة + قسم فاير متكامل.", "", true, false },
+        { "    شركة اتحاد الجزيرة العربية المحدودة", "company", "0561269547", "https://uaj.sa/", "https://maps.app.goo.gl/taidnqUMC85uGkFo6?g_st=awb", "جدة", "متخصصة في توريد وتركيب وصيانة المصاعد الكهربائية والسلالم المتحركة + قسم فاير متكامل.", "", true, false },
         { "شركة نور الفردوس", "company", "0569041073", "", "", "الرياض", "متخصصة في تركيب جميع  براندات المصاعد والسلالم المتحركة.", "", false, false },
-        
-        // 2. المقاولين
         { "م/ أبو أسامة", "contractor", "0562936595", "", "", "جدة", "مقاول تركيبات .", "⭐⭐⭐⭐⭐", false, false },
         { "م/ أبو عبده", "contractor", "0556345642", "", "", "جدة", "مقاول تركيبات .", "⭐⭐⭐⭐⭐", false, false },
         { "م/ علاء الطوخي", "contractor", "056532176", "", "", "جدة", "مقاول تركيبات .", "⭐⭐⭐⭐⭐", false, false },
         { "م/ ضياء البخمي", "contractor", "0562417042", "", "", "جدة", "مقاول تركيبات .", "⭐⭐⭐⭐⭐", false, false },
         { "اضف اسمك هنا", "contractor", "00966564406565", "", "", "جدة", "احجز مكانك في قائمة المقاولين المتميزين.", "", false, true },
-
-        // 4. مصانع الكباين
         { "اضف اسم مصنع الكباين هنا", "cabins", "00966564406565", "", "", "", "مكان مخصص لمصانع الكباين.", "", false, true },
-
-        // 5. دباب وديانا
         { "محمد جان (دباب)", "transport", "0563446438", "", "", "جدة - عسفان", "خدمات النقل والتوصيل (دباب).", "", false, false },
         { "خدمات دباب وديانا", "transport", "0557128719", "", "", "الرياض", "خدمات النقل والتوصيل.", "", false, false },
         { "اضف اسمك هنا (دباب / ديانا)", "transport", "00966564406565", "", "", "جدة", "موقع مخصص لخدمات النقل.", "", false, true },
-
-        // 6. العمالة اليومية والخدمات الميدانية
         { "عمال باليومية", "labor", "0563032163", "", "", "جدة", "عمالة جاهزة للتركيبات اليومية.", "", false, false },
         { "تفتيح سقف للويرات", "labor", "0597526747", "", "", "جدة", "متخصصون في تفتيح وتجهيز أسقف البئر للويرات.", "", false, false },
         { "عمال لجميع الأعمال", "labor", "0540972304", "", "", "الرياض", "عمالة مدربة لكافة الأعمال الميدانية.", "", false, false },
@@ -749,7 +733,7 @@ static string get_modern_blue_css() {
            ".stage-2 { background: linear-gradient(135deg, #8b5cf6, #7c3aed); }" 
            ".stage-3 { background: linear-gradient(135deg, #f59e0b, #d97706); }" 
 
-           ".actions{display:flex; justify-content:space-between; margin-top:35px; gap:20px;}"
+           ".actions{display:flex; justify-content:space-between; margin-top:35px; gap:20px; flex-wrap:wrap;}"
            ".btn-print{background:linear-gradient(135deg, #16a34a, #15803d); color:white; border:none; padding:15px 25px; border-radius:8px; font-weight:700; cursor:pointer; flex:1; transition:0.3s; text-align:center; font-family:var(--font-display); box-shadow: 0 4px 6px rgba(0,0,0,0.1);}"
            ".btn-print:hover{background:linear-gradient(135deg, #15803d, #166534);}"
            ".btn-save{background:linear-gradient(135deg, #f59e0b, #d97706); color:white; border:none; padding:15px 25px; border-radius:8px; font-weight:700; cursor:pointer; flex:1; transition:0.3s; text-align:center; font-family:var(--font-display); box-shadow: 0 4px 6px rgba(0,0,0,0.1);}"
@@ -769,164 +753,8 @@ static string get_modern_blue_css() {
            ".section-intro{margin-bottom:30px; text-align:right;}"
            ".section-intro h1{color:var(--text); font-size:1.7rem; font-weight:800; margin:0 0 8px 0;}"
            ".section-intro p{color:var(--text-muted); font-size:1rem; line-height:1.7; margin:0;}"
-           ".lesson-tag{display:inline-flex; align-items:center; gap:5px; font-size:0.78rem; font-weight:700; padding:4px 10px; border-radius:20px; margin-bottom:12px; width:fit-content;}"
-           ".tag-article{background:rgba(56,189,248,0.14); color:var(--accent);}"
-           ".tag-video{background:rgba(245,165,36,0.16); color:var(--accent-2);}"
-           ".video-embed{position:relative; width:100%; aspect-ratio:16/9; border-radius:10px; overflow:hidden; background:#000; margin:20px 0; border:1px solid var(--border); box-shadow: 0 4px 12px rgba(0,0,0,0.3);}"
-           ".video-embed iframe{position:absolute; inset:0; width:100%; height:100%; border:0;}"
-           ".lesson-body{color:var(--text); font-size:1.02rem; line-height:1.9; background: var(--bg); padding: 20px; border-radius: 8px; border: 1px solid var(--border); margin-top: 15px;}"
-           ".lesson-body p{margin:0 0 16px 0;}"
-           ".track-list{display:flex; flex-direction:column; gap:14px; margin-top:10px;}"
-           ".track-item{display:flex; align-items:flex-start; gap:16px; background:var(--bg); border:1px solid var(--border); border-radius:10px; padding:18px 20px; text-decoration:none; transition:0.2s;}"
-           ".track-item:hover{border-color:var(--accent); transform:translateX(-3px);}"
-           ".track-order{flex-shrink:0; width:34px; height:34px; border-radius:8px; background:var(--surface-2); color:var(--accent); font-family:var(--font-mono); font-weight:700; display:flex; align-items:center; justify-content:center; font-size:0.95rem;}"
-           ".track-item-title{color:var(--text); font-weight:700; font-size:1.02rem; margin-bottom:4px;}"
-
            ".footer{margin-top:auto; padding:25px 0; font-size:15px; color:var(--text-muted); text-align:center; border-top:1px solid var(--border); background-color:var(--surface); font-weight:600;}"
-           
-           "@media (max-width: 600px) {"
-           "  .container { padding: 15px 10px !important; }"
-           "  .card { padding: 20px 15px !important; border:none; box-shadow:none; }"
-           "  .card h2 { font-size: 1.3rem !important; }"
-           "  .section-intro h1 { font-size: 1.4rem !important; }"
-           "  .sub-title { font-size: 0.85rem !important; margin-bottom: 20px !important; }"
-           "  .actions { flex-direction: column !important; gap: 12px !important; margin-top: 25px !important; }"
-           "  .btn-print, .btn-secondary, button { padding: 12px 20px !important; font-size: 1rem !important; width: 100% !important; }"
-           "  .nav-card { padding: 20px 15px !important; }"
-           "  .nav-card h3 { font-size: 1.15rem !important; }"
-           "  .track-item { padding: 14px 15px !important; gap: 12px !important; }"
-           "  .f-group label { font-size: 0.85rem !important; }"
-           "  .input, select { padding: 10px !important; font-size: 0.9rem !important; }"
-           
-           "  .tbl, .tbl tbody, .tbl tr, .tbl th, .tbl td { display: block; width: 100% !important; border: none !important; }"
-           "  .tbl thead { display: none; }"
-           "  .table-container { border: none !important; background: transparent !important; padding: 0 !important; overflow: visible !important; margin-top: 5px; }"
-           "  .tbl tr { margin-bottom: 15px; border: 1px solid var(--border) !important; border-radius: 10px; background: var(--surface); box-shadow: 0 4px 6px rgba(0,0,0,0.2); position: relative; overflow: hidden; }"
-           "  .tbl tr::before { content: ''; position: absolute; right: 0; top: 0; bottom: 0; width: 5px; background: var(--accent); }"
-           "  .tbl th { display:none; }" 
-           "  .tbl td, .tbl th { padding: 10px 20px 10px 15px !important; text-align: right !important; }"
-           
-           "  .tbl tr th { color: var(--accent); font-size: 0.85rem !important; padding-bottom: 2px !important; display: block; }"
-           "  .tbl tr th + td { font-size: 1.1rem !important; padding-top: 0 !important; }"
-
-           "  .tbl tr td:first-child { color: var(--accent); font-size: 0.85rem !important; padding-bottom: 2px !important; font-weight: bold; }"
-           "  .tbl tr td:last-child { font-size: 1.1rem !important; padding-top: 0 !important; }"
-           "}"
-           "@media print{"
-           "  body, .container, #pdf-area { background: #121826 !important; color: #f3f4f6 !important; height: auto !important; overflow: visible !important; min-height: unset !important; padding: 0 !important; margin: 0 !important; width: 100% !important; }"
-           "  .card { box-shadow: none !important; border: none !important; padding: 20px !important; background: #121826 !important; width: 100% !important; height: auto !important; overflow: visible !important; position: static !important; }"
-           "  .table-container { overflow: visible !important; width: 100% !important; border: 1px solid #232c3f !important; background: #0a0e16 !important; }"
-           "  .tbl { width: 100% !important; table-layout: fixed !important; }"
-           "  .btn-print, .btn-secondary, .stage-header, .navbar, .flags-strip, .footer { display: none !important; }"
-           "  .card::before, .card::after { display: none !important; }"
-           "  .tbl td:first-child { color: #38bdf8 !important; font-weight: bold; }"
-           "}"
            "</style>";
-}
-
-static string get_seo_meta(const string& title, const string& desc) {
-    return "<title>موقع ضربة شاكوش</title>"
-           "<link rel='icon' type='image/jpeg' href='https://media.darbat-shakosh.com/channels4_profile%20(1).jpg'>"
-           "<meta name='description' content='" + desc + "'>"
-           "<meta name='keywords' content='حاسبة مقاسات المصاعد, كورس كهرباء المصاعد, تصفية أبعاد بئر المصعد, صيانة المصاعد, ميكانيكا المصاعد, ضربة شاكوش, هندسة المصاعد'>"
-           "<meta name='robots' content='index, follow'>";
-}
-
-static string get_navbar_html(const string& current_user = "") {
-    const string logo_url = "https://media.darbat-shakosh.com/channels4_profile%20(1).jpg"; 
-    const string chevron_svg = "<svg class='chevron' viewBox='0 0 24 24'><path d='M7 10l5 5 5-5z'/></svg>";
-    const string moon_icon = "<svg class='theme-moon' viewBox='0 0 24 24'><path d='M12.3 22h-.1c-5.5 0-10-4.5-10-10 0-4.8 3.5-8.9 8.2-9.8.6-.1 1.2.3 1.3.9.1.6-.2 1.2-.8 1.4-3.3 1-5.7 4-5.7 7.5 0 4.4 3.6 8 8 8 3.5 0 6.5-2.4 7.5-5.7.2-.6.8-.9 1.4-.8.6.1 1 .7.9 1.3-.9 4.7-5 8.2-9.8 8.2z'/></svg>";
-    const string sun_icon = "<svg class='theme-sun' viewBox='0 0 24 24'><path d='M12 7c-2.8 0-5 2.2-5 5s2.2 5 5 5 5-2.2 5-5-2.2-5-5-5zm0-5c.6 0 1 .4 1 1v2c0 .6-.4 1-1 1s-1-.4-1-1V3c0-.6.4-1 1-1zm0 14c.6 0 1 .4 1 1v2c0 .6-.4 1-1 1s-1-.4-1-1v-2c0-.6.4-1 1-1zM4 11h2c.6 0 1 .4 1 1s-.4 1-1 1H4c-.6 0-1-.4-1-1s-1-.4-1-1zm14 0h2c.6 0 1 .4 1 1s-.4 1-1 1h-2c-.6 0-1-.4-1-1s-1-.4-1-1zM5.2 5.2c.4-.4 1-.4 1.4 0l1.4 1.4c.4.4.4 1 0 1.4s-1 .4-1.4 0L5.2 6.6c-.4-.4-.4-1 0-1.4zm12 12c.4-.4 1-.4 1.4 0l1.4 1.4c.4.4.4 1 0 1.4s-1 .4-1.4 0l-1.4-1.4c-.4-.4-.4-1 0-1.4zM7.6 16.4c.4-.4 1-.4 1.4 0l1.4 1.4c.4.4.4 1 0 1.4s-1 .4-1.4 0l-1.4-1.4c-.4-.4-.4-1 0-1.4zm12-12c.4-.4 1-.4 1.4 0l1.4 1.4c.4.4.4 1 0 1.4s-1 .4-1.4 0l-1.4-1.4c-.4-.4-.4-1 0-1.4z'/></svg>";
-
-    string user_controls;
-    if (current_user.empty()) {
-        user_controls = "<a href='/login' class='nav-icon' title='تسجيل الدخول / إنشاء حساب'><svg viewBox='0 0 24 24'><path d='M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z'/></svg></a>";
-    } else {
-        user_controls = "<details class='nav-dropdown'><summary class='nav-icon' style='color:var(--accent); font-weight:bold;'>👤 " + current_user + "</summary>"
-                        "<div class='dropdown-panel' style='min-width:140px;'><div class='dropdown-col'><a href='/my-reports'>التقارير المحفوظة</a><a href='/logout'>تسجيل الخروج</a></div></div></details>";
-    }
-
-    return "<nav class='navbar'>"
-           "  <div class='nav-right'>"
-           "    <a href='/' class='navbar-brand'><span class='brand-mark'><img src='" + logo_url + "' alt='لوجو ضربة شاكوش'></span><span>ضربة شاكوش </span></a>"
-           "    <div class='nav-center desktop-only'>"
-           "      <a href='/' class='nav-link'>الرئيسية</a>"
-           "      <a href='/paths' class='nav-link'>مسارات التعلّم</a>"
-           "      <a href='/blog' class='nav-link'>الشروحات والمقالات</a>"
-           "      <a href='/calculator' class='nav-link'>الحاسبة الهندسية</a>"
-           "      <details class='nav-dropdown'>"
-           "        <summary>🤝 دليل الشركاء " + chevron_svg + "</summary>"
-           "        <div class='dropdown-panel'>"
-           "          <div class='dropdown-col'>"
-           "            <a href='/companies'>الشركات والمؤسسات</a>"
-           "            <a href='/contractors'>المقاولين</a>"
-           "            <a href='/suppliers'>الموردين</a>"
-           "            <a href='/cabins'>مصانع الكباين</a>"
-           "            <a href='/transport'>دباب وديانا</a>"
-           "            <a href='/labor'>العمالة اليومية</a>"
-           "          </div>"
-           "        </div>"
-           "      </details>"
-           "      <details class='nav-dropdown'>"
-           "        <summary>المزيد " + chevron_svg + "</summary>"
-           "        <div class='dropdown-panel'>"
-           "          <div class='dropdown-col'>"
-           "            <a href='/contact'>اتصل بنا</a>"
-           "            <a href='/support'>مركز الدعم</a>"
-           "          </div>"
-           "        </div>"
-           "      </details>"
-           "    </div>"
-           "  </div>"
-           "  <div class='nav-left'>"
-           "    <button class='nav-icon' id='themeBtn' title='تغيير الوضع المضيء/الليلي'>" + moon_icon + sun_icon + "</button>"
-           + user_controls +
-           "    <details class='nav-dropdown mobile-menu mobile-only'>"
-           "      <summary class='nav-icon' title='القائمة'><svg viewBox='0 0 24 24'><path d='M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z'/></svg></summary>"
-           "      <div class='mobile-panel'>"
-           "        <a href='/'>الرئيسية</a>"
-           "        <a href='/login'>تسجيل الدخول / الحساب</a>"
-           "        <a href='/paths'>مسارات التعلّم</a>"
-           "        <a href='/blog'>الشروحات والمقالات</a>"
-           "        <a href='/calculator'>الحاسبة الهندسية</a>"
-           "        <a href='/companies'>الشركات</a>"
-           "        <a href='/contractors'>المقاولين</a>"
-           "        <a href='/suppliers'>الموردين</a>"
-           "        <a href='/cabins'>مصانع الكباين</a>"
-           "        <a href='/transport'>دباب وديانا</a>"
-           "        <a href='/labor'>العمالة اليومية</a>"
-           "        <div class='mobile-divider'></div>"
-           "        <a href='/contact'>اتصل بنا</a>"
-           "        <a href='/support'>مركز الدعم</a>"
-           "      </div>"
-           "    </details>"
-           "  </div>"
-           "</nav>"
-           "<div class='flags-strip'>"
-           "  <div class='flags-badge-box'>"
-           "    <img src='https://flagcdn.com/w40/ps.png' class='flag-img-unit' alt='Gaza Palestine'>"
-           "    <span class='flag-img-sep'>|</span>"
-           "    <img src='https://flagcdn.com/w40/eg.png' class='flag-img-unit' alt='Egypt'>"
-           "    <span class='flag-img-sep'>|</span>"
-           "    <img src='https://flagcdn.com/w40/sa.png' class='flag-img-unit' alt='Saudi Arabia'>"
-           "  </div>"
-           "</div>";
-}
-
-static string get_theme_script(const string& nonce) {
-    return "<script nonce='" + nonce + "'>"
-           "  if(localStorage.getItem('theme') === 'light'){"
-           "    document.body.classList.add('light-mode');"
-           "  }"
-           "  document.getElementById('themeBtn').addEventListener('click', function(){"
-           "    document.body.classList.toggle('light-mode');"
-           "    if(document.body.classList.contains('light-mode')){"
-           "      localStorage.setItem('theme', 'light');"
-           "    } else {"
-           "      localStorage.setItem('theme', 'dark');"
-           "    }"
-           "  });"
-           "</script>";
 }
 
 int main() {
@@ -1008,7 +836,7 @@ int main() {
         render_register_page(res);
     });
 
-    // 1. معالجة التسجيل مع الاحتفاظ بالبيانات السليمة عند حدوث أخطاء وإرسال الإيميل الحقيقي عبر cURL
+    // 1. معالجة التسجيل مع الاحتفاظ بالبيانات السليمة عند حدوث أخطاء وإرسال الإيميل عبر cURL الحقيقي مع تتبع الـ Logs
     svr.Post("/api/register", [&render_register_page](const httplib::Request& req, httplib::Response& res) {
         cout << "[Trace-Register] Received registration request from client IP: " << get_client_ip(req) << endl;
 
@@ -1290,7 +1118,7 @@ int main() {
                         << "<span style='color:var(--text);'>📞 " << html_escape(p.phone) << "</span>"
                         << (!p.location.empty() ? "<span style='color:var(--text);'>📍 " + html_escape(p.location) + "</span>" : "")
                         << (!p.map_link.empty() ? "<span>📍 <a href='" + p.map_link + "' target='_blank' style='color:var(--accent); text-decoration:underline;'>رابط الخريطة</a></span>" : "")
-                        << (!p.website.empty() ? "<span>🌐 <a href='" + p.website + "' target='_blank' style='color:var(--accent); text-decoration:underline;'>الموقع</a></span>" : "")
+                        << (!p.website.empty() ? "<span>🌐 <a href='" + p.website + "' target='_blank' style='color:#38bdf8; text-decoration:underline;'>الموقع</a></span>" : "")
                         << "</div>"
                         << "</div>"
                         << "<div style='display:flex; gap:8px; flex-wrap:wrap; margin-top:auto;'>"
@@ -1665,9 +1493,8 @@ int main() {
 
         os << "</div>";
 
-        // خانات حفظ التقرير باسم العميل والملاحظات
         if (!user.empty()) {
-            os << "<div class='card' style='border-color:var(--accent); margin-top:20px;'>"
+            os << "<div class='card' style='border-color:var(--accent);'>"
                << "<h3>💾 حفظ التقرير في سجلك الشخصي باسم العميل</h3>"
                << "<form action='/api/save-report' method='post'>"
                << "<div class='f-group'><label>👤 اسم العميل أو المشروع:</label><input type='text' name='client_name' required placeholder='اكتب اسم العميل هنا'></div>"
@@ -1676,33 +1503,23 @@ int main() {
                << "<button type='submit' class='btn-save'>💾 اعتماد الحفظ باسم العميل</button>"
                << "</form></div>";
         } else {
-            os << "<div class='card' style='text-align:center; margin-top:20px;'><a class='btn-secondary' href='/login' style='background:#f5a524; color:#000; display:block;'>🔒 سجل دخولك لتخزين هذا التقرير باسم العميل</a></div>";
+            os << "<div class='card' style='text-align:center;'><a class='btn-secondary' href='/login' style='background:#f5a524; color:#000; display:block;'>🔒 سجل دخولك لتخزين هذا التقرير باسم العميل</a></div>";
         }
 
-        os << "<div class='actions' style='max-width:750px; margin: 20px auto 0 auto; padding:0 40px;'>"
-           << "  <button class='btn-print' id='pBtn'>📥 تحميل التقرير PDF</button>"
-           << "  <a class='btn-secondary' href='/calculator'>🔄 تصفية بئر جديد</a>"
+        os << "<div class='actions'>"
+           << "<button class='btn-print' id='pBtn'>📥 تحميل التقرير PDF</button>"
+           << "<a class='btn-secondary' href='/calculator'>🔄 تصفية بئر جديد</a>"
            << "</div></div>"
            << "<div class='footer'>منصة ضربة شاكوش الفنية © 2026 - إنشاء محمد الشعراوي</div>"
            << "<script nonce='" << nonce << "'>"
-           << "  if(localStorage.getItem('theme') === 'light'){ document.body.classList.add('light-mode'); }"
-           << "  document.getElementById('themeBtn').addEventListener('click', function(){"
-           << "    document.body.classList.toggle('light-mode');"
-           << "    localStorage.setItem('theme', document.body.classList.contains('light-mode') ? 'light' : 'dark');"
-           << "  });"
-           << "  document.querySelector(\"input[name='client_name']\")?.addEventListener('input', (e) => { document.getElementById('lblClient').innerText = e.target.value || 'غير محدد'; });"
-           << "  document.querySelector(\"input[name='notes']\")?.addEventListener('input', (e) => { document.getElementById('lblNotes').innerText = e.target.value || 'لا توجد ملاحظات'; });"
-           << "  document.getElementById('pBtn').addEventListener('click', function(){"
-           << "    var element = document.getElementById('pdf-area');"
-           << "    var opt = { margin: [0.3, 0.3, 0.3, 0.3], filename: 'Hammer_Elevator_Full_Specification.pdf', image: { type: 'jpeg', quality: 1.0 }, html2canvas: { scale: 2, useCORS: true, backgroundColor: document.body.classList.contains('light-mode') ? '#ffffff' : '#121826', scrollY: 0 }, jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' } };"
-           << "    html2pdf().set(opt).from(element).save();"
-           << "  });"
-           << "</script>"
-           << "</body></html>";
+           << "document.querySelector(\"input[name='client_name']\")?.addEventListener('input', (e) => { document.getElementById('lblClient').innerText = e.target.value || 'غير محدد'; });"
+           << "document.querySelector(\"input[name='notes']\")?.addEventListener('input', (e) => { document.getElementById('lblNotes').innerText = e.target.value || 'لا توجد ملاحظات'; });"
+           << "document.getElementById('pBtn').addEventListener('click', function(){"
+           << "  html2pdf().set({margin:0.3, filename:'Hammer_Report.pdf', image:{type:'jpeg', quality:1}, html2canvas:{scale:2}}).from(document.getElementById('pdf-area')).save();"
+           << "});</script></body></html>";
         res.set_content(os.str(), "text/html; charset=utf-8");
     });
 
-    // مسار حفظ التقرير باسم العميل والملاحظات
     svr.Post("/api/save-report", [](const httplib::Request& req, httplib::Response& res) {
         string user = get_session_user(req);
         if (user.empty()) { res.set_redirect("/login"); return; }
@@ -1718,7 +1535,6 @@ int main() {
         res.set_redirect("/my-reports");
     });
 
-    // صفحة استعراض التقارير المحفوظة للعُملاء
     svr.Get("/my-reports", [](const httplib::Request& req, httplib::Response& res) {
         string user = get_session_user(req);
         if (user.empty()) { res.set_redirect("/login"); return; }
