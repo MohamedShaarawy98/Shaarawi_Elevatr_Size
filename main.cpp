@@ -42,9 +42,11 @@ static string MONGO_URI = getenv("MONGO_URI") ? getenv("MONGO_URI") : "";
 static string SECURE_HEADER_NAME = "X-Verify-Secret"; 
 
 struct SavedReport {
+    string id;
     string client_name;
     string notes;
     string summary;
+    string details_html;
 };
 
 struct UserAccount {
@@ -67,17 +69,11 @@ static void save_user_to_mongodb(const UserAccount& acc) {
     }
 }
 
-// دالة إرسال الإيميل الفعلي عبر مكتبة httplib الأصلية بشكل آمن ومضمون 100%
 static bool send_email_otp(const string& email, const string& first_name, const string& otp_code) {
     const char* env_val = getenv("RESEND_API_KEY");
     string API_KEY = env_val ? env_val : "";
 
-    cout << "[Trace-Email] Starting secure HTTP email dispatch for: " << email << endl;
-
-    if (API_KEY.empty()) {
-        cout << "[Trace-Email Error] RESEND_API_KEY is missing in Environment Variables!" << endl;
-        return false; 
-    }
+    if (API_KEY.empty()) return false;
 
     try {
         httplib::Client cli("https://api.resend.com");
@@ -99,18 +95,8 @@ static bool send_email_otp(const string& email, const string& first_name, const 
         string json_body = "{\"from\":\"Darbat Shakosh <noreply@darbat-shakosh.com>\",\"to\":[\"" + email + "\"],\"subject\":\"رمز تفعيل حسابك - منصة ضربة شاكوش\",\"html\":\"" + html_content + "\"}";
 
         auto res = cli.Post("/emails", headers, json_body, "application/json");
-
-        if (res && (res->status == 200 || res->status == 201)) {
-            cout << "[Trace-Email] SUCCESS: Email sent successfully via HTTP client. Response: " << res->body << endl;
-            return true;
-        } else {
-            int status = res ? res->status : -1;
-            string body = res ? res->body : "No response";
-            cout << "[Trace-Email Error] Failed with HTTP Status: " << status << " | Body: " << body << endl;
-            return false;
-        }
-    } catch (const exception& e) {
-        cout << "[Trace-Email Exception] Error: " << e.what() << endl;
+        return (res && (res->status == 200 || res->status == 201));
+    } catch (...) {
         return false;
     }
 }
@@ -718,6 +704,11 @@ static string get_modern_blue_css() {
            ".nav-icon svg{width:22px; height:22px; fill:currentColor;}"
            
            "body.light-mode .theme-sun, body:not(.light-mode) .theme-moon { display:none; }"
+           
+           /* تحسين زر الوضع الليلي والنهار بتصميم عصري وأيقونة دائرية جذابة */
+           "#themeBtn{width:40px; height:40px; border-radius:50%; background:var(--surface-2); border:1px solid var(--border); color:var(--accent); display:flex; align-items:center; justify-content:center; cursor:pointer; transition:0.3s; box-shadow:0 2px 5px rgba(0,0,0,0.2);}"
+           "#themeBtn:hover{background:var(--accent); color:#fff; transform:scale(1.08);}"
+           "#themeBtn svg{width:20px; height:20px;}"
 
            ".mobile-menu{position:relative;}"
            ".mobile-panel{position:absolute; inset-inline-end:0; top:calc(100% + 14px); background:var(--surface-2); border:1px solid var(--border); border-radius:12px; padding:18px 20px; display:flex; flex-direction:column; gap:4px; min-width:230px; box-shadow:0 20px 25px -5px rgba(0,0,0,0.45); z-index:60; animation:dropdownIn 0.18s ease;}"
@@ -924,7 +915,6 @@ int main() {
         res.set_content(html, "text/html; charset=utf-8");
     });
 
-    // 2. صفحة تسجيل احترافية ومطابقة للترتيب المطلوب بدقة
     auto render_register_page = [](httplib::Response& res, const string& fn = "", const string& ln = "", const string& un = "", const string& em = "", const string& err_msg = "") {
         string nonce = generate_nonce(); set_csp(res, nonce);
         string alert_box = err_msg.empty() ? "" : "<div style='background:rgba(239,68,68,0.1); border:1px solid #ef4444; color:#ef4444; padding:12px; border-radius:8px; margin-bottom:20px; font-weight:600; text-align:center;'>" + err_msg + "</div>";
@@ -937,9 +927,9 @@ int main() {
                       "<div style='text-align:center; color:var(--text-muted); font-size:0.9rem; margin-bottom:25px;'>أنشئ حسابك لتوثيق مقاييسك والاحتفاظ بسجل أعمالك</div>"
                       + alert_box +
                       "<form action='/api/register' method='post'>"
-                      "<div class='f-group'><label>1- الاسم الأول:</label><input type='text' name='first_name' value='" + fn + "' required placeholder='مثال: محمد'></div>"
-                      "<div class='f-group'><label>2- الاسم الأخير:</label><input type='text' name='last_name' value='" + ln + "' required placeholder='مثال: الشعراوي'></div>"
-                      "<div class='f-group'><label>3- اسم المستخدم (بالإنجليزية بدون مسافات):</label><input type='text' name='username' value='" + un + "' required pattern='[a-zA-Z0-9_]+' placeholder='مثال: mohamed_shaarawy'></div>"
+                      "<div class='f-group'><label>1- الاسم الأول:</label><input type='text' name='first_name' value='" + fn + "' required placeholder='أدخل الاسم الأول'></div>"
+                      "<div class='f-group'><label>2- الاسم الأخير:</label><input type='text' name='last_name' value='" + ln + "' required placeholder='أدخل الاسم الأخير'></div>"
+                      "<div class='f-group'><label>3- اسم المستخدم (بالإنجليزية بدون مسافات):</label><input type='text' name='username' value='" + un + "' required pattern='[a-zA-Z0-9_]+' placeholder='username'></div>"
                       "<div class='f-group'><label>4- البريد الإلكتروني الحقيقي:</label><input type='email' name='email' value='" + em + "' required placeholder='example@domain.com'></div>"
                       "<div class='f-group'><label>5- كلمة السر:</label><input type='password' name='password' required placeholder='أدخل كلمة المرور'></div>"
                       "<div class='f-group'><label>6- إعادة كتابة كلمة السر:</label><input type='password' name='confirm_password' required placeholder='أعد كتابة كلمة المرور'></div>"
@@ -956,7 +946,6 @@ int main() {
         render_register_page(res);
     });
 
-    // 1. معالجة التسجيل مع الاحتفاظ بالبيانات السليمة وإرسال الإيميل عبر httplib البرمجية الآمنة
     svr.Post("/api/register", [&render_register_page](const httplib::Request& req, httplib::Response& res) {
         string first_name = html_escape(req.get_param_value("first_name"));
         string last_name = html_escape(req.get_param_value("last_name"));
@@ -999,8 +988,6 @@ int main() {
         
         users_db[username] = new_acc;
         save_user_to_mongodb(new_acc);
-
-        // إرسال الإيميل الفعلي السليم
         send_email_otp(email, first_name, otp);
 
         string nonce = generate_nonce(); set_csp(res, nonce);
@@ -1022,7 +1009,6 @@ int main() {
         res.set_content(html, "text/html; charset=utf-8");
     });
 
-    // 3. رسالة ترحيبية مخصصة وحارة بعد تفعيل الحساب
     svr.Post("/api/verify-otp", [](const httplib::Request& req, httplib::Response& res) {
         string username = html_escape(req.get_param_value("username"));
         string otp = html_escape(req.get_param_value("otp"));
@@ -1061,7 +1047,7 @@ int main() {
         }
     });
 
-    // 5. تصميم احترافي لصفحة تسجيل الدخول
+    // 1 & 3. صفحة تسجيل الدخول مع خانات بجانب بعضها وزر إظهار كلمة السر (أيقونة العين)
     svr.Get("/login", [](const httplib::Request& req, httplib::Response& res) {
         string user = get_session_user(req);
         if (!user.empty()) { res.set_redirect("/"); return; }
@@ -1070,15 +1056,24 @@ int main() {
         string html = "<html><head><meta charset='UTF-8'><meta name='viewport' content='width=device-width, initial-scale=1.0'>"
                       "<link href='https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap' rel='stylesheet'>"
                       + meta + get_modern_blue_css() + 
-                      "<style>.auth-card{max-width:450px; margin:40px auto; background:var(--surface); border:1px solid var(--border); padding:40px; border-radius:20px; box-shadow:0 15px 35px rgba(0,0,0,0.25);}</style></head><body>"
+                      "<style>"
+                      ".auth-card{max-width:600px; margin:40px auto; background:var(--surface); border:1px solid var(--border); padding:40px; border-radius:20px; box-shadow:0 15px 35px rgba(0,0,0,0.25);}"
+                      ".login-grid{display:grid; grid-template-columns:1fr 1fr; gap:20px;}"
+                      "@media(max-width:600px){.login-grid{grid-template-columns:1fr; gap:0;}}"
+                      ".pass-container{position:relative;}"
+                      ".toggle-pass{position:absolute; left:12px; top:42px; background:none; border:none; cursor:pointer; color:var(--text-muted); font-size:1.1rem; width:auto; padding:0; box-shadow:none;}"
+                      ".toggle-pass:hover{color:var(--accent); transform:none;}"
+                      "</style></head><body>"
                       + get_navbar_html() +
                       "<div class='container'>"
                       "<div class='auth-card'>"
                       "<h2 style='text-align:center; color:var(--accent);'>🔑 تسجيل الدخول</h2>"
                       "<div class='sub-title' style='text-align:center;'>أهلاً بك مجدداً في بيئتك الهندسية</div>"
                       "<form action='/api/login' method='post'>"
-                      "<div class='f-group'><label>👤 اسم المستخدم:</label><input type='text' name='username' required placeholder='اكتب اسم المستخدم'></div>"
-                      "<div class='f-group'><label>🔒 كلمة المرور:</label><input type='password' name='password' required placeholder='اكتب كلمة المرور'></div>"
+                      "<div class='login-grid'>"
+                      "  <div class='f-group'><label>👤 اسم المستخدم:</label><input type='text' name='username' required placeholder='username'></div>"
+                      "  <div class='f-group pass-container'><label>🔒 كلمة المرور:</label><input type='password' id='passInput' name='password' required placeholder='••••••••'><button type='button' class='toggle-pass' onclick='togglePassword()'>👁️</button></div>"
+                      "</div>"
                       "<button type='submit' style='margin-top:10px;'>➡️ دخول للحساب</button>"
                       "</form>"
                       "<div style='text-align:center; margin-top:20px; display:flex; flex-direction:column; gap:10px;'>"
@@ -1086,6 +1081,12 @@ int main() {
                       "<a href='/register' style='color:var(--accent); font-weight:600;'>إنشاء حساب جديد</a>"
                       "</div></div></div>"
                       "<div class='footer'>منصة ضربة شاكوش الفنية © 2026 - إنشاء محمد الشعراوي</div>"
+                      "<script nonce='" + nonce + "'>"
+                      "function togglePassword() {"
+                      "  var p = document.getElementById('passInput');"
+                      "  if (p.type === 'password') { p.type = 'text'; } else { p.type = 'password'; }"
+                      "}"
+                      "</script>"
                       + get_theme_script(nonce) + "</body></html>";
         res.set_content(html, "text/html; charset=utf-8");
     });
@@ -1126,7 +1127,6 @@ int main() {
         }
     });
 
-    // تفعيل زر (نسيت كلمة المرور)
     svr.Get("/forgot-password", [](const httplib::Request& req, httplib::Response& res) {
         string user = get_session_user(req);
         if (!user.empty()) { res.set_redirect("/"); return; }
@@ -1503,6 +1503,17 @@ int main() {
 
         string report_summary = "مقايسة بئر: " + to_string(w) + "x" + to_string(d) + " سم - أدوار: " + to_string((int)f);
 
+        // حفظ تفاصيل المقايسة في البايت كود لعرضها لاحقاً عند النقر على اسم العميل
+        ostringstream details_stream;
+        details_stream << "<div class='table-container'><table class='tbl'>"
+                       << "<tr><th>نظام التشغيل:</th><td>" << (m_type == "MR" ? "غرفة محرك (MR)" : (m_type == "MRL" ? "بدون غرفة (MRL)" : "هيدروليك Hydraulic")) << "</td></tr>"
+                       << "<tr><th>أبعاد البئر الحرة:</th><td>العرض: " << w << " سم || العمق: " << d << " سم</td></tr>"
+                       << "<tr><th>نوع الأبواب:</th><td>[" << door_choice << "]</td></tr>"
+                       << "<tr><th>صافي الكابينة:</th><td>العرض: " << cab_w << " سم × العمق: " << cab_d << " سم</td></tr>"
+                       << "<tr><th>الحمولة:</th><td>" << specs.rated_load_kg << " كجم</td></tr>"
+                       << "<tr><th>مشوار البئر:</th><td>" << h << " متر</td></tr>"
+                       << "</table></div>";
+
         string nonce = generate_nonce(); set_csp(res, nonce);
         ostringstream os;
         os << "<html><head><meta charset='UTF-8'><meta name='viewport' content='width=device-width, initial-scale=1.0'>"
@@ -1612,6 +1623,7 @@ int main() {
                << "<div class='f-group'><label>👤 اسم العميل أو المشروع:</label><input type='text' name='client_name' required placeholder='اكتب اسم العميل هنا'></div>"
                << "<div class='f-group'><label>📝 ملاحظات هندسية:</label><input type='text' name='notes' placeholder='ملاحظات خاصة بالموقع'></div>"
                << "<input type='hidden' name='report_summary' value='" << report_summary << "'>"
+               << "<input type='hidden' name='details_html' value=\"" << html_escape(details_stream.str()) << "\">"
                << "<button type='submit' class='btn-save'>💾 اعتماد الحفظ باسم العميل</button>"
                << "</form></div>";
         } else {
@@ -1632,13 +1644,16 @@ int main() {
         res.set_content(os.str(), "text/html; charset=utf-8");
     });
 
+    // 4. حفظ التقرير مع تفاصيل البضاعة المعروضة عند النقر
     svr.Post("/api/save-report", [](const httplib::Request& req, httplib::Response& res) {
         string user = get_session_user(req);
         if (user.empty()) { res.set_redirect("/login"); return; }
         SavedReport rep;
+        rep.id = generate_nonce();
         rep.client_name = html_escape(req.get_param_value("client_name"));
         rep.notes = html_escape(req.get_param_value("notes"));
         rep.summary = html_escape(req.get_param_value("report_summary"));
+        rep.details_html = req.get_param_value("details_html");
         
         if (!rep.summary.empty() && users_db.find(user) != users_db.end()) {
             users_db[user].saved_reports.push_back(rep);
@@ -1647,6 +1662,19 @@ int main() {
         res.set_redirect("/my-reports");
     });
 
+    // مسار حذف تقرير محدد
+    svr.Get(R"(/api/delete-report/([a-zA-Z0-9\-]+))", [](const httplib::Request& req, httplib::Response& res) {
+        string user = get_session_user(req);
+        if (user.empty()) { res.set_redirect("/login"); return; }
+        string rep_id = req.matches[1].str();
+        if (users_db.find(user) != users_db.end()) {
+            auto& reports = users_db[user].saved_reports;
+            reports.erase(remove_if(reports.begin(), reports.end(), [&](const SavedReport& r){ return r.id == rep_id; }), reports.end());
+        }
+        res.set_redirect("/my-reports");
+    });
+
+    // 4. صفحة التقارير المحفوظة مع إمكانية النقر لعرض البضاعة، زر الطباعة، وزر الحذف
     svr.Get("/my-reports", [](const httplib::Request& req, httplib::Response& res) {
         string user = get_session_user(req);
         if (user.empty()) { res.set_redirect("/login"); return; }
@@ -1655,10 +1683,21 @@ int main() {
         ostringstream r_list;
         if (users_db.find(user) != users_db.end() && !users_db[user].saved_reports.empty()) {
             for (const auto& rep : users_db[user].saved_reports) {
-                r_list << "<div style='background:var(--bg); border:1px solid var(--border); padding:15px; border-radius:10px; margin-bottom:12px; font-weight:600;'>"
-                       << "<b>👤 اسم العميل:</b> <span style='color:var(--accent);'>" << rep.client_name << "</span><br>"
-                       << "<b>📌 تفاصيل المقايسة:</b> " << rep.summary << "<br>"
-                       << "<b>📝 ملاحظات الموقع:</b> " << (rep.notes.empty() ? "لا توجد" : rep.notes)
+                r_list << "<div style='background:var(--bg); border:1px solid var(--border); padding:20px; border-radius:12px; margin-bottom:15px;'>"
+                       << "<div style='display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;'>"
+                       << "  <div>"
+                       << "    <b>👤 اسم العميل:</b> <a href='javascript:void(0);' onclick='toggleDetails(\"" << rep.id << "\")' style='color:var(--accent); font-size:1.1rem; text-decoration:underline; font-weight:bold;'>" << rep.client_name << " (اضغط للعرض)</a><br>"
+                       << "    <b>📌 تفاصيل المقايسة:</b> " << rep.summary << "<br>"
+                       << "    <b>📝 ملاحظات الموقع:</b> " << (rep.notes.empty() ? "لا توجد" : rep.notes)
+                       << "  </div>"
+                       << "  <div style='display:flex; gap:10px;'>"
+                       << "    <button onclick='printReport(\"rep-" << rep.id << "\")' class='btn-print' style='padding:8px 15px; font-size:0.9rem;'>🖨️ طباعة</button>"
+                       << "    <a href='/api/delete-report/" << rep.id << "' class='btn-action' style='background:#ef4444; padding:8px 15px; font-size:0.9rem;'>🗑️ حذف</a>"
+                       << "  </div>"
+                       << "</div>"
+                       << "<div id='rep-" << rep.id << "' style='display:none; margin-top:15px; border-top:1px dashed var(--border); padding-top:15px;'>"
+                       <<   rep.details_html
+                       << "</div>"
                        << "</div>";
             }
         } else {
@@ -1668,17 +1707,31 @@ int main() {
         string meta = get_seo_meta("التقارير المحفوظة", "سجل المقايسات الهندسية المحفوظة للعملاء.");
         string html = "<html><head><meta charset='UTF-8'><meta name='viewport' content='width=device-width, initial-scale=1.0'>"
                       "<link href='https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&family=JetBrains+Mono:wght@500;600&display=swap' rel='stylesheet'>"
+                      "<script src='https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js'></script>"
                       + meta + get_modern_blue_css() + "</head><body>"
                       + get_navbar_html(user) +
-                      "<div class='container' style='max-width:700px;'>"
+                      "<div class='container' style='max-width:800px;'>"
                       "<div class='card'><h2>📂 سجل تقارير العُملاء المحفوظة</h2>"
-                      "<div class='sub-title'>هنا تجد كافة مقايسات الأببار المسجلة بأسماء عملائك:</div>"
+                      "<div class='sub-title'>اضغط على اسم العميل لعرض تفاصيل البضاعة والمقايسة، أو استخدم أزرار الطباعة والحذف:</div>"
                       + r_list.str() +
                       "<div class='actions' style='margin-top:25px;'><a class='btn-secondary' href='/calculator'>🛗 حاسبة مقاسات جديدة</a></div>"
                       "</div></div>"
                       "<div class='footer'>منصة ضربة شاكوش الفنية © 2026 - إنشاء محمد الشعراوي</div>"
-                      + get_theme_script(nonce) +
-                      "</body></html>";
+                      "<script nonce='" + nonce + "'>"
+                      "function toggleDetails(id) {"
+                      "  var el = document.getElementById('rep-' + id);"
+                      "  if (el.style.display === 'none') { el.style.display = 'block'; } else { el.style.display = 'none'; }"
+                      "}"
+                      "function printReport(containerId) {"
+                      "  var el = document.getElementById(containerId);"
+                      "  var wasHidden = el.style.display === 'none';"
+                      "  if (wasHidden) { el.style.display = 'block'; }"
+                      "  html2pdf().set({margin:0.3, filename:'Customer_Report.pdf', image:{type:'jpeg', quality:1}, html2canvas:{scale:2}}).from(el).save().then(() => {"
+                      "    if (wasHidden) { el.style.display = 'none'; }"
+                      "  });"
+                      "}"
+                      "</script>"
+                      + get_theme_script(nonce) + "</body></html>";
         res.set_content(html, "text/html; charset=utf-8");
     });
 
