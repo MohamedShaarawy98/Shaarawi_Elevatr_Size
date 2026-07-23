@@ -134,20 +134,35 @@ struct Partner {
 
 static vector<Partner> get_partners() {
     return {
+        //                        =======================    الشركات والمؤسست   ================================== 
         { "    شركة اتحاد الجزيرة العربية المحدودة", "company", "0561269547", "https://uaj.sa/", "https://maps.app.goo.gl/taidnqUMC85uGkFo6?g_st=awb", "جدة", "متخصصة في توريد وتركيب وصيانة المصاعد الكهربائية والسلالم المتحركة + قسم فاير متكامل.", "", true, false },
         { "شركة نور الفردوس", "company", "0569041073", "", "", "الرياض", "متخصصة في تركيب جميع  براندات المصاعد والسلالم المتحركة.", "", false, false },
-        { "م/ أبو أسامة", "contractor", "0562936595", "", "", "جدة", "مقاول تركيبات .", "⭐⭐⭐⭐⭐", false, false },
-        { "م/ أبو عبده", "contractor", "0556345642", "", "", "جدة", "مقاول تركيبات .", "⭐⭐⭐⭐⭐", false, false },
-        { "م/ علاء الطوخي", "contractor", "056532176", "", "", "جدة", "مقاول تركيبات .", "⭐⭐⭐⭐⭐", false, false },
-        { "م/ ضياء البخمي", "contractor", "0562417042", "", "", "جدة", "مقاول تركيبات .", "⭐⭐⭐⭐⭐", false, false },
+
+
+//                        =======================   المقاولين  ================================== 
+
+        { "م/ أبو أسامة", "contractor", "00966562936595", "", "", "جدة", "مقاول تركيبات .", "⭐⭐⭐⭐⭐", false, false },
+        { "م/ أبو عبده", "contractor", "00966556345642", "", "", "جدة", "مقاول تركيبات .", "⭐⭐⭐⭐⭐", false, false },
+        { "م/ علاء الطوخي", "contractor", "0096656532176", "", "", "جدة", "مقاول تركيبات .", "⭐⭐⭐⭐⭐", false, false },
+        { "م/ ضياء البخمي", "contractor", "00966562417042", "", "", "جدة", "مقاول تركيبات .", "⭐⭐⭐⭐⭐", false, false },
         { "اضف اسمك هنا", "contractor", "00966564406565", "", "", "جدة", "احجز مكانك في قائمة المقاولين المتميزين.", "", false, true },
+
+        //                        =======================   المصانع ================================== 
+
         { "اضف اسم مصنع الكباين هنا", "cabins", "00966564406565", "", "", "", "مكان مخصص لمصانع الكباين.", "", false, true },
-        { "محمد جان (دباب)", "transport", "0563446438", "", "", "جدة - عسفان", "خدمات النقل والتوصيل (دباب).", "", false, false },
-        { "خدمات دباب وديانا", "transport", "0557128719", "", "", "الرياض", "خدمات النقل والتوصيل.", "", false, false },
+
+        //                        =======================   وسائل النقل    ================================== 
+
+        { "محمد جان (دباب)", "transport", "00966563446438", "", "", "جدة - عسفان", "خدمات النقل والتوصيل (دباب).", "", false, false },
+        { "خدمات دباب وديانا", "transport", "00966557128719", "", "", "الرياض", "خدمات النقل والتوصيل.", "", false, false },
         { "اضف اسمك هنا (دباب / ديانا)", "transport", "00966564406565", "", "", "جدة", "موقع مخصص لخدمات النقل.", "", false, true },
-        { "عمال باليومية", "labor", "0563032163", "", "", "جدة", "عمالة جاهزة للتركيبات اليومية.", "", false, false },
-        { "تفتيح سقف للويرات", "labor", "0597526747", "", "", "جدة", "متخصصون في تفتيح وتجهيز أسقف البئر للويرات.", "", false, false },
-        { "عمال لجميع الأعمال", "labor", "0540972304", "", "", "الرياض", "عمالة مدربة لكافة الأعمال الميدانية.", "", false, false },
+
+
+     //                        =======================   عمالة يومية   ================================== 
+
+        { "عمال باليومية", "labor", "00966563032163", "", "", "جدة", "عمالة جاهزة للتركيبات اليومية.", "", false, false },
+        { "تفتيح سقف للويرات", "labor", "00966597526747", "", "", "جدة", "متخصصون في تفتيح وتجهيز أسقف البئر للويرات.", "", false, false },
+        { "عمال لجميع الأعمال", "labor", "00966540972304", "", "", "الرياض", "عمالة مدربة لكافة الأعمال الميدانية.", "", false, false },
         { "اضف اسمك هنا (عمالة يومية)", "labor", "00966564406565", "", "", "السعودية", "موقع مخصص لإعلانات العمالة.", "", false, true }
     };
 }
@@ -927,13 +942,13 @@ int main() {
                       "<div style='text-align:center; color:var(--text-muted); font-size:0.9rem; margin-bottom:25px;'>أنشئ حسابك لتوثيق مقاييسك والاحتفاظ بسجل أعمالك</div>"
                       + alert_box +
                       "<form action='/api/register' method='post'>"
-                      "<div class='f-group'><label>1- الاسم الأول:</label><input type='text' name='first_name' value='" + fn + "' required placeholder='أدخل الاسم الأول'></div>"
-                      "<div class='f-group'><label>2- الاسم الأخير:</label><input type='text' name='last_name' value='" + ln + "' required placeholder='أدخل الاسم الأخير'></div>"
+                      "<div class='f-group'><label>1- الاسم الأول:</label><input type='text' name='first_name' value='" + fn + "' required placeholder='أدخل اسمك'></div>"
+                      "<div class='f-group'><label>2- الاسم الأخير:</label><input type='text' name='last_name' value='" + ln + "' required placeholder='أدخل العائلة '></div>"
                       "<div class='f-group'><label>3- اسم المستخدم (بالإنجليزية بدون مسافات):</label><input type='text' name='username' value='" + un + "' required pattern='[a-zA-Z0-9_]+' placeholder='username'></div>"
                       "<div class='f-group'><label>4- البريد الإلكتروني الحقيقي:</label><input type='email' name='email' value='" + em + "' required placeholder='example@domain.com'></div>"
                       "<div class='f-group'><label>5- كلمة السر:</label><input type='password' name='password' required placeholder='أدخل كلمة المرور'></div>"
                       "<div class='f-group'><label>6- إعادة كتابة كلمة السر:</label><input type='password' name='confirm_password' required placeholder='أعد كتابة كلمة المرور'></div>"
-                      "<button type='submit' style='margin-top:10px;'>✨ إنشاء الحساب وإرسال الرمز</button></form>"
+                      "<button type='submit' style='margin-top:10px;'> إنشاء الحساب</button></form>"
                       "<div style='text-align:center; margin-top:20px;'><a href='/login' style='color:var(--accent); font-weight:600;'>لديك حساب بالفعل؟ تسجيل الدخول</a></div>"
                       "</div></div><div class='footer'>منصة ضربة شاكوش الفنية © 2026 - إنشاء محمد الشعراوي</div>"
                       + get_theme_script(nonce) + "</body></html>";
@@ -1002,7 +1017,7 @@ int main() {
                       "<form action='/api/verify-otp' method='post'>"
                       "<input type='hidden' name='username' value='" + username + "'>"
                       "<div class='f-group'><input type='text' name='otp' required maxlength='6' placeholder='أدخل الرمز هنا' style='text-align:center; font-size:1.4rem; letter-spacing:4px; font-weight:bold;'></div>"
-                      "<button type='submit'>✅ تفعيل الحساب نهائياً</button>"
+                      "<button type='submit'>✅ تفعيل الحساب </button>"
                       "</form></div></div>"
                       "<div class='footer'>منصة ضربة شاكوش الفنية © 2026 - إنشاء محمد الشعراوي</div>"
                       + get_theme_script(nonce) + "</body></html>";
@@ -1026,8 +1041,8 @@ int main() {
                           "<div class='container' style='max-width:550px; text-align:center;'>"
                           "<div class='card' style='border-color:#16a34a;'>"
                           "<h2 style='color:#16a34a;'>🎉 أهلاً وسهلاً بك يا بشمهندس " + users_db[username].first_name + " " + users_db[username].last_name + "!</h2>"
-                          "<p style='color:var(--text); font-size:1.1rem; line-height:1.8; margin-bottom:25px;'>نورت منصة ضربة شاكوش الرقمية. تم تفعيل حسابك وحفظ بياناتك بنجاح تام، وأصبحت جاهزاً لحفظ تقاريرك الهندسية باسم عملائك.</p>"
-                          "<a class='btn-secondary' href='/calculator' style='background:linear-gradient(135deg, #16a34a, #15803d); display:block; padding:15px;'>🛗 ابدأ العمل على الحاسبة الهندسية</a>"
+                          "<p style='color:var(--text); font-size:1.1rem; line-height:1.8; margin-bottom:25px;'>نورت منصة ضربة شاكوش . تم تفعيل حسابك ، وأصبحت جاهزاً لحفظ تقاريرك  باسم عملائك.</p>"
+                          "<a class='btn-secondary' href='/calculator' style='background:linear-gradient(135deg, #16a34a, #15803d); display:block; padding:15px;'>🛗 ابدأ العمل على الحاسبة الذكية</a>"
                           "</div></div>"
                           "<div class='footer'>منصة ضربة شاكوش الفنية © 2026 - إنشاء محمد الشعراوي</div>"
                           + get_theme_script(nonce) + "</body></html>";
@@ -1041,7 +1056,7 @@ int main() {
                           "<div class='container' style='max-width:500px; text-align:center;'><div class='card' style='border-color:#ef4444;'>"
                           "<h2 style='color:#ef4444;'>❌ رمز التحقق غير صحيح</h2>"
                           "<p style='color:var(--text-muted); margin-bottom:20px;'>الرمز غير مطابق، يرجى المحاولة مرة أخرى.</p>"
-                          "<a class='btn-secondary' href='/register'>🔄 العودة للوراء</a>"
+                          "<a class='btn-secondary' href='/register'> العودة للخلف</a>"
                           "</div></div></body></html>";
             res.set_content(html, "text/html; charset=utf-8");
         }
@@ -1067,12 +1082,12 @@ int main() {
                       + get_navbar_html() +
                       "<div class='container'>"
                       "<div class='auth-card'>"
-                      "<h2 style='text-align:center; color:var(--accent);'>🔑 تسجيل الدخول</h2>"
+                      "<h2 style='text-align:center; color:var(--accent);'> تسجيل الدخول</h2>"
                       "<div class='sub-title' style='text-align:center;'>أهلاً بك مجدداً في بيئتك الهندسية</div>"
                       "<form action='/api/login' method='post'>"
                       "<div class='login-grid'>"
                       "  <div class='f-group'><label>👤 اسم المستخدم:</label><input type='text' name='username' required placeholder='username'></div>"
-                      "  <div class='f-group pass-container'><label>🔒 كلمة المرور:</label><input type='password' id='passInput' name='password' required placeholder='••••••••'><button type='button' class='toggle-pass' onclick='togglePassword()'>👁️</button></div>"
+                      "  <div class='f-group pass-container'><label>كلمة المرور:</label><input type='password' id='passInput' name='password' required placeholder='••••••••'><button type='button' class='toggle-pass' onclick='togglePassword()'>👁️</button></div>"
                       "</div>"
                       "<button type='submit' style='margin-top:10px;'>➡️ دخول للحساب</button>"
                       "</form>"
@@ -1105,7 +1120,7 @@ int main() {
                               "<div class='container' style='max-width:500px; text-align:center;'><div class='card' style='border-color:#f59e0b;'>"
                               "<h2 style='color:#f59e0b;'>⚠️ الحساب غير مفعل</h2>"
                               "<p style='color:var(--text-muted); margin-bottom:20px;'>يرجى تفعيل حسابك أولاً بالرمز المرسل على إيميلك.</p>"
-                              "<a class='btn-secondary' href='/login'>🔄 العودة لتسجيل الدخول</a>"
+                              "<a class='btn-secondary' href='/login'> العودة لتسجيل الدخول</a>"
                               "</div></div></body></html>";
                 res.set_content(html, "text/html; charset=utf-8");
                 return;
@@ -1140,7 +1155,7 @@ int main() {
                       "<div class='container'>"
                       "<div class='auth-card'>"
                       "<h2 style='text-align:center; color:var(--accent-2);'>🔓 استعادة كلمة المرور</h2>"
-                      "<div class='sub-title' style='text-align:center;'>أدخل البريد الإلكتروني المسجل، وسنرسل لك تعليمات استعادة الحساب بأمان:</div>"
+                      "<div class='sub-title' style='text-align:center;'>أدخل البريد الإلكتروني المسجل، وسنرسل لك رسالة لاستعادة الحساب بأمان:</div>"
                       "<form action='/api/forgot-password' method='post'>"
                       "<div class='f-group'><label>📧 البريد الإلكتروني:</label><input type='email' name='email' required placeholder='example@domain.com'></div>"
                       "<button type='submit' style='background:linear-gradient(135deg, #f59e0b, #d97706); margin-top:10px;'>📤 إرسال تعليمات الاستعادة</button>"
@@ -1164,7 +1179,7 @@ int main() {
             }
         }
 
-        string msg = found ? "تم إرسال رابط ورسالة استعادة كلمة المرور إلى بريدك الإلكتروني بنجاح. يرجى تفقد صندوق الوارد." : "عفواً، هذا البريد الإلكتروني غير مسجل لدينا في النظام.";
+        string msg = found ? "تم إرسال رابط ورسالة استعادة كلمة المرور إلى بريدك الإلكتروني بنجاح." : "عفواً، هذا البريد الإلكتروني غير مسجل مسبقا  .";
         string color = found ? "#16a34a" : "#ef4444";
 
         string html = "<html><head><meta charset='UTF-8'><meta name='viewport' content='width=device-width, initial-scale=1.0'>"
@@ -1247,7 +1262,7 @@ int main() {
                + meta + get_modern_blue_css() + "</head><body>"
                + get_navbar_html(current_user) +
                "<div class='container'>"
-               "<div class='section-intro'><h1>" + title + "</h1><p>قائمة معتمدة ومحدثة خصيصاً لخدمة مهندسي وفنيي ومقاولين قطاع المصاعد.</p></div>"
+               "<div class='section-intro'><h1>" + title + "</h1><p>قائمة محدثة خصيصاً لخدمة مهندسي وفنيي ومقاولين قطاع المصاعد.</p></div>"
                + featured_content.str() +
                "<div class='grid-cards'>" + content.str() + "</div>"
                "<div class='actions' style='margin-top:40px;'><a class='btn-secondary' href='/contact'>➕ اطلب إدراج اسمك أو شركتك معنا</a></div>"
