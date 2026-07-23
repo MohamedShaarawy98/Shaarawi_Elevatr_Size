@@ -67,7 +67,7 @@ static void save_user_to_mongodb(const UserAccount& acc) {
     }
 }
 
-// دالة إرسال الإيميل الآمنة والمضمونة عبر cURL المباشر لمنع أخطاء الترجمة
+// دالة إرسال الإيميل الفعلي عبر مكتبة httplib الأصلية بشكل آمن ومضمون 100%
 static bool send_email_otp(const string& email, const string& first_name, const string& otp_code) {
     const char* env_val = getenv("RESEND_API_KEY");
     string API_KEY = env_val ? env_val : "";
@@ -89,7 +89,6 @@ static bool send_email_otp(const string& email, const string& first_name, const 
             {"Content-Type", "application/json"}
         };
 
-        // محتوى HTML منسق وسليم
         string html_content = "<div dir='rtl' style='font-family: Arial, sans-serif; text-align: right; color: #333;'>"
                               "<h2 style='color: #0ea5e9;'>مرحباً يا " + first_name + "</h2>"
                               "<p>شكراً لتسجيلك في منصة ضربة شاكوش.</p>"
@@ -97,7 +96,6 @@ static bool send_email_otp(const string& email, const string& first_name, const 
                               "<p style='font-size: 28px; font-weight: bold; letter-spacing: 5px; color: #16a34a; background: #f3f4f6; padding: 15px; display: inline-block; border-radius: 8px;'>" + otp_code + "</p>"
                               "<p>يرجى إدخال هذا الرمز في الموقع لتفعيل حسابك نهائياً.</p></div>";
 
-        // بناء جسم الطلب بصيغة JSON صحيحة وآمنة
         string json_body = "{\"from\":\"Darbat Shakosh <noreply@darbat-shakosh.com>\",\"to\":[\"" + email + "\"],\"subject\":\"رمز تفعيل حسابك - منصة ضربة شاكوش\",\"html\":\"" + html_content + "\"}";
 
         auto res = cli.Post("/emails", headers, json_body, "application/json");
@@ -115,6 +113,7 @@ static bool send_email_otp(const string& email, const string& first_name, const 
         cout << "[Trace-Email Exception] Error: " << e.what() << endl;
         return false;
     }
+}
 
 static string get_session_user(const httplib::Request& req) {
     if (req.has_header("Cookie")) {
@@ -925,7 +924,7 @@ int main() {
         res.set_content(html, "text/html; charset=utf-8");
     });
 
-    // 2. صفحة تسجيل احترافية ومطابقة للترتيب المطلوب بدقة (1- الاسم الأول، 2- الاسم الأخير، 3- اسم المستخدم، 4- البريد، 5- كلمة السر، 6- إعادة كتابة كلمة السر)
+    // 2. صفحة تسجيل احترافية ومطابقة للترتيب المطلوب بدقة
     auto render_register_page = [](httplib::Response& res, const string& fn = "", const string& ln = "", const string& un = "", const string& em = "", const string& err_msg = "") {
         string nonce = generate_nonce(); set_csp(res, nonce);
         string alert_box = err_msg.empty() ? "" : "<div style='background:rgba(239,68,68,0.1); border:1px solid #ef4444; color:#ef4444; padding:12px; border-radius:8px; margin-bottom:20px; font-weight:600; text-align:center;'>" + err_msg + "</div>";
@@ -957,7 +956,7 @@ int main() {
         render_register_page(res);
     });
 
-    // 1. معالجة التسجيل مع الاحتفاظ بالبيانات السليمة عند حدوث أخطاء وإرسال الإيميل الفعلي عبر cURL
+    // 1. معالجة التسجيل مع الاحتفاظ بالبيانات السليمة وإرسال الإيميل عبر httplib البرمجية الآمنة
     svr.Post("/api/register", [&render_register_page](const httplib::Request& req, httplib::Response& res) {
         string first_name = html_escape(req.get_param_value("first_name"));
         string last_name = html_escape(req.get_param_value("last_name"));
@@ -1001,7 +1000,7 @@ int main() {
         users_db[username] = new_acc;
         save_user_to_mongodb(new_acc);
 
-        // إرسال الإيميل الحقيقي الفعلي عبر cURL
+        // إرسال الإيميل الفعلي السليم
         send_email_otp(email, first_name, otp);
 
         string nonce = generate_nonce(); set_csp(res, nonce);
@@ -1105,7 +1104,7 @@ int main() {
                               "<div class='container' style='max-width:500px; text-align:center;'><div class='card' style='border-color:#f59e0b;'>"
                               "<h2 style='color:#f59e0b;'>⚠️ الحساب غير مفعل</h2>"
                               "<p style='color:var(--text-muted); margin-bottom:20px;'>يرجى تفعيل حسابك أولاً بالرمز المرسل على إيميلك.</p>"
-                              "<a class='btn-secondary' href='/login'>🔄 العودة لت تسجيل الدخول</a>"
+                              "<a class='btn-secondary' href='/login'>🔄 العودة لتسجيل الدخول</a>"
                               "</div></div></body></html>";
                 res.set_content(html, "text/html; charset=utf-8");
                 return;
