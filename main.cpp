@@ -1,12 +1,3 @@
-/*                  < وَأَن لَّيسَ لِلإِنسَانِ إِلاَّ مَا سَعَى * وَأَنَّ سَعْيَهُ سَوْفَ يُرَى * ثُمَّ يُجْزَاهُ الْجَزَاء الأَوْفَى >
-
-                               ============================================================
-                               =                                                          =
-                               =                منصة ضربة شاكوش الرقمية                  =
-                               =                                                          =
-                               ============================================================
-  */     
-
 #define CPPHTTPLIB_OPENSSL_SUPPORT
 
 #include "httplib.h"
@@ -134,32 +125,17 @@ struct Partner {
 
 static vector<Partner> get_partners() {
     return {
-        //                        =======================    الشركات والمؤسست   ================================== 
         { "    شركة اتحاد الجزيرة العربية المحدودة", "company", "0561269547", "https://uaj.sa/", "https://maps.app.goo.gl/taidnqUMC85uGkFo6?g_st=awb", "جدة", "متخصصة في توريد وتركيب وصيانة المصاعد الكهربائية والسلالم المتحركة + قسم فاير متكامل.", "", true, false },
         { "شركة نور الفردوس", "company", "0569041073", "", "", "الرياض", "متخصصة في تركيب جميع  براندات المصاعد والسلالم المتحركة.", "", false, false },
-
-
-//                        =======================   المقاولين  ================================== 
-
         { "م/ أبو أسامة", "contractor", "00966562936595", "", "", "جدة", "مقاول تركيبات .", "⭐⭐⭐⭐⭐", false, false },
         { "م/ أبو عبده", "contractor", "00966556345642", "", "", "جدة", "مقاول تركيبات .", "⭐⭐⭐⭐⭐", false, false },
         { "م/ علاء الطوخي", "contractor", "0096656532176", "", "", "جدة", "مقاول تركيبات .", "⭐⭐⭐⭐⭐", false, false },
         { "م/ ضياء البخمي", "contractor", "00966562417042", "", "", "جدة", "مقاول تركيبات .", "⭐⭐⭐⭐⭐", false, false },
         { "اضف اسمك هنا", "contractor", "00966564406565", "", "", "جدة", "احجز مكانك في قائمة المقاولين المتميزين.", "", false, true },
-
-        //                        =======================   المصانع ================================== 
-
         { "اضف اسم مصنع الكباين هنا", "cabins", "00966564406565", "", "", "", "مكان مخصص لمصانع الكباين.", "", false, true },
-
-        //                        =======================   وسائل النقل    ================================== 
-
         { "محمد جان (دباب)", "transport", "00966563446438", "", "", "جدة - عسفان", "خدمات النقل والتوصيل (دباب).", "", false, false },
         { "خدمات دباب وديانا", "transport", "00966557128719", "", "", "الرياض", "خدمات النقل والتوصيل.", "", false, false },
         { "اضف اسمك هنا (دباب / ديانا)", "transport", "00966564406565", "", "", "جدة", "موقع مخصص لخدمات النقل.", "", false, true },
-
-
-     //                        =======================   عمالة يومية   ================================== 
-
         { "عمال باليومية", "labor", "00966563032163", "", "", "جدة", "عمالة جاهزة للتركيبات اليومية.", "", false, false },
         { "تفتيح سقف للويرات", "labor", "00966597526747", "", "", "جدة", "متخصصون في تفتيح وتجهيز أسقف البئر للويرات.", "", false, false },
         { "عمال لجميع الأعمال", "labor", "00966540972304", "", "", "الرياض", "عمالة مدربة لكافة الأعمال الميدانية.", "", false, false },
@@ -720,7 +696,6 @@ static string get_modern_blue_css() {
            
            "body.light-mode .theme-sun, body:not(.light-mode) .theme-moon { display:none; }"
            
-           /* تحسين زر الوضع الليلي والنهار بتصميم عصري وأيقونة دائرية جذابة */
            "#themeBtn{width:40px; height:40px; border-radius:50%; background:var(--surface-2); border:1px solid var(--border); color:var(--accent); display:flex; align-items:center; justify-content:center; cursor:pointer; transition:0.3s; box-shadow:0 2px 5px rgba(0,0,0,0.2);}"
            "#themeBtn:hover{background:var(--accent); color:#fff; transform:scale(1.08);}"
            "#themeBtn svg{width:20px; height:20px;}"
@@ -930,25 +905,36 @@ int main() {
         res.set_content(html, "text/html; charset=utf-8");
     });
 
+    // صفحة إنشاء الحساب بخانات جنب بعضها وترتيب الحقول المطلوب
     auto render_register_page = [](httplib::Response& res, const string& fn = "", const string& ln = "", const string& un = "", const string& em = "", const string& err_msg = "") {
         string nonce = generate_nonce(); set_csp(res, nonce);
         string alert_box = err_msg.empty() ? "" : "<div style='background:rgba(239,68,68,0.1); border:1px solid #ef4444; color:#ef4444; padding:12px; border-radius:8px; margin-bottom:20px; font-weight:600; text-align:center;'>" + err_msg + "</div>";
         string html = "<html><head><meta charset='UTF-8'><meta name='viewport' content='width=device-width, initial-scale=1.0'>"
                       "<link href='https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap' rel='stylesheet'>"
                       + get_modern_blue_css() + 
-                      "<style>.auth-card{max-width:550px; margin:20px auto; background:var(--surface); border:1px solid var(--border); padding:35px; border-radius:20px; box-shadow:0 15px 35px rgba(0,0,0,0.25);}</style></head><body>"
+                      "<style>"
+                      ".auth-card{max-width:650px; margin:20px auto; background:var(--surface); border:1px solid var(--border); padding:40px; border-radius:20px; box-shadow:0 15px 35px rgba(0,0,0,0.25);}"
+                      ".reg-grid{display:grid; grid-template-columns:1fr 1fr; gap:20px;}"
+                      "@media(max-width:600px){.reg-grid{grid-template-columns:1fr; gap:0;}}"
+                      "</style></head><body>"
                       + get_navbar_html() + "<div class='container'><div class='auth-card'>"
                       "<h2 style='text-align:center; color:var(--accent); margin-bottom:5px;'>✨ انضم إلى نخبة المهندسين</h2>"
                       "<div style='text-align:center; color:var(--text-muted); font-size:0.9rem; margin-bottom:25px;'>أنشئ حسابك لتوثيق مقاييسك والاحتفاظ بسجل أعمالك</div>"
                       + alert_box +
                       "<form action='/api/register' method='post'>"
-                      "<div class='f-group'><label>1- الاسم الأول:</label><input type='text' name='first_name' value='" + fn + "' required placeholder='اسمك'></div>"
-                      "<div class='f-group'><label>2- الاسم الأخير:</label><input type='text' name='last_name' value='" + ln + "' required placeholder='اسم العائلة '></div>"
-                      "<div class='f-group'><label>3- اسم المستخدم (بالإنجليزية بدون مسافات):</label><input type='text' name='username' value='" + un + "' required pattern='[a-zA-Z0-9_]+' placeholder='username'></div>"
-                      "<div class='f-group'><label>4- البريد الإلكتروني الحقيقي:</label><input type='email' name='email' value='" + em + "' required placeholder='example@domain.com'></div>"
-                      "<div class='f-group'><label>5- كلمة السر:</label><input type='password' name='password' required placeholder='أدخل كلمة المرور'></div>"
-                      "<div class='f-group'><label>6- إعادة كتابة كلمة السر:</label><input type='password' name='confirm_password' required placeholder='أعد كتابة كلمة المرور'></div>"
-                      "<button type='submit' style='margin-top:10px;'> إنشاء الحساب</button></form>"
+                      "<div class='reg-grid'>"
+                      "  <div class='f-group'><label>1- الاسم الأول:</label><input type='text' name='first_name' value='" + fn + "' required placeholder='اسمك'></div>"
+                      "  <div class='f-group'><label>2- الاسم الأخير:</label><input type='text' name='last_name' value='" + ln + "' required placeholder='اسم العائلة'></div>"
+                      "</div>"
+                      "<div class='reg-grid'>"
+                      "  <div class='f-group'><label>3- اسم المستخدم:</label><input type='text' name='username' value='" + un + "' required pattern='[a-zA-Z0-9_]+' placeholder='username'></div>"
+                      "  <div class='f-group'><label>4- البريد الإلكتروني:</label><input type='email' name='email' value='" + em + "' required placeholder='example@domain.com'></div>"
+                      "</div>"
+                      "<div class='reg-grid'>"
+                      "  <div class='f-group'><label>5- كلمة السر:</label><input type='password' name='password' required placeholder='••••••••'></div>"
+                      "  <div class='f-group'><label>6- إعادة كلمة السر:</label><input type='password' name='confirm_password' required placeholder='••••••••'></div>"
+                      "</div>"
+                      "<button type='submit' style='margin-top:10px;'>إنشاء الحساب</button></form>"
                       "<div style='text-align:center; margin-top:20px;'><a href='/login' style='color:var(--accent); font-weight:600;'>لديك حساب بالفعل؟ تسجيل الدخول</a></div>"
                       "</div></div><div class='footer'>منصة ضربة شاكوش الفنية © 2026 - إنشاء محمد الشعراوي</div>"
                       + get_theme_script(nonce) + "</body></html>";
@@ -1017,7 +1003,7 @@ int main() {
                       "<form action='/api/verify-otp' method='post'>"
                       "<input type='hidden' name='username' value='" + username + "'>"
                       "<div class='f-group'><input type='text' name='otp' required maxlength='6' placeholder='أدخل الرمز هنا' style='text-align:center; font-size:1.4rem; letter-spacing:4px; font-weight:bold;'></div>"
-                      "<button type='submit'>✅ تفعيل الحساب </button>"
+                      "<button type='submit'>✅ تفعيل الحساب</button>"
                       "</form></div></div>"
                       "<div class='footer'>منصة ضربة شاكوش الفنية © 2026 - إنشاء محمد الشعراوي</div>"
                       + get_theme_script(nonce) + "</body></html>";
@@ -1041,7 +1027,7 @@ int main() {
                           "<div class='container' style='max-width:550px; text-align:center;'>"
                           "<div class='card' style='border-color:#16a34a;'>"
                           "<h2 style='color:#16a34a;'>🎉 أهلاً وسهلاً بك يا بشمهندس " + users_db[username].first_name + " " + users_db[username].last_name + "!</h2>"
-                          "<p style='color:var(--text); font-size:1.1rem; line-height:1.8; margin-bottom:25px;'>نورت منصة ضربة شاكوش . تم تفعيل حسابك ، وأصبحت جاهزاً لحفظ تقاريرك  باسم عملائك.</p>"
+                          "<p style='color:var(--text); font-size:1.1rem; line-height:1.8; margin-bottom:25px;'>نورت منصة ضربة شاكوش. تم تفعيل حسابك، وأصبحت جاهزاً لحفظ تقاريرك باسم عملائك.</p>"
                           "<a class='btn-secondary' href='/calculator' style='background:linear-gradient(135deg, #16a34a, #15803d); display:block; padding:15px;'>🛗 ابدأ العمل على الحاسبة الذكية</a>"
                           "</div></div>"
                           "<div class='footer'>منصة ضربة شاكوش الفنية © 2026 - إنشاء محمد الشعراوي</div>"
@@ -1056,13 +1042,12 @@ int main() {
                           "<div class='container' style='max-width:500px; text-align:center;'><div class='card' style='border-color:#ef4444;'>"
                           "<h2 style='color:#ef4444;'>❌ رمز التحقق غير صحيح</h2>"
                           "<p style='color:var(--text-muted); margin-bottom:20px;'>الرمز غير مطابق، يرجى المحاولة مرة أخرى.</p>"
-                          "<a class='btn-secondary' href='/register'> العودة للخلف</a>"
+                          "<a class='btn-secondary' href='/register'>العودة للخلف</a>"
                           "</div></div></body></html>";
             res.set_content(html, "text/html; charset=utf-8");
         }
     });
 
-    // 1 & 3. صفحة تسجيل الدخول مع خانات بجانب بعضها وزر إظهار كلمة السر (أيقونة العين)
     svr.Get("/login", [](const httplib::Request& req, httplib::Response& res) {
         string user = get_session_user(req);
         if (!user.empty()) { res.set_redirect("/"); return; }
@@ -1082,7 +1067,7 @@ int main() {
                       + get_navbar_html() +
                       "<div class='container'>"
                       "<div class='auth-card'>"
-                      "<h2 style='text-align:center; color:var(--accent);'> تسجيل الدخول</h2>"
+                      "<h2 style='text-align:center; color:var(--accent);'>تسجيل الدخول</h2>"
                       "<div class='sub-title' style='text-align:center;'>أهلاً بك مجدداً في بيئتك الهندسية</div>"
                       "<form action='/api/login' method='post'>"
                       "<div class='login-grid'>"
@@ -1120,7 +1105,7 @@ int main() {
                               "<div class='container' style='max-width:500px; text-align:center;'><div class='card' style='border-color:#f59e0b;'>"
                               "<h2 style='color:#f59e0b;'>⚠️ الحساب غير مفعل</h2>"
                               "<p style='color:var(--text-muted); margin-bottom:20px;'>يرجى تفعيل حسابك أولاً بالرمز المرسل على إيميلك.</p>"
-                              "<a class='btn-secondary' href='/login'> العودة لتسجيل الدخول</a>"
+                              "<a class='btn-secondary' href='/login'>العودة لتسجيل الدخول</a>"
                               "</div></div></body></html>";
                 res.set_content(html, "text/html; charset=utf-8");
                 return;
@@ -1179,7 +1164,7 @@ int main() {
             }
         }
 
-        string msg = found ? "تم إرسال رابط ورسالة استعادة كلمة المرور إلى بريدك الإلكتروني بنجاح." : "عفواً، هذا البريد الإلكتروني غير مسجل مسبقا  .";
+        string msg = found ? "تم إرسال رابط ورسالة استعادة كلمة المرور إلى بريدك الإلكتروني بنجاح." : "عفواً، هذا البريد الإلكتروني غير مسجل مسبقا .";
         string color = found ? "#16a34a" : "#ef4444";
 
         string html = "<html><head><meta charset='UTF-8'><meta name='viewport' content='width=device-width, initial-scale=1.0'>"
@@ -1518,7 +1503,7 @@ int main() {
 
         string report_summary = "مقايسة بئر: " + to_string(w) + "x" + to_string(d) + " سم - أدوار: " + to_string((int)f);
 
-        // حفظ تفاصيل المقايسة في البايت كود لعرضها لاحقاً عند النقر على اسم العميل
+        // تجميع تفاصيل البضاعة لعرضها عند النقر
         ostringstream details_stream;
         details_stream << "<div class='table-container'><table class='tbl'>"
                        << "<tr><th>نظام التشغيل:</th><td>" << (m_type == "MR" ? "غرفة محرك (MR)" : (m_type == "MRL" ? "بدون غرفة (MRL)" : "هيدروليك Hydraulic")) << "</td></tr>"
@@ -1659,7 +1644,6 @@ int main() {
         res.set_content(os.str(), "text/html; charset=utf-8");
     });
 
-    // 4. حفظ التقرير مع تفاصيل البضاعة المعروضة عند النقر
     svr.Post("/api/save-report", [](const httplib::Request& req, httplib::Response& res) {
         string user = get_session_user(req);
         if (user.empty()) { res.set_redirect("/login"); return; }
@@ -1677,7 +1661,6 @@ int main() {
         res.set_redirect("/my-reports");
     });
 
-    // مسار حذف تقرير محدد
     svr.Get(R"(/api/delete-report/([a-zA-Z0-9\-]+))", [](const httplib::Request& req, httplib::Response& res) {
         string user = get_session_user(req);
         if (user.empty()) { res.set_redirect("/login"); return; }
@@ -1689,7 +1672,7 @@ int main() {
         res.set_redirect("/my-reports");
     });
 
-    // 4. صفحة التقارير المحفوظة مع إمكانية النقر لعرض البضاعة، زر الطباعة، وزر الحذف
+    // صفحة التقارير المحفوظة مع تفعيل عرض البضاعة بالضغط على اسم العميل والطباعة والحذف
     svr.Get("/my-reports", [](const httplib::Request& req, httplib::Response& res) {
         string user = get_session_user(req);
         if (user.empty()) { res.set_redirect("/login"); return; }
@@ -1701,7 +1684,7 @@ int main() {
                 r_list << "<div style='background:var(--bg); border:1px solid var(--border); padding:20px; border-radius:12px; margin-bottom:15px;'>"
                        << "<div style='display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;'>"
                        << "  <div>"
-                       << "    <b>👤 اسم العميل:</b> <a href='javascript:void(0);' onclick='toggleDetails(\"" << rep.id << "\")' style='color:var(--accent); font-size:1.1rem; text-decoration:underline; font-weight:bold;'>" << rep.client_name << " (اضغط للعرض)</a><br>"
+                       << "    <b>👤 اسم العميل:</b> <a href='javascript:void(0);' onclick='toggleDetails(\"" << rep.id << "\")' style='color:var(--accent); font-size:1.1rem; text-decoration:underline; font-weight:bold;'>" << rep.client_name << " (اضغط لعرض البضاعة)</a><br>"
                        << "    <b>📌 تفاصيل المقايسة:</b> " << rep.summary << "<br>"
                        << "    <b>📝 ملاحظات الموقع:</b> " << (rep.notes.empty() ? "لا توجد" : rep.notes)
                        << "  </div>"
@@ -1739,7 +1722,7 @@ int main() {
                       "}"
                       "function printReport(containerId) {"
                       "  var el = document.getElementById(containerId);"
-                      "  var wasHidden = el.style.display === 'none';"
+                      "  var wasHidden = (el.style.display === 'none' || el.style.display === '');"
                       "  if (wasHidden) { el.style.display = 'block'; }"
                       "  html2pdf().set({margin:0.3, filename:'Customer_Report.pdf', image:{type:'jpeg', quality:1}, html2canvas:{scale:2}}).from(el).save().then(() => {"
                       "    if (wasHidden) { el.style.display = 'none'; }"
