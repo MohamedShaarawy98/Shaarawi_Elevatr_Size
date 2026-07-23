@@ -918,7 +918,7 @@ int main() {
                       "@media(max-width:600px){.reg-grid{grid-template-columns:1fr; gap:0;}}"
                       "</style></head><body>"
                       + get_navbar_html() + "<div class='container'><div class='auth-card'>"
-                      "<h2 style='text-align:center; color:var(--accent); margin-bottom:5px;'>✨ انضم إلى نخبة المهندسين</h2>"
+                      "<h2 style='text-align:center; color:var(--accent); margin-bottom:5px;'>🤩 شرفنا بالانضمام الينا</h2>"
                       "<div style='text-align:center; color:var(--text-muted); font-size:0.9rem; margin-bottom:25px;'>أنشئ حسابك لتوثيق مقاييسك والاحتفاظ بسجل أعمالك</div>"
                       + alert_box +
                       "<form action='/api/register' method='post'>"
