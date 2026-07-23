@@ -5,7 +5,7 @@
                                =                منصة ضربة شاكوش الرقمية                  =
                                =                                                          =
                                ============================================================
-  */  
+ */     
 
 #define CPPHTTPLIB_OPENSSL_SUPPORT
 
@@ -24,6 +24,9 @@
 
 using namespace std;
 
+// ============================================================================
+// متغيرات التحكم في جاهزية أنواع المصاعد
+// ============================================================================
 const bool IS_MR_READY        = true;   
 const bool IS_MRL_READY       = false;  
 const bool IS_HYDRAULIC_READY = false;  
@@ -41,17 +44,20 @@ static string CF_VERIFY_SECRET = getenv("CF_VERIFY_SECRET") ? getenv("CF_VERIFY_
 static string MONGO_URI = getenv("MONGO_URI") ? getenv("MONGO_URI") : "";
 static string SECURE_HEADER_NAME = "X-Verify-Secret"; 
 
+// هيكل تقارير العملاء المحفوظة
 struct SavedReport {
     string client_name;
     string notes;
     string summary;
 };
 
+// هيكل حساب المستخدم الشامل والمحدث
 struct UserAccount {
+    string first_name;
+    string last_name;
     string username;
     string email;
     string password;
-    string city;
     string otp_code;
     bool is_verified = false;
     vector<SavedReport> saved_reports;
@@ -62,8 +68,41 @@ static map<string, string> pending_otps;
 
 static void save_user_to_mongodb(const UserAccount& acc) {
     if (!MONGO_URI.empty()) {
-        cout << "[MongoDB Cloud] User " << acc.username << " synchronized successfully." << endl;
+        cout << "[Trace-DB] User " << acc.username << " synchronized to MongoDB successfully." << endl;
     }
+}
+
+// دالة إرسال الإيميل الحقيقي عبر Resend مع تتبع في الـ Logs
+static bool send_email_otp(const string& email, const string& first_name, const string& otp_code) {
+    const char* env_val = getenv("RESEND_API_KEY");
+    string API_KEY = env_val ? env_val : "";
+
+    cout << "[Trace-Email] Starting email dispatch process for: " << email << endl;
+
+    if (API_KEY.empty()) {
+        cout << "[Trace-Email Error] RESEND_API_KEY is missing in Environment Variables!" << endl;
+        return false; 
+    }
+
+    string html_content = "<div dir='rtl' style='font-family: Arial, sans-serif; text-align: right; color: #333;'>"
+                          "<h2 style='color: #0ea5e9;'>مرحباً يا " + first_name + "</h2>"
+                          "<p>شكراً لتسجيلك في منصة ضربة شاكوش.</p>"
+                          "<p>رمز التفعيل الآمن لحسابك هو:</p>"
+                          "<p style='font-size: 28px; font-weight: bold; letter-spacing: 5px; color: #16a34a; background: #f3f4f6; padding: 15px; display: inline-block; border-radius: 8px;'>" + otp_code + "</p>"
+                          "<p>يرجى إدخال هذا الرمز في الموقع لتفعيل حسابك نهائياً.</p></div>";
+
+    string json_body = "{\"from\":\"Darbat Shakosh <noreply@darbat-shakosh.com>\",\"to\":[\"" + email + "\"],\"subject\":\"رمز تفعيل حسابك - منصة ضربة شاكوش\",\"html\":\"" + html_content + "\"}";
+
+    string command = "curl -s -X POST https://api.resend.com/emails "
+                     "-H \"Authorization: Bearer " + API_KEY + "\" "
+                     "-H \"Content-Type: application/json\" "
+                     "-d '" + json_body + "'";
+
+    cout << "[Trace-Email] Executing cURL command to Resend API..." << endl;
+    int result = system(command.c_str());
+    cout << "[Trace-Email] cURL execution finished with exit code: " << result << endl;
+
+    return (result == 0);
 }
 
 static string get_session_user(const httplib::Request& req) {
@@ -87,30 +126,40 @@ static bool is_valid_username(const string& username) {
 
 struct Partner {
     string name;        
-    string type;        
+    string type;        // company, contractor, supplier, cabins, transport, labor
     string phone;       
-    string website;     
-    string map_link;    
-    string location;    
+    string website;     // موقع الشركة الإلكتروني
+    string map_link;    // رابط الخريطة (اللوكيشن)
+    string location;    // المكان / المدينة
     string details;     
     string rating;      
     bool is_featured;   
     bool is_ad;         
 };
 
+// قائمة الشركاء والخدمات المحدثة
 static vector<Partner> get_partners() {
     return {
-        { "    شركة اتحاد الجزيرة العربية المحدودة", "company", "0561269547", "https://uaj.sa/", "https://maps.app.goo.gl/taidnqUMC85uGkFo6?g_st=awb", "جدة", "متخصصة في توريد وتركيب وصيانة المصاعد الكهربائية والسلالم المتحركة + قسم فاير متكامل.", "", true, false },
+        // 1. الشركات والمؤسسات
+        { "اتحاد الجزيرة العربية المحدودة", "company", "0561269547", "https://uaj.sa/", "https://maps.app.goo.gl/taidnqUMC85uGkFo6?g_st=awb", "جدة", "متخصصة في توريد وتركيب وصيانة المصاعد الكهربائية والسلالم المتحركة + قسم فاير متكامل.", "", true, false },
         { "شركة نور الفردوس", "company", "0569041073", "", "", "الرياض", "متخصصة في تركيب جميع  براندات المصاعد والسلالم المتحركة.", "", false, false },
+        
+        // 2. المقاولين
         { "م/ أبو أسامة", "contractor", "0562936595", "", "", "جدة", "مقاول تركيبات .", "⭐⭐⭐⭐⭐", false, false },
         { "م/ أبو عبده", "contractor", "0556345642", "", "", "جدة", "مقاول تركيبات .", "⭐⭐⭐⭐⭐", false, false },
         { "م/ علاء الطوخي", "contractor", "056532176", "", "", "جدة", "مقاول تركيبات .", "⭐⭐⭐⭐⭐", false, false },
         { "م/ ضياء البخمي", "contractor", "0562417042", "", "", "جدة", "مقاول تركيبات .", "⭐⭐⭐⭐⭐", false, false },
         { "اضف اسمك هنا", "contractor", "00966564406565", "", "", "جدة", "احجز مكانك في قائمة المقاولين المتميزين.", "", false, true },
+
+        // 4. مصانع الكباين
         { "اضف اسم مصنع الكباين هنا", "cabins", "00966564406565", "", "", "", "مكان مخصص لمصانع الكباين.", "", false, true },
+
+        // 5. دباب وديانا
         { "محمد جان (دباب)", "transport", "0563446438", "", "", "جدة - عسفان", "خدمات النقل والتوصيل (دباب).", "", false, false },
         { "خدمات دباب وديانا", "transport", "0557128719", "", "", "الرياض", "خدمات النقل والتوصيل.", "", false, false },
         { "اضف اسمك هنا (دباب / ديانا)", "transport", "00966564406565", "", "", "جدة", "موقع مخصص لخدمات النقل.", "", false, true },
+
+        // 6. العمالة اليومية والخدمات الميدانية
         { "عمال باليومية", "labor", "0563032163", "", "", "جدة", "عمالة جاهزة للتركيبات اليومية.", "", false, false },
         { "تفتيح سقف للويرات", "labor", "0597526747", "", "", "جدة", "متخصصون في تفتيح وتجهيز أسقف البئر للويرات.", "", false, false },
         { "عمال لجميع الأعمال", "labor", "0540972304", "", "", "الرياض", "عمالة مدربة لكافة الأعمال الميدانية.", "", false, false },
@@ -243,6 +292,12 @@ public:
     
     float get_shaft_height(float f, float pit_m, float overhead_m) {
         return (f * 3.5f) + pit_m + overhead_m;
+    }
+
+    int get_deflector_sheaves(const string& type) {
+        if (type == "MRL") return 3; 
+        if (type == "MR") return 1;  
+        return 0;                 
     }
 
     int calculate_rated_load(int cab_w, int cab_d) {
@@ -662,6 +717,7 @@ static string get_modern_blue_css() {
            ".nav-icon::-webkit-details-marker{display:none;}"
            ".nav-icon:hover{color:var(--accent);}"
            ".nav-icon svg{width:22px; height:22px; fill:currentColor;}"
+           
            "body.light-mode .theme-sun, body:not(.light-mode) .theme-moon { display:none; }"
 
            ".mobile-menu{position:relative;}"
@@ -693,7 +749,7 @@ static string get_modern_blue_css() {
            ".stage-2 { background: linear-gradient(135deg, #8b5cf6, #7c3aed); }" 
            ".stage-3 { background: linear-gradient(135deg, #f59e0b, #d97706); }" 
 
-           ".actions{display:flex; justify-content:space-between; margin-top:35px; gap:20px; flex-wrap:wrap;}"
+           ".actions{display:flex; justify-content:space-between; margin-top:35px; gap:20px;}"
            ".btn-print{background:linear-gradient(135deg, #16a34a, #15803d); color:white; border:none; padding:15px 25px; border-radius:8px; font-weight:700; cursor:pointer; flex:1; transition:0.3s; text-align:center; font-family:var(--font-display); box-shadow: 0 4px 6px rgba(0,0,0,0.1);}"
            ".btn-print:hover{background:linear-gradient(135deg, #15803d, #166534);}"
            ".btn-save{background:linear-gradient(135deg, #f59e0b, #d97706); color:white; border:none; padding:15px 25px; border-radius:8px; font-weight:700; cursor:pointer; flex:1; transition:0.3s; text-align:center; font-family:var(--font-display); box-shadow: 0 4px 6px rgba(0,0,0,0.1);}"
@@ -713,7 +769,58 @@ static string get_modern_blue_css() {
            ".section-intro{margin-bottom:30px; text-align:right;}"
            ".section-intro h1{color:var(--text); font-size:1.7rem; font-weight:800; margin:0 0 8px 0;}"
            ".section-intro p{color:var(--text-muted); font-size:1rem; line-height:1.7; margin:0;}"
+           ".lesson-tag{display:inline-flex; align-items:center; gap:5px; font-size:0.78rem; font-weight:700; padding:4px 10px; border-radius:20px; margin-bottom:12px; width:fit-content;}"
+           ".tag-article{background:rgba(56,189,248,0.14); color:var(--accent);}"
+           ".tag-video{background:rgba(245,165,36,0.16); color:var(--accent-2);}"
+           ".video-embed{position:relative; width:100%; aspect-ratio:16/9; border-radius:10px; overflow:hidden; background:#000; margin:20px 0; border:1px solid var(--border); box-shadow: 0 4px 12px rgba(0,0,0,0.3);}"
+           ".video-embed iframe{position:absolute; inset:0; width:100%; height:100%; border:0;}"
+           ".lesson-body{color:var(--text); font-size:1.02rem; line-height:1.9; background: var(--bg); padding: 20px; border-radius: 8px; border: 1px solid var(--border); margin-top: 15px;}"
+           ".lesson-body p{margin:0 0 16px 0;}"
+           ".track-list{display:flex; flex-direction:column; gap:14px; margin-top:10px;}"
+           ".track-item{display:flex; align-items:flex-start; gap:16px; background:var(--bg); border:1px solid var(--border); border-radius:10px; padding:18px 20px; text-decoration:none; transition:0.2s;}"
+           ".track-item:hover{border-color:var(--accent); transform:translateX(-3px);}"
+           ".track-order{flex-shrink:0; width:34px; height:34px; border-radius:8px; background:var(--surface-2); color:var(--accent); font-family:var(--font-mono); font-weight:700; display:flex; align-items:center; justify-content:center; font-size:0.95rem;}"
+           ".track-item-title{color:var(--text); font-weight:700; font-size:1.02rem; margin-bottom:4px;}"
+
            ".footer{margin-top:auto; padding:25px 0; font-size:15px; color:var(--text-muted); text-align:center; border-top:1px solid var(--border); background-color:var(--surface); font-weight:600;}"
+           
+           "@media (max-width: 600px) {"
+           "  .container { padding: 15px 10px !important; }"
+           "  .card { padding: 20px 15px !important; border:none; box-shadow:none; }"
+           "  .card h2 { font-size: 1.3rem !important; }"
+           "  .section-intro h1 { font-size: 1.4rem !important; }"
+           "  .sub-title { font-size: 0.85rem !important; margin-bottom: 20px !important; }"
+           "  .actions { flex-direction: column !important; gap: 12px !important; margin-top: 25px !important; }"
+           "  .btn-print, .btn-secondary, button { padding: 12px 20px !important; font-size: 1rem !important; width: 100% !important; }"
+           "  .nav-card { padding: 20px 15px !important; }"
+           "  .nav-card h3 { font-size: 1.15rem !important; }"
+           "  .track-item { padding: 14px 15px !important; gap: 12px !important; }"
+           "  .f-group label { font-size: 0.85rem !important; }"
+           "  .input, select { padding: 10px !important; font-size: 0.9rem !important; }"
+           
+           "  .tbl, .tbl tbody, .tbl tr, .tbl th, .tbl td { display: block; width: 100% !important; border: none !important; }"
+           "  .tbl thead { display: none; }"
+           "  .table-container { border: none !important; background: transparent !important; padding: 0 !important; overflow: visible !important; margin-top: 5px; }"
+           "  .tbl tr { margin-bottom: 15px; border: 1px solid var(--border) !important; border-radius: 10px; background: var(--surface); box-shadow: 0 4px 6px rgba(0,0,0,0.2); position: relative; overflow: hidden; }"
+           "  .tbl tr::before { content: ''; position: absolute; right: 0; top: 0; bottom: 0; width: 5px; background: var(--accent); }"
+           "  .tbl th { display:none; }" 
+           "  .tbl td, .tbl th { padding: 10px 20px 10px 15px !important; text-align: right !important; }"
+           
+           "  .tbl tr th { color: var(--accent); font-size: 0.85rem !important; padding-bottom: 2px !important; display: block; }"
+           "  .tbl tr th + td { font-size: 1.1rem !important; padding-top: 0 !important; }"
+
+           "  .tbl tr td:first-child { color: var(--accent); font-size: 0.85rem !important; padding-bottom: 2px !important; font-weight: bold; }"
+           "  .tbl tr td:last-child { font-size: 1.1rem !important; padding-top: 0 !important; }"
+           "}"
+           "@media print{"
+           "  body, .container, #pdf-area { background: #121826 !important; color: #f3f4f6 !important; height: auto !important; overflow: visible !important; min-height: unset !important; padding: 0 !important; margin: 0 !important; width: 100% !important; }"
+           "  .card { box-shadow: none !important; border: none !important; padding: 20px !important; background: #121826 !important; width: 100% !important; height: auto !important; overflow: visible !important; position: static !important; }"
+           "  .table-container { overflow: visible !important; width: 100% !important; border: 1px solid #232c3f !important; background: #0a0e16 !important; }"
+           "  .tbl { width: 100% !important; table-layout: fixed !important; }"
+           "  .btn-print, .btn-secondary, .stage-header, .navbar, .flags-strip, .footer { display: none !important; }"
+           "  .card::before, .card::after { display: none !important; }"
+           "  .tbl td:first-child { color: #38bdf8 !important; font-weight: bold; }"
+           "}"
            "</style>";
 }
 
@@ -869,8 +976,8 @@ int main() {
         res.set_content(html, "text/html; charset=utf-8");
     });
 
-    // 2 & 5. صفحة تسجيل احترافية مع دعم حفظ البيانات عند الخطأ
-    auto render_register_page = [](httplib::Response& res, const string& un = "", const string& em = "", const string& ci = "", const string& err_msg = "") {
+    // 2. صفحة تسجيل احترافية ومطابقة للترتيب المطلوب بدقة
+    auto render_register_page = [](httplib::Response& res, const string& fn = "", const string& ln = "", const string& un = "", const string& em = "", const string& err_msg = "") {
         string nonce = generate_nonce(); set_csp(res, nonce);
         string alert_box = err_msg.empty() ? "" : "<div style='background:rgba(239,68,68,0.1); border:1px solid #ef4444; color:#ef4444; padding:12px; border-radius:8px; margin-bottom:20px; font-weight:600; text-align:center;'>" + err_msg + "</div>";
         string html = "<html><head><meta charset='UTF-8'><meta name='viewport' content='width=device-width, initial-scale=1.0'>"
@@ -882,10 +989,12 @@ int main() {
                       "<div style='text-align:center; color:var(--text-muted); font-size:0.9rem; margin-bottom:25px;'>أنشئ حسابك لتوثيق مقاييسك والاحتفاظ بسجل أعمالك</div>"
                       + alert_box +
                       "<form action='/api/register' method='post'>"
-                      "<div class='f-group'><label>👤 اسم المستخدم (حروف وأرقام إنجليزية فقط):</label><input type='text' name='username' value='" + un + "' required pattern='[a-zA-Z0-9_]+'></div>"
-                      "<div class='f-group'><label>📧 البريد الإلكتروني الحقيقي:</label><input type='email' name='email' value='" + em + "' required></div>"
-                      "<div class='f-group'><label>🏙️ المدينة:</label><input type='text' name='city' value='" + ci + "' required></div>"
-                      "<div class='f-group'><label>🔒 كلمة المرور:</label><input type='password' name='password' required></div>"
+                      "<div class='f-group'><label>1- الاسم الأول:</label><input type='text' name='first_name' value='" + fn + "' required placeholder='مثال: محمد'></div>"
+                      "<div class='f-group'><label>2- الاسم الأخير:</label><input type='text' name='last_name' value='" + ln + "' required placeholder='مثال: الشعراوي'></div>"
+                      "<div class='f-group'><label>3- اسم المستخدم (بالإنجليزية بدون مسافات):</label><input type='text' name='username' value='" + un + "' required pattern='[a-zA-Z0-9_]+' placeholder='مثال: mohamed_shaarawy'></div>"
+                      "<div class='f-group'><label>4- البريد الإلكتروني الحقيقي:</label><input type='email' name='email' value='" + em + "' required placeholder='example@domain.com'></div>"
+                      "<div class='f-group'><label>5- كلمة السر:</label><input type='password' name='password' required placeholder='أدخل كلمة المرور'></div>"
+                      "<div class='f-group'><label>6- إعادة كتابة كلمة السر:</label><input type='password' name='confirm_password' required placeholder='أعد كتابة كلمة المرور'></div>"
                       "<button type='submit' style='margin-top:10px;'>✨ إنشاء الحساب وإرسال الرمز</button></form>"
                       "<div style='text-align:center; margin-top:20px;'><a href='/login' style='color:var(--accent); font-weight:600;'>لديك حساب بالفعل؟ تسجيل الدخول</a></div>"
                       "</div></div><div class='footer'>منصة ضربة شاكوش الفنية © 2026 - إنشاء محمد الشعراوي</div>"
@@ -899,42 +1008,60 @@ int main() {
         render_register_page(res);
     });
 
-    // 1. معالجة التسجيل مع الاحتفاظ بالبيانات السليمة عند حدوث أخطاء وتفريغ الخطأ فقط
+    // 1. معالجة التسجيل مع الاحتفاظ بالبيانات السليمة عند حدوث أخطاء وإرسال الإيميل الحقيقي عبر cURL
     svr.Post("/api/register", [&render_register_page](const httplib::Request& req, httplib::Response& res) {
+        cout << "[Trace-Register] Received registration request from client IP: " << get_client_ip(req) << endl;
+
+        string first_name = html_escape(req.get_param_value("first_name"));
+        string last_name = html_escape(req.get_param_value("last_name"));
         string username = html_escape(req.get_param_value("username"));
         string email = html_escape(req.get_param_value("email"));
-        string city = html_escape(req.get_param_value("city"));
-        string password = req.get_param_value("password");
+        string password = html_escape(req.get_param_value("password"));
+        string confirm_password = html_escape(req.get_param_value("confirm_password"));
+
+        if (password != confirm_password) {
+            render_register_page(res, first_name, last_name, username, email, "⚠️ كلمتا المرور غير متطابقتين. يرجى إعادة كتابة كلمة المرور.");
+            return;
+        }
 
         if (!is_valid_username(username)) {
-            render_register_page(res, "", email, city, "⚠️ اسم المستخدم غير صالح. مسموح بالحروف والأرقام الإنجليزية بدون مسافات.");
+            render_register_page(res, first_name, last_name, "", email, "⚠️ اسم المستخدم غير صالح. مسموح بالحروف والأرقام الإنجليزية بدون مسافات.");
             return;
         }
 
         if (users_db.find(username) != users_db.end()) {
-            render_register_page(res, "", email, city, "⚠️ اسم المستخدم مستخدم مسبقاً، يرجى اختيار اسم آخر.");
+            render_register_page(res, first_name, last_name, "", email, "⚠️ اسم المستخدم مستخدم مسبقاً، يرجى اختيار اسم آخر.");
             return;
         }
 
         for (auto const& [u, acc] : users_db) {
             if (acc.email == email) {
-                render_register_page(res, username, "", city, "⚠️ البريد الإلكتروني مسجل لدينا مسبقاً.");
+                render_register_page(res, first_name, last_name, username, "", "⚠️ البريد الإلكتروني مسجل لدينا مسبقاً.");
                 return;
             }
         }
 
         string otp = generate_otp();
-        pending_otps[email] = otp;
+        cout << "[Trace-OTP] Generated OTP for " << email << " is: " << otp << endl;
 
         UserAccount new_acc;
+        new_acc.first_name = first_name;
+        new_acc.last_name = last_name;
         new_acc.username = username;
         new_acc.email = email;
-        new_acc.city = city;
         new_acc.password = password;
         new_acc.otp_code = otp;
         new_acc.is_verified = false;
+        
         users_db[username] = new_acc;
         save_user_to_mongodb(new_acc);
+
+        bool email_sent = send_email_otp(email, first_name, otp);
+        if (email_sent) {
+            cout << "[Trace-Email] SUCCESS: Email dispatched to " << email << endl;
+        } else {
+            cout << "[Trace-Email] FAILED: Could not dispatch email via cURL!" << endl;
+        }
 
         string nonce = generate_nonce(); set_csp(res, nonce);
         string html = "<html><head><meta charset='UTF-8'><meta name='viewport' content='width=device-width, initial-scale=1.0'>"
@@ -943,12 +1070,12 @@ int main() {
                       + get_navbar_html() +
                       "<div class='container' style='max-width:500px;'>"
                       "<div class='card' style='border-color:var(--accent); text-align:center;'>"
-                      "<h2>✉️ أدخل رمز التحقق</h2>"
-                      "<div class='sub-title'>تم إرسال رمز التحقق إلى بريدك الإلكتروني الحقيقي: <b>" + email + "</b><br>يرجى تفقد بريدك وإدخال الرمز أدناه:</div>"
+                      "<h2>🔐 أدخل رمز تفعيل الحساب</h2>"
+                      "<div class='sub-title'>تم إرسال رمز التحقق إلى بريدك الإلكتروني: <b>" + email + "</b><br>يرجى تفقد صندوق الوارد أو الـ Spam وإدخال الرمز:</div>"
                       "<form action='/api/verify-otp' method='post'>"
                       "<input type='hidden' name='username' value='" + username + "'>"
-                      "<div class='f-group'><input type='text' name='otp' required maxlength='6' placeholder='أدخل الرمز هنا' style='text-align:center; font-size:1.3rem; letter-spacing:3px; font-weight:bold;'></div>"
-                      "<button type='submit'>✅ تفعيل الحساب</button>"
+                      "<div class='f-group'><input type='text' name='otp' required maxlength='6' placeholder='أدخل الرمز هنا' style='text-align:center; font-size:1.4rem; letter-spacing:4px; font-weight:bold;'></div>"
+                      "<button type='submit'>✅ تفعيل الحساب نهائياً</button>"
                       "</form></div></div>"
                       "<div class='footer'>منصة ضربة شاكوش الفنية © 2026 - إنشاء محمد الشعراوي</div>"
                       + get_theme_script(nonce) + "</body></html>";
@@ -972,7 +1099,7 @@ int main() {
                           + get_navbar_html(username) +
                           "<div class='container' style='max-width:550px; text-align:center;'>"
                           "<div class='card' style='border-color:#16a34a;'>"
-                          "<h2 style='color:#16a34a;'>🎉 أهلاً وسهلاً بك يا بشمهندس " + username + "!</h2>"
+                          "<h2 style='color:#16a34a;'>🎉 أهلاً وسهلاً بك يا بشمهندس " + users_db[username].first_name + " " + users_db[username].last_name + "!</h2>"
                           "<p style='color:var(--text); font-size:1.1rem; line-height:1.8; margin-bottom:25px;'>نورت منصة ضربة شاكوش الرقمية. تم تفعيل حسابك وحفظ بياناتك بنجاح تام، وأصبحت جاهزاً لحفظ تقاريرك الهندسية باسم عملائك.</p>"
                           "<a class='btn-secondary' href='/calculator' style='background:linear-gradient(135deg, #16a34a, #15803d); display:block; padding:15px;'>🛗 ابدأ العمل على الحاسبة الهندسية</a>"
                           "</div></div>"
@@ -987,7 +1114,7 @@ int main() {
                           + get_navbar_html() +
                           "<div class='container' style='max-width:500px; text-align:center;'><div class='card' style='border-color:#ef4444;'>"
                           "<h2 style='color:#ef4444;'>❌ رمز التحقق غير صحيح</h2>"
-                          "<p style='color:var(--text-muted); margin-bottom:20px;'>الرمز الذي أدخلته خطأ، يرجى إعادة المحاولة.</p>"
+                          "<p style='color:var(--text-muted); margin-bottom:20px;'>الرمز غير مطابق، يرجى المحاولة مرة أخرى.</p>"
                           "<a class='btn-secondary' href='/register'>🔄 العودة للوراء</a>"
                           "</div></div></body></html>";
             res.set_content(html, "text/html; charset=utf-8");
@@ -1409,7 +1536,6 @@ int main() {
         res.set_content(os.str(), "text/html; charset=utf-8");
     });
 
-    // 4. استخراج التقرير مع خانات اسم العميل والملاحظات قبل الحفظ والطباعة
     svr.Post("/calculate", [&elevator](const httplib::Request& req, httplib::Response& res) {
         string user = get_session_user(req);
         string m_type = html_escape(req.get_param_value("m_type"));
@@ -1445,8 +1571,7 @@ int main() {
            + get_modern_blue_css() + "</head><body>"
            << get_navbar_html(user)
            << "<div class='container' style='max-width:780px;'>"
-           << "<div class='card' id='pdf-area'>"
-           << "<h2>📋 تقرير المقايسة وتصفية المقاسات الفنية</h2>"
+           << "<div class='card' id='pdf-area'><h2>📋 تقرير المقايسة وتصفية المقاسات الفنية</h2>"
            
            << "<div style='margin-bottom:20px; background:var(--surface-2); padding:15px; border-radius:10px; border:1px solid var(--border);'>"
            << "<p style='margin:5px 0;'><b>👤 اسم العميل:</b> <span id='lblClient' style='color:var(--accent);'>غير محدد</span></p>"
@@ -1538,9 +1663,9 @@ int main() {
                << "</tbody></table></div>";
         }
 
-        os << "</div>"; // إغلاق pdf-area
+        os << "</div>";
 
-        // خانات إدخال اسم العميل والملاحظات وحفظ التقرير
+        // خانات حفظ التقرير باسم العميل والملاحظات
         if (!user.empty()) {
             os << "<div class='card' style='border-color:var(--accent); margin-top:20px;'>"
                << "<h3>💾 حفظ التقرير في سجلك الشخصي باسم العميل</h3>"
@@ -1577,7 +1702,7 @@ int main() {
         res.set_content(os.str(), "text/html; charset=utf-8");
     });
 
-    // 4. معالجة مسار حفظ التقرير باسم العميل وملاحظاته
+    // مسار حفظ التقرير باسم العميل والملاحظات
     svr.Post("/api/save-report", [](const httplib::Request& req, httplib::Response& res) {
         string user = get_session_user(req);
         if (user.empty()) { res.set_redirect("/login"); return; }
