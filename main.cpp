@@ -72,33 +72,49 @@ static bool send_email_otp(const string& email, const string& first_name, const 
     const char* env_val = getenv("RESEND_API_KEY");
     string API_KEY = env_val ? env_val : "";
 
-    cout << "[Trace-Email] Starting email dispatch process for: " << email << endl;
+    cout << "[Trace-Email] Starting secure HTTP email dispatch for: " << email << endl;
 
     if (API_KEY.empty()) {
         cout << "[Trace-Email Error] RESEND_API_KEY is missing in Environment Variables!" << endl;
         return false; 
     }
 
-    string html_content = "<div dir='rtl' style='font-family: Arial, sans-serif; text-align: right; color: #333;'>"
-                          "<h2 style='color: #0ea5e9;'>مرحباً يا " + first_name + "</h2>"
-                          "<p>شكراً لتسجيلك في منصة ضربة شاكوش.</p>"
-                          "<p>رمز التفعيل الآمن لحسابك هو:</p>"
-                          "<p style='font-size: 28px; font-weight: bold; letter-spacing: 5px; color: #16a34a; background: #f3f4f6; padding: 15px; display: inline-block; border-radius: 8px;'>" + otp_code + "</p>"
-                          "<p>يرجى إدخال هذا الرمز في الموقع لتفعيل حسابك نهائياً.</p></div>";
+    try {
+        httplib::Client cli("https://api.resend.com");
+        cli.set_connection_timeout(5);
+        cli.set_read_timeout(5);
 
-    string json_body = "{\"from\":\"Darbat Shakosh <noreply@darbat-shakosh.com>\",\"to\":[\"" + email + "\"],\"subject\":\"رمز تفعيل حسابك - منصة ضربة شاكوش\",\"html\":\"" + html_content + "\"}";
+        httplib::Headers headers = {
+            {"Authorization", "Bearer " + API_KEY},
+            {"Content-Type", "application/json"}
+        };
 
-    string command = "curl -s -X POST https://api.resend.com/emails "
-                     "-H \"Authorization: Bearer " + API_KEY + "\" "
-                     "-H \"Content-Type: application/json\" "
-                     "-d '" + json_body + "'";
+        // محتوى HTML منسق وسليم
+        string html_content = "<div dir='rtl' style='font-family: Arial, sans-serif; text-align: right; color: #333;'>"
+                              "<h2 style='color: #0ea5e9;'>مرحباً يا " + first_name + "</h2>"
+                              "<p>شكراً لتسجيلك في منصة ضربة شاكوش.</p>"
+                              "<p>رمز التفعيل الآمن لحسابك هو:</p>"
+                              "<p style='font-size: 28px; font-weight: bold; letter-spacing: 5px; color: #16a34a; background: #f3f4f6; padding: 15px; display: inline-block; border-radius: 8px;'>" + otp_code + "</p>"
+                              "<p>يرجى إدخال هذا الرمز في الموقع لتفعيل حسابك نهائياً.</p></div>";
 
-    cout << "[Trace-Email] Executing cURL command to Resend API..." << endl;
-    int result = system(command.c_str());
-    cout << "[Trace-Email] cURL execution finished with exit code: " << result << endl;
+        // بناء جسم الطلب بصيغة JSON صحيحة وآمنة
+        string json_body = "{\"from\":\"Darbat Shakosh <noreply@darbat-shakosh.com>\",\"to\":[\"" + email + "\"],\"subject\":\"رمز تفعيل حسابك - منصة ضربة شاكوش\",\"html\":\"" + html_content + "\"}";
 
-    return (result == 0);
-}
+        auto res = cli.Post("/emails", headers, json_body, "application/json");
+
+        if (res && (res->status == 200 || res->status == 201)) {
+            cout << "[Trace-Email] SUCCESS: Email sent successfully via HTTP client. Response: " << res->body << endl;
+            return true;
+        } else {
+            int status = res ? res->status : -1;
+            string body = res ? res->body : "No response";
+            cout << "[Trace-Email Error] Failed with HTTP Status: " << status << " | Body: " << body << endl;
+            return false;
+        }
+    } catch (const exception& e) {
+        cout << "[Trace-Email Exception] Error: " << e.what() << endl;
+        return false;
+    }
 
 static string get_session_user(const httplib::Request& req) {
     if (req.has_header("Cookie")) {
