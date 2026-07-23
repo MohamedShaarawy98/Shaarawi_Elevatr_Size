@@ -67,7 +67,7 @@ static void save_user_to_mongodb(const UserAccount& acc) {
     }
 }
 
-// دالة إرسال الإيميل الفعلي عبر Resend باستخدام cURL بشكل مضمون 100%
+// دالة إرسال الإيميل الآمنة والمضمونة عبر cURL المباشر لمنع أخطاء الترجمة
 static bool send_email_otp(const string& email, const string& first_name, const string& otp_code) {
     const char* env_val = getenv("RESEND_API_KEY");
     string API_KEY = env_val ? env_val : "";
@@ -757,6 +757,111 @@ static string get_modern_blue_css() {
            "</style>";
 }
 
+static string get_seo_meta(const string& title, const string& desc) {
+    return "<title>موقع ضربة شاكوش</title>"
+           "<link rel='icon' type='image/jpeg' href='https://media.darbat-shakosh.com/channels4_profile%20(1).jpg'>"
+           "<meta name='description' content='" + desc + "'>"
+           "<meta name='keywords' content='حاسبة مقاسات المصاعد, كورس كهرباء المصاعد, تصفية أبعاد بئر المصعد, صيانة المصاعد, ميكانيكا المصاعد, ضربة شاكوش, هندسة المصاعد'>"
+           "<meta name='robots' content='index, follow'>";
+}
+
+static string get_navbar_html(const string& current_user = "") {
+    const string logo_url = "https://media.darbat-shakosh.com/channels4_profile%20(1).jpg"; 
+    const string chevron_svg = "<svg class='chevron' viewBox='0 0 24 24'><path d='M7 10l5 5 5-5z'/></svg>";
+    const string moon_icon = "<svg class='theme-moon' viewBox='0 0 24 24'><path d='M12.3 22h-.1c-5.5 0-10-4.5-10-10 0-4.8 3.5-8.9 8.2-9.8.6-.1 1.2.3 1.3.9.1.6-.2 1.2-.8 1.4-3.3 1-5.7 4-5.7 7.5 0 4.4 3.6 8 8 8 3.5 0 6.5-2.4 7.5-5.7.2-.6.8-.9 1.4-.8.6.1 1 .7.9 1.3-.9 4.7-5 8.2-9.8 8.2z'/></svg>";
+    const string sun_icon = "<svg class='theme-sun' viewBox='0 0 24 24'><path d='M12 7c-2.8 0-5 2.2-5 5s2.2 5 5 5 5-2.2 5-5-2.2-5-5-5zm0-5c.6 0 1 .4 1 1v2c0 .6-.4 1-1 1s-1-.4-1-1V3c0-.6.4-1 1-1zm0 14c.6 0 1 .4 1 1v2c0 .6-.4 1-1 1s-1-.4-1-1v-2c0-.6.4-1 1-1zM4 11h2c.6 0 1 .4 1 1s-.4 1-1 1H4c-.6 0-1-.4-1-1s-1-.4-1-1zm14 0h2c.6 0 1 .4 1 1s-.4 1-1 1h-2c-.6 0-1-.4-1-1s-1-.4-1-1zM5.2 5.2c.4-.4 1-.4 1.4 0l1.4 1.4c.4.4.4 1 0 1.4s-1 .4-1.4 0L5.2 6.6c-.4-.4-.4-1 0-1.4zm12 12c.4-.4 1-.4 1.4 0l1.4 1.4c.4.4.4 1 0 1.4s-1 .4-1.4 0l-1.4-1.4c-.4-.4-.4-1 0-1.4zM7.6 16.4c.4-.4 1-.4 1.4 0l1.4 1.4c.4.4.4 1 0 1.4s-1 .4-1.4 0l-1.4-1.4c-.4-.4-.4-1 0-1.4zm12-12c.4-.4 1-.4 1.4 0l1.4 1.4c.4.4.4 1 0 1.4s-1 .4-1.4 0l-1.4-1.4c-.4-.4-.4-1 0-1.4z'/></svg>";
+
+    string user_controls;
+    if (current_user.empty()) {
+        user_controls = "<a href='/login' class='nav-icon' title='تسجيل الدخول / إنشاء حساب'><svg viewBox='0 0 24 24'><path d='M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z'/></svg></a>";
+    } else {
+        user_controls = "<details class='nav-dropdown'><summary class='nav-icon' style='color:var(--accent); font-weight:bold;'>👤 " + current_user + "</summary>"
+                        "<div class='dropdown-panel' style='min-width:140px;'><div class='dropdown-col'><a href='/my-reports'>التقارير المحفوظة</a><a href='/logout'>تسجيل الخروج</a></div></div></details>";
+    }
+
+    return "<nav class='navbar'>"
+           "  <div class='nav-right'>"
+           "    <a href='/' class='navbar-brand'><span class='brand-mark'><img src='" + logo_url + "' alt='لوجو ضربة شاكوش'></span><span>ضربة شاكوش </span></a>"
+           "    <div class='nav-center desktop-only'>"
+           "      <a href='/' class='nav-link'>الرئيسية</a>"
+           "      <a href='/paths' class='nav-link'>مسارات التعلّم</a>"
+           "      <a href='/blog' class='nav-link'>الشروحات والمقالات</a>"
+           "      <a href='/calculator' class='nav-link'>الحاسبة الهندسية</a>"
+           "      <details class='nav-dropdown'>"
+           "        <summary>🤝 دليل الشركاء " + chevron_svg + "</summary>"
+           "        <div class='dropdown-panel'>"
+           "          <div class='dropdown-col'>"
+           "            <a href='/companies'>الشركات والمؤسسات</a>"
+           "            <a href='/contractors'>المقاولين</a>"
+           "            <a href='/suppliers'>الموردين</a>"
+           "            <a href='/cabins'>مصانع الكباين</a>"
+           "            <a href='/transport'>دباب وديانا</a>"
+           "            <a href='/labor'>العمالة اليومية</a>"
+           "          </div>"
+           "        </div>"
+           "      </details>"
+           "      <details class='nav-dropdown'>"
+           "        <summary>المزيد " + chevron_svg + "</summary>"
+           "        <div class='dropdown-panel'>"
+           "          <div class='dropdown-col'>"
+           "            <a href='/contact'>اتصل بنا</a>"
+           "            <a href='/support'>مركز الدعم</a>"
+           "          </div>"
+           "        </div>"
+           "      </details>"
+           "    </div>"
+           "  </div>"
+           "  <div class='nav-left'>"
+           "    <button class='nav-icon' id='themeBtn' title='تغيير الوضع المضيء/الليلي'>" + moon_icon + sun_icon + "</button>"
+           + user_controls +
+           "    <details class='nav-dropdown mobile-menu mobile-only'>"
+           "      <summary class='nav-icon' title='القائمة'><svg viewBox='0 0 24 24'><path d='M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z'/></svg></summary>"
+           "      <div class='mobile-panel'>"
+           "        <a href='/'>الرئيسية</a>"
+           "        <a href='/login'>تسجيل الدخول / الحساب</a>"
+           "        <a href='/paths'>مسارات التعلّم</a>"
+           "        <a href='/blog'>الشروحات والمقالات</a>"
+           "        <a href='/calculator'>الحاسبة الهندسية</a>"
+           "        <a href='/companies'>الشركات</a>"
+           "        <a href='/contractors'>المقاولين</a>"
+           "        <a href='/suppliers'>الموردين</a>"
+           "        <a href='/cabins'>مصانع الكباين</a>"
+           "        <a href='/transport'>دباب وديانا</a>"
+           "        <a href='/labor'>العمالة اليومية</a>"
+           "        <div class='mobile-divider'></div>"
+           "        <a href='/contact'>اتصل بنا</a>"
+           "        <a href='/support'>مركز الدعم</a>"
+           "      </div>"
+           "    </details>"
+           "  </div>"
+           "</nav>"
+           "<div class='flags-strip'>"
+           "  <div class='flags-badge-box'>"
+           "    <img src='https://flagcdn.com/w40/ps.png' class='flag-img-unit' alt='Gaza Palestine'>"
+           "    <span class='flag-img-sep'>|</span>"
+           "    <img src='https://flagcdn.com/w40/eg.png' class='flag-img-unit' alt='Egypt'>"
+           "    <span class='flag-img-sep'>|</span>"
+           "    <img src='https://flagcdn.com/w40/sa.png' class='flag-img-unit' alt='Saudi Arabia'>"
+           "  </div>"
+           "</div>";
+}
+
+static string get_theme_script(const string& nonce) {
+    return "<script nonce='" + nonce + "'>"
+           "  if(localStorage.getItem('theme') === 'light'){"
+           "    document.body.classList.add('light-mode');"
+           "  }"
+           "  document.getElementById('themeBtn').addEventListener('click', function(){"
+           "    document.body.classList.toggle('light-mode');"
+           "    if(document.body.classList.contains('light-mode')){"
+           "      localStorage.setItem('theme', 'light');"
+           "    } else {"
+           "      localStorage.setItem('theme', 'dark');"
+           "    }"
+           "  });"
+           "</script>";
+}
+
 int main() {
     httplib::Server svr;
     Elevator elevator;
@@ -804,7 +909,7 @@ int main() {
         res.set_content(html, "text/html; charset=utf-8");
     });
 
-    // 2. صفحة تسجيل احترافية ومطابقة للترتيب المطلوب بدقة
+    // 2. صفحة تسجيل احترافية ومطابقة للترتيب المطلوب بدقة (1- الاسم الأول، 2- الاسم الأخير، 3- اسم المستخدم، 4- البريد، 5- كلمة السر، 6- إعادة كتابة كلمة السر)
     auto render_register_page = [](httplib::Response& res, const string& fn = "", const string& ln = "", const string& un = "", const string& em = "", const string& err_msg = "") {
         string nonce = generate_nonce(); set_csp(res, nonce);
         string alert_box = err_msg.empty() ? "" : "<div style='background:rgba(239,68,68,0.1); border:1px solid #ef4444; color:#ef4444; padding:12px; border-radius:8px; margin-bottom:20px; font-weight:600; text-align:center;'>" + err_msg + "</div>";
@@ -836,10 +941,8 @@ int main() {
         render_register_page(res);
     });
 
-    // 1. معالجة التسجيل مع الاحتفاظ بالبيانات السليمة عند حدوث أخطاء وإرسال الإيميل عبر cURL الحقيقي مع تتبع الـ Logs
+    // 1. معالجة التسجيل مع الاحتفاظ بالبيانات السليمة عند حدوث أخطاء وإرسال الإيميل الفعلي عبر cURL
     svr.Post("/api/register", [&render_register_page](const httplib::Request& req, httplib::Response& res) {
-        cout << "[Trace-Register] Received registration request from client IP: " << get_client_ip(req) << endl;
-
         string first_name = html_escape(req.get_param_value("first_name"));
         string last_name = html_escape(req.get_param_value("last_name"));
         string username = html_escape(req.get_param_value("username"));
@@ -870,8 +973,6 @@ int main() {
         }
 
         string otp = generate_otp();
-        cout << "[Trace-OTP] Generated OTP for " << email << " is: " << otp << endl;
-
         UserAccount new_acc;
         new_acc.first_name = first_name;
         new_acc.last_name = last_name;
@@ -884,12 +985,8 @@ int main() {
         users_db[username] = new_acc;
         save_user_to_mongodb(new_acc);
 
-        bool email_sent = send_email_otp(email, first_name, otp);
-        if (email_sent) {
-            cout << "[Trace-Email] SUCCESS: Email dispatched to " << email << endl;
-        } else {
-            cout << "[Trace-Email] FAILED: Could not dispatch email via cURL!" << endl;
-        }
+        // إرسال الإيميل الحقيقي الفعلي عبر cURL
+        send_email_otp(email, first_name, otp);
 
         string nonce = generate_nonce(); set_csp(res, nonce);
         string html = "<html><head><meta charset='UTF-8'><meta name='viewport' content='width=device-width, initial-scale=1.0'>"
@@ -992,7 +1089,7 @@ int main() {
                               "<div class='container' style='max-width:500px; text-align:center;'><div class='card' style='border-color:#f59e0b;'>"
                               "<h2 style='color:#f59e0b;'>⚠️ الحساب غير مفعل</h2>"
                               "<p style='color:var(--text-muted); margin-bottom:20px;'>يرجى تفعيل حسابك أولاً بالرمز المرسل على إيميلك.</p>"
-                              "<a class='btn-secondary' href='/login'>🔄 العودة لتسجيل الدخول</a>"
+                              "<a class='btn-secondary' href='/login'>🔄 العودة لت تسجيل الدخول</a>"
                               "</div></div></body></html>";
                 res.set_content(html, "text/html; charset=utf-8");
                 return;
